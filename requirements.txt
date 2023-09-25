@@ -1,0 +1,8 @@
+# development tools
+flake8~=4.0
+black~=22.1
+pre-commit~=2.20
+ipykernel~=6.16
+
+# project packages
+pandas~=1.4
