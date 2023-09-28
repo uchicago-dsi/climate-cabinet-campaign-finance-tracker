@@ -7,7 +7,7 @@ current_directory = Path(__file__).parent
 repo_root = current_directory.parent
 
 if __name__ == "__main__":
-    
+
     # This is an example of running the code as a pipeline
     # Rather than through a notebook
     output_directory = repo_root / "output"
@@ -19,4 +19,3 @@ if __name__ == "__main__":
         output_directory,
         output_file,
     )
-
