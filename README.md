@@ -63,3 +63,55 @@ Student Email: nrposner@uchicago.edu
 Student Name: Aïcha Camara
 Student Email: aichacamara@uchicago.edu
 
+
+## MN Data
+### Document and Download MN Campaign Data
+- The MN campaign finance data is accessible on Minnesota Campaign Finance and 
+Public Disclosure Board [here](https://cfb.mn.gov/reports-and-data/self-help/
+data-downloads/campaign-finance/).
+
+- MN campaign data all have csv format. Its data is organized into 3 csv files:
+*itemized contributions received of over $200*, *itemized general expenditures 
+and contributions made of over $200*, and *Itemized independent expenditures of 
+over $200*. These csv files have some similar features, but not all the same.
+They all individually cover all years (2015-present) as one bulk.
+
+- This data source does not have anti-webscraping defenses.
+
+### Minnesota Campaign Finance Requirements
+- Races included: House, Senate, Governor, Secretary of State, Attorney General, 
+State Auditor, District Court based on the office sought in file "All registered 
+candidate committees"
+
+- This dataset covers 2015 to present
+
+- According to [Minnesota Campaign Finance and Public Disclosure Board website]
+(https://cfb.mn.gov/filer-resources/complete-a-filing/campaign-finance-filings/
+campaign-finance-report/#:~:text=File%20a%20campaign%20finance%20report,
+a%20waiver%20has%20been%20granted), each candidate, party unit, committee, and 
+fund must file reports electronically unless a waiver has been granted.
+
+- Limitation:
+1. This dataset only covers contributions and expenditures over 200$.
+2. This dataset only dates back to 2015.
+3. Both party units and local party units have recipient type PCC and no 
+distinguishable subtype.
+
+- Additional information: 
+1. in-kind: Donations of things other than money are in-kind contributions to 
+the receiving entity.
+
+2. Recipient Type and : 
+    - Candidates: Recipient Type PCC 
+    - Party Units: Recipient Type PTU
+    - State Party Units: Recipient Type PTU, Recipient Subtype SPU
+    - Party Unit Caucus Committees: Recipient Type PTU, Recipient subtype CAU
+    - Local Party Units: Recipient Type PTU
+    - Committees and Funds: Recipient Type PCF, Recipient Subtype PF, PC, PCN, 
+    PFN, IEF, IEC, BC
+    - Independent Expenditure Committees and Funds: Recipient Type PCF, 
+    Recipient Subtype IEF, IE
+
+3. Contributors are categorozed as Candidates, Party units, State party units,
+Party unit caucus committees, Local party units, Committees and funds, and
+Independent expenditure committees and funds
