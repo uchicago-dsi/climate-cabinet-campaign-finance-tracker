@@ -66,42 +66,73 @@ Student Email: aichacamara@uchicago.edu
 
 ## MN Data
 ### Document and Download MN Campaign Data
-- The MN campaign finance data is accessible on Minnesota Campaign Finance and 
-Public Disclosure Board [here](https://cfb.mn.gov/reports-and-data/self-help/
-data-downloads/campaign-finance/).
+- The MN campaign finance data is accessible on [Minnesota Campaign Finance and 
+Public Disclosure Board]
+(https://cfb.mn.gov/reports-and-data/self-help/data-downloads/campaign-finance/)
 
 - MN campaign data all have csv format. Its data is organized into 3 csv files:
-*itemized contributions received of over $200*, *itemized general expenditures 
-and contributions made of over $200*, and *Itemized independent expenditures of 
-over $200*. These csv files have some similar features, but not all the same.
-They all individually cover all years (2015-present) as one bulk.
+*itemized contributions received of over $200*, 
+*itemized general expenditures and contributions made of over $200*, and 
+*itemized independent expenditures of over $200*
+These csv files have some similar features, but not all the same.
+They all individually cover all years (2015-present) as one bulk
 
-- This data source does not have anti-webscraping defenses.
+- This data source does not have anti-webscraping defenses
+
 
 ### Minnesota Campaign Finance Requirements
-- Races included: House, Senate, Governor, Secretary of State, Attorney General, 
-State Auditor, District Court based on the office sought in file "All registered 
-candidate committees"
+- According to [Transparency USA](https://www.transparencyusa.org/mn/races),
+MN races included: Attorney General, Governor, Lieutenant Governor, 
+District Court, Court of Appeals, House of Representatives, Secretary of State, 
+State Auditor, State Senate, Supreme Court. I double checked this list's 
+comprehensiveness in  *All registered candidatecommittees* on MN campaign 
+finance and public disclosure board
 
 - This dataset covers 2015 to present
 
-- According to [Minnesota Campaign Finance and Public Disclosure Board website]
-(https://cfb.mn.gov/filer-resources/complete-a-filing/campaign-finance-filings/
-campaign-finance-report/#:~:text=File%20a%20campaign%20finance%20report,
-a%20waiver%20has%20been%20granted), each candidate, party unit, committee, and 
-fund must file reports electronically unless a waiver has been granted.
+- Required to report: With the exception of ballot question political committees 
+and funds, those required to file campaign reports with the Board must itemize 
+the following within reports filed under Minnesota Statutes section 10A.20:
+
+1. Contributions received from any particular source in excess of $200 within a 
+calendar year, each individual contribution should be itemized
+
+2. Expenditures made to any particular individual or association in excess of 
+$200 within a calendar year, each individual expenditure should be itemized
+
+3. Contributions made to any principal campaign committee, local candidate 
+(seeking one of the offices referenced above within Hennepin County), political 
+committee or fund, or political party unit in excess of $200 within a calendar 
+year, each individual contribution should be itemized
+
+4. Ballot question political committees and funds similarly must itemize 
+contributions received and expenditures made, but their itemization threshold is 
+anything over $500, rather than $200
 
 - Limitation:
-1. This dataset only covers contributions and expenditures over 200$.
-2. This dataset only dates back to 2015.
+1. This dataset only covers contributions and expenditures over 200$
+2. This dataset only dates back to 2015
 3. Both party units and local party units have recipient type PCC and no 
-distinguishable subtype.
+distinguishable subtype
 
 - Additional information: 
 1. in-kind: Donations of things other than money are in-kind contributions to 
-the receiving entity.
+the receiving entity
 
-2. Recipient Type and : 
+2. Type and Subtype Acronym:
+    - PCC: Political Contribution Committee
+    - PTU: Political Party Unit
+    - PCF - Political Committee Fund
+
+    - PF: Political Fund
+    - PC: Political Committee
+    - PCN: Positive Community Norms
+    - PFN: Professional Fundraising Network
+    - IEF: Independent Expenditure Fund
+    - IEC: Independent Expenditure Committee
+    - BC: Ballot Committee
+
+3. Recipient Type and Subtype: 
     - Candidates: Recipient Type PCC 
     - Party Units: Recipient Type PTU
     - State Party Units: Recipient Type PTU, Recipient Subtype SPU
@@ -112,6 +143,13 @@ the receiving entity.
     - Independent Expenditure Committees and Funds: Recipient Type PCF, 
     Recipient Subtype IEF, IE
 
-3. Contributors are categorozed as Candidates, Party units, State party units,
+4. Contributors are categorozed as Candidates, Party units, State party units,
 Party unit caucus committees, Local party units, Committees and funds, and
 Independent expenditure committees and funds
+
+5. Same contributors whose contribution in total exceed 200 are itemized into
+seperate rows/contribution. Contributions from donors who each give $200 or less 
+do not need to be itemized, but should be reported as aggregate totals (not 
+covered by this dataset by definition). For vendors or suppliers to whom 
+expenditures of $200 or less are made, the total amount should be reported 
+(itemization unnecessary) 
