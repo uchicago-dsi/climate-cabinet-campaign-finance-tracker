@@ -29,7 +29,7 @@ An asterisk indicates that the entries in that column are links to more detailed
 
 While the portal's date ranges ostensibly run from 2002 to 2023, attemptiing to access data from 2002 or 2003 often led to retrieval errors. Sticking to the 2004-2023 range is recommended. Note also that, by default when accessing some pages, the upper limit for the year range is set to 2025, which appears to result in similar errors. 
 
-Eight CSV files, one for each page, containing data from 2004-2023 are uploaded in the data folder. Code to access those CSVs is likewise included. 
+Twelve CSV files, one for each page (and 5 for the individual contributions, whcih were too large to fit in a single file), containing data from 2004-2023 are uploaded in the data folder. Code to access those CSVs is likewise included in az_campaign_data_access. 
 
 **Web-scraping feasibility**
 
