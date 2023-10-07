@@ -19,7 +19,7 @@ None
 *************************************************************************
 
 Races included (i.e state legislator, mayoral, city council, etc)
-- Seems to be filed by any candidates running for any level of government. 
+- Seems to be filed by any candidates running for any level of government, notably statewide, legislative, and judicial offices (general and municipal elections)
 
 Years that the Dataset covers
 1987-2023
