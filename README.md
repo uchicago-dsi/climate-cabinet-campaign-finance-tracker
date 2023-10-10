@@ -63,6 +63,8 @@ Student Email: nrposner@uchicago.edu
 Student Name: Aïcha Camara
 Student Email: aichacamara@uchicago.edu
 
+Student Name: Alan Kagiri
+Student Email: alankagiri@uchicago.edu. 
 
 ## MN Data
 ### Document and Download MN Campaign Data
