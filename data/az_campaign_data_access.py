@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 ballots = pd.read_csv("AZ_BallotMeasures_04_23.csv", encoding='utf-16le')
