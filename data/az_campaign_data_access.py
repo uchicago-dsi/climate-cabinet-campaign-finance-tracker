@@ -32,13 +32,3 @@ party = pd.read_csv("AZ_PoliticalParties_04_23.csv",
 vendors = pd.read_csv("AZ_Vendors_04_23.csv", encoding='utf-16le')
 
 individuals = pd.read_csv("AZ_Individuals_04_23.csv", encoding='utf-16le')
-
-# individuals_4_12 = pd.read_csv("AZ_Individuals_04_12.csv", encoding='utf-16le')
-
-# individuals_13_18 = pd.read_csv("AZ_Individuals_13_18.csv", encoding='utf-16le')
-
-# individuals_19_21 = pd.read_csv("AZ_Individuals_19_21.csv", encoding='utf-16le')
-
-# individuals_22_22 = pd.read_csv("AZ_Individuals_22_22.csv", encoding='utf-16le')
-
-# individuals_23_23 = pd.read_csv("AZ_Individuals_23_23.csv", encoding='utf-16le')
