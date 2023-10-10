@@ -3,7 +3,8 @@ import pandas as pd
 
 ballots = pd.read_csv("AZ_BallotMeasures_04_23.csv", encoding='utf-16le')
 
-cands = pd.read_csv("AZ_Candidates_04_23.csv", 
+candcsv = "AZ_Candidates_04_23.csv"
+cands = pd.read_csv(candcsv, 
                     encoding='utf-16le', on_bad_lines='skip')
 #note: a delimiter error in this CSV, as downloaded from the web portal, 
 #leads to token errors. 
