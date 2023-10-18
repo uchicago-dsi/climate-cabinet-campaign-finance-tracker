@@ -39,7 +39,7 @@ Please make sure to document each source file here.
 - Additional information:
     1. Negative expenditures in the dataset are enclosed within parentheses. These expenditures indicate refunds to donors, loans paid, and similar transaction. 
 
-=======
+
 #### Michigan Campaign Finance Data
 
 ##### Summary
@@ -80,32 +80,38 @@ Independent Expenditures from an individual of over $100.01 in a calendar year m
 - The Minnesota Campaign Finance data are publicly available on the 
 [Minnesota Campaign Finance and Public Disclosure Board](https://cfb.mn.gov/reports-and-data/self-help/data-downloads/campaign-finance/) in csv format and has no anti-webscraping defenses. 
 
-- This dataset comprises itemized records of contributions and expenditures made since 2015, specifically including transactions exceeding $200, which aligns with the reporting threshold set at $200 in Minnesota campaign finance regulations. Specifically, the dataset includes:
-    - *itemized contributions received of over $200*, 
-    - *itemized general expenditures and contributions made of over $200*, 
-    - *itemized independent expenditures of over $200*
+- However, there is an glitch in the data available through the Data Downloads page above: this dataset does not include contributions reported by the committees of candidates for State Court of Appeals Judge. Consequently, I have utilized an alternative dataset provided by the Minnesota Campaign Finance website developer. This dataset comprises 10 separate CSV files, each documenting contributions made to a specific recipient type from 1998 to 2023. I have consolidated these files into a single dataset to ensure comprehensive coverage.
 
-- For the purpose of our project we will focus on *Itemized contributions received of over $200*.
+- The old dataset comprises itemized records of contributions and expenditures made since 2015, specifically including transactions exceeding $200, which aligns with the reporting threshold set at $200 in Minnesota campaign finance regulations. The new dataset itemizes all contributions to candidates from 1998 to 2023.
+
+- For the purpose of our project I will focus on contribution, not expenditure.
 
 ##### Features
-- According to [Transparency USA](https://www.transparencyusa.org/mn/races), MN races includes Attorney General, Governor, Lieutenant Governor, District Court, Court of Appeals, House of Representatives, Secretary of State, State Auditor, State Senate, Supreme Court. I have verified the completeness of this list through *All registered candidatecommittees* on the Minnesota Campaign Finance and Public Disclosure Board and the Executive Director of Minnesota Campaign Finance and Public Disclosure Board.
+- Races / Office Sought:
+    1. Governor (GC) 
+    2. Attorney General(AG)
+    3. Secretary of State(SS)
+    4. State Auditor(SA)
+    5. State Treasurer (ST, this office was abolished in 2003 and no longer exists)
+    6. State Senator(Senate)
+    7. State Representative(House)
+    8. State Supreme Court Justice(SC)
+    9. State Appeals Court Judge(AP) 
+    10. State District Court Judge(DC)
 
-- This dataset covers 2015 to present
+- This dataset covers 1998 to present
 
-- Trasactions required to report and itemize:
-    1. Contributions received from any particular source in excess of $200 within a calendar year
-    2. Expenditures made to any particular individual or association in excess of $200 within a calendar year
-    3. Contributions made to any principal campaign committee, local candidate, political committee or fund, or political party unit in excess of $200 within a calendar year
-    4. Contributions and expenditures made by Ballot question political committees and funds that exceed $500
+- Trasactions required to report and itemize: Contributions received from any particular source in excess of $200 within a calendar year
 
 - Limitation:
-    1. This dataset only covers contributions and expenditures over 200$ by MN campaign finance regulation
-    2. This dataset only dates back to 2015. Highly detailed summaries of campaign finance data reported to the Board for each two-year period from 2005 through 2015 are available on [the Board’s website](https://cfb.mn.gov/publications/programs/reports/campaign-finance_summaries/) in pdf format. Pre-2005 data is not publicly available and can contact the board developer for such information.  Pre-1998 is not digitized so access to that data is limited to paper reports.
-    3. Both party units and local party units have recipient type PCC and no distinguishable subtype
+    1. This new dataset only covers contributions made to candidates, i.e., all recipients are candidates
+    2. Only covers contributions over 200$ by MN campaign finance regulation
+    3. This dataset only dates back to 1998. Pre-1998 is not digitized so access to that data is limited to paper reports.
 
 - Additional information: 
     1. in-kind: Donations of things other than money are in-kind contributions to the receiving entity
-    2. Type and Subtype Acronym:
+    2. For the purpose of our project, I created a separate column of total donation by summing both monetary donation and in-kind donation
+    3. Type and Subtype Acronym:
         - PCC: Political Contribution Committee
         - PTU: Political Party Unit
         - PCF - Political Committee Fund
@@ -116,7 +122,7 @@ Independent Expenditures from an individual of over $100.01 in a calendar year m
         - IEF: Independent Expenditure Fund
         - IEC: Independent Expenditure Committee
         - BC: Ballot Committee
-    3. Recipient Type and Subtype: 
+    4. Recipient Type and Subtype: 
         - Candidates: Recipient Type PCC 
         - Party Units: Recipient Type PTU
         - State Party Units: Recipient Type PTU, Recipient Subtype SPU
@@ -124,10 +130,20 @@ Independent Expenditures from an individual of over $100.01 in a calendar year m
         - Local Party Units: Recipient Type PTU
         - Committees and Funds: Recipient Type PCF, Recipient Subtype PF, PC, PCN, PFN, IEF, IEC, BC
         - Independent Expenditure Committees and Funds: Recipient Type PCF, Recipient Subtype IEF, IE
-    4. Contributors whose total contributions exceed $200 are individually itemized in separate rows. Contributions from donors who each give $200 or less are reported as aggregate totals and are not included in this dataset by definition.
-    5. Contributors are categorozed as Candidates, Party units, State party units,Party unit caucu committees, Local party units, Committees and funds, and Independent expenditure committees and funds
+    5. Contributors whose total contributions exceed $200 are individually itemized in separate rows. Contributions from donors who each give $200 or less are reported as aggregate totals and are not included in this dataset by definition.
+    6. Contributor/donor Types:
+        - C: Candidate Committee 
+        - I: Individual 
+        - L: Lobbyist  
+        - F: Political Committee/Fund  
+        - S: Self 
+        - P: Party Unit 
+        - H: Registered with Hennepin County 
+        - O: Other 
+    7. The new dataset has 467 missing rows, of which belong to "Registration fee for Netroots event" and have no recipient, donor, or total donation amount.
 
 #### Pennsylvania Campaign Finance Data
+
 ##### Accessibility
 - The data comes from the Pennsylvania Government Website’s Full Finance Campaign Report section. To see the actual forms and reports those can be found here: https://www.dos.pa.gov/VotingElections/CandidatesCommittees/FormsReports/Pages/default.aspx
 
@@ -160,3 +176,6 @@ Who is required to report their contributions:
 1. Filer Document: Contains info about each filer. Filers range from interest groups, individuals, committees (including PACs like VisionPAC, Build PA PAC...etc), and private organizations. The filer document is needed to trace the contributions dataset to the individuals who filed them.
 
 2. Debts that are forgiven are considered contributions, but double counting is prevented as the data is reviewed and updated months after the last filing period, allowing for data that was classified as debt to be itemized as a contribution. Corporations or unincorporated associations are prohibited from forgiving debts and thus contributing in this manner.
+
+3. Transparency USA has aggregated data on the contributions of individuals and committees. This could be a helpful source to cross-check the data and potentially help alleviate the debt-contribution issue.
+
