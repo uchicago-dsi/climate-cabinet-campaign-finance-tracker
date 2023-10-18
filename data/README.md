@@ -2,6 +2,40 @@
 
 This directory contains information for use in this project. 
 
+#### Arizona Campaign Finance Data
+
+##### Summary
+- The Arizona Campaign Finance Data are publicly available at (https://seethemoney.az.gov/Reporting/) as a collection of tables which can be downloaded as aggregated CSVs. It has no overt webscraping defenses, but scraping the bulk transactions is non-trivial. This site is supported by the Arizona Secretary of State’s office. 
+
+
+-  The dataset comprises records of contributions, expenditures, vendor payments and operating expenses for political entities within the State of Arizona. Individual contributions under $100 from within the state need not be identified by name, employer, or other identifying data, and are collected under pseudonyms such as 'Multiple Donors.' More specifically, the dataset includes
+    - individual donations, with those over $100 or from out of state always accompanied by identifying information
+    - Independent expenditures and ballot measure expenditures by PACs, political parties, and other organizations
+    - Income and Expenses for candidate campaigns, political parties, PACs, and other organizations
+    - Payments to and refunds from vendors with regard to the aforementioned entities
+      
+    -  This project will focus on individual, corporate, and PAC spendin.
+
+##### Features
+ - This dataset includes comprehensive records on races for the office of Governor, Attorney General, Corporation Commissioner, Secretary of State, State Senator, State Mine Inspector, State Representative, State Treasurer, and Superintendent of Public Education. Other races, such as mayoral or federal Congressional races, appear incomprehensively within the dataset, and will not be studied.
+   
+ - The dataset covers the years 2002 - present
+
+ - Data is divided into 8 sections: Candidates, PACs, Political Parties, Organizations, Indepndent Expenditures, Ballot Measures, Individual Contributions, and Vendors. 
+
+ - Transactions required to report and itemize:
+    1. Contributions in excess of $100 or from out of state
+    2. Expenses in excess of $250
+    3. Independent Expenditures and Ballot Measure Expenditures
+
+- Limitation:
+    1. Small-money contributions under $100 from within the state need not be itemized (though they frequently still are).
+    2. The easily available CSVs are heavily aggregated, and do not list both payer and payee. Detailed transaction data with dates, precise amounts, and both payer and payee are available, but they must be accessed individually, and over a million such records exist.
+    3. Lobbyist spending is not distinguished, and spending by political organizations is often obfuscated by listing them as vendors.
+
+- Additional information:
+    1. Negative expenditures in the dataset are enclosed within parentheses. These expenditures indicate refunds to donors, loans paid, and similar transaction. 
+
 #### Michigan Campaign Finance Data
 
 ##### Summary
@@ -32,6 +66,8 @@ contribution data and READMEs in a Google Drive for the duration of this project
         - GUB: Gubernatorial
         - CAN: Candidate
         - IND: Independent PAC.   
+
+=======
 
 #### Minnesota Campaign Finance Data
 
@@ -103,6 +139,7 @@ contribution data and READMEs in a Google Drive for the duration of this project
     7. The new dataset has 467 missing rows, of which belong to "Registration fee for Netroots event" and have no recipient, donor, or total donation amount.
 
 #### Pennsylvania Campaign Finance Data
+
 ##### Accessibility
 - The data comes from the Pennsylvania Government Website’s Full Finance Campaign Report section. To see the actual forms and reports those can be found here: https://www.dos.pa.gov/VotingElections/CandidatesCommittees/FormsReports/Pages/default.aspx
 
