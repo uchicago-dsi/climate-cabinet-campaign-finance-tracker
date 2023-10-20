@@ -28,9 +28,19 @@ def read_and_skip_errors(filepath, columns):
 
     Returns: df (Pandas DataFrame): dataframe of the MI campaign data
     """
-    if filepath.endswith("00.txt") or any(year in filepath for year in VALUES_TO_CHECK):
+    if filepath.endswith("00.txt"):
         # MI files that contain 00 or between 1998 and 2003 contain headers
         # VALUES_TO_CHECK contains the years between 1998 and 2003
+        df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            encoding="mac_roman",
+            usecols=columns,
+            low_memory=False,
+            on_bad_lines="skip",
+        )
+    elif any(year in filepath for year in VALUES_TO_CHECK):
         df = pd.read_csv(
             filepath,
             delimiter="\t",
@@ -108,7 +118,8 @@ def plot_committee_types_by_year(year, merged_campaign_dataframe):
         title=f"Donations by Committee Type from {year}",
         text="Count",
     )
-    fig.update_layout(xaxis_title="Committee Types", yaxis_title=f"{year} Count")
+    fig.update_layout(xaxis_title="Committee Types")
+    fig.update_layout(yaxis_title=f"{year} Count")
     fig.show()
 
 
