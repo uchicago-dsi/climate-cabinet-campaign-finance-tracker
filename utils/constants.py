@@ -2,7 +2,7 @@
 Constants to be used in various parts of the project
 """
 
-FILEPATH = "/Users/necabotheking/Documents/Github/2023-fall-clinic-climate-cabinet/data/Contributions/"
+FILEPATH = "../data/Contributions/"
 
 VALUES_TO_CHECK = ['1998', '1999', '2000', '2001', '2002', '2003']
 
