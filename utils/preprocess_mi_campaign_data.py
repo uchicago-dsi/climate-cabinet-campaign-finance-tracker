@@ -2,7 +2,6 @@ import ipywidgets as widgets
 import pandas as pd
 import plotly.express as px
 from IPython.display import clear_output
-
 from utils.constants import VALUES_TO_CHECK
 
 
@@ -28,7 +27,8 @@ def read_and_skip_errors(filepath, columns):
 
     Returns: df (Pandas DataFrame): dataframe of the MI campaign data
     """
-    if filepath.endswith("00.txt") or any(year in filepath for year in VALUES_TO_CHECK):
+    if filepath.endswith("00.txt") or any(year in filepath for year 
+                                          in VALUES_TO_CHECK):
         # MI files that contain 00 or between 1998 and 2003 contain headers 
         # VALUES_TO_CHECK contains the years between 1998 and 2003
         df = pd.read_csv(
@@ -108,7 +108,8 @@ def plot_committee_types_by_year(year, merged_campaign_dataframe):
         title=f"Donations by Committee Type from {year}",
         text="Count",
     )
-    fig.update_layout(xaxis_title="Committee Types", yaxis_title=f"{year} Count")
+    fig.update_layout(xaxis_title="Committee Types", yaxis_title=f"{year} 
+                      Count")
     fig.show()
 
 
