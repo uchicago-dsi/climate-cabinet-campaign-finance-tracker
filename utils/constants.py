@@ -4,6 +4,8 @@ Constants to be used in various parts of the project
 
 FILEPATH = "../data/Contributions/"
 
+URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
+
 VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
 
 MI_CONTRIBUTION_COLUMNS = [
