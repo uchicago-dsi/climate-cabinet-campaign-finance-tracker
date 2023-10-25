@@ -18,20 +18,28 @@ def fix_mi_dataframes(filepath, columns):
     """
     pass
 
+
 def read_expenditure_data(filepath, columns):
-    """ Reads in the MI expenditure data
-    
-    Inputs: 
+    """Reads in the MI expenditure data
+
+    Inputs:
             filepath (str): filepath to the MI Expenditure Data txt file
             columns (lst): list of string names of the campaign data columns
-    
+
     Returns: df (Pandas DataFrame): dataframe of the MI Expenditure data
     """
     if filepath.endswith("txt"):
-        df = pd.read_csv(filepath, delimiter="\t", index_col=False,
-                        usecols=columns, encoding="mac_roman", low_memory=False)
-    
+        df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            usecols=columns,
+            encoding="mac_roman",
+            low_memory=False,
+        )
+
     return df
+
 
 def read_and_skip_errors(filepath, columns):
     """
