@@ -12,15 +12,27 @@ options = Options()
 options.add_argument("--headless=new")
 
 
+# note, right now only does the first 1000 rows, create an iterator
 def az_individual_base_scraper(
     # fmt: off
         start_year=2023, end_year=2023, t=5, *args, **kwargs
 ):
     # fmt: on
-    """This function takes a link to the main page of the
+    """Scrape Arizona individual donors table
+
+    This function takes a link to the main page of the
     arizona individual donors section, scrapes the table
     within a certain span of years, and returns it as a
     pandas dataframe while also returning the links
+
+    Kwargs: start_year: the earliest year for which to scrape data (inclusive)
+    end_year: the last year for which to scrape data (inclusive)
+    t: time in seconds to wait for the page to load, defaults to 5
+
+    Returns: a dataframe of all columns and relevant rows,
+    and a list of links leading to the detailed transactions pages
+    for each entity. The links within can be processed by
+    arizona_individual_sub_scraper
     """
 
     url = (
@@ -67,18 +79,33 @@ def az_individual_base_scraper(
 def az_individual_sub_scraper(
     url,
     table_page=1,
-    start_year=2003,
-    end_year=2022,
+    start_year=2023,
+    end_year=2023,
     t=5,
     table_length=100,
     *args,
     **kwargs,
 ):
-    """This function takes a link in to an amount in
+    """Scrape detailed transactions for individual contributors
+
+    This function takes a link in to an amount in
     the arizona individual donors table and scrapes
     the table found at that link, within the selected time frame,
     and turns them into a pandas dataframe
-    The amount of time spen waiting for the page to load is determined by t
+
+    Args: url: the link to the transactions page. Can be
+    provided by arizona_individual_base_scraper
+
+    Kwargs: table_page: the numbered page of the tabular results.
+    This is manipulated by arizona_individual_sub_scraper_iterator
+    start_year: the earliest year for which to scrape data (inclusive)
+    end_year: the last year for which to scrape data (inclusive)
+    t: time in seconds to wait for the page to load, defaults to 5
+    table_length: the length of the table called for each page
+
+    Returns: a pandas dataframe of all transactions for that entity
+    within the specified time frame
+    The amount of time spent waiting for the page to load is determined by t
     Note that time t may need to be adjusted upwards in the
     event of empty results
     """
@@ -111,17 +138,29 @@ def az_individual_sub_scraper(
 
 def az_individual_sub_scraper_iterator(
     url,
-    start_year,
-    end_year,
-    table_length,
-    t,
+    start_year=2023,
+    end_year=2023,
+    t=5,
+    table_length=100,
     start_page=1,
     end_page=1,
     *args,
     **kwargs,
 ):
-    """This function iterates the sub-scraper through multiple peages
+    """Iterate the sub scraper through many pages
+
+    This function iterates arizona_individual_sub_scraper through multiple pages
     sourced from a single url, and returns the outputs as a list
+
+    Args: url: the link to the transactions page. Can be
+    provided by arizona_individual_base_scraper
+
+    Kwargs: start_year: the earliest year for which to scrape data (inclusive)
+    end_year: the last year for which to scrape data (inclusive)
+    t: time in seconds to wait for the page to load, defaults to 5
+    table_length: the length of the table called for each page
+    start_page: the page one wishes to begin scraping (inclusive)
+    end_page: the page one wishes to finish scraping (inclusive)
     """
     res = []
     for i in range(start_page, end_page + 1):
