@@ -19,7 +19,7 @@ def fix_mi_dataframes(filepath, columns):
     pass
 
 
-def read_expenditure_data(filepath, columns):
+def read_expenditure_data(filepath: str, columns: list) -> pd.DataFrame:
     """Reads in the MI expenditure data
 
     Inputs:
@@ -41,9 +41,8 @@ def read_expenditure_data(filepath, columns):
     return df
 
 
-def read_and_skip_errors(filepath, columns):
-    """
-    Reads in the MI campaign data and skips the errors, giving a warning only
+def read_and_skip_errors(filepath: str, columns: list) -> pd.DataFrame:
+    """Reads in the MI campaign data and skips the errors
 
     Inputs: filepath (str): filepath to the MI Campaign Data txt file
             columns (lst): list of string names of the campaign data columns
@@ -88,9 +87,10 @@ def read_and_skip_errors(filepath, columns):
     return df
 
 
-def plot_year_contribution_types(year, merged_campaign_dataframe):
-    """
-    Plots contributions per year by type
+def plot_year_contribution_types(
+    year: int, merged_campaign_dataframe: pd.DataFrame
+) -> None:
+    """Plots contributions per year by type
 
     Inputs: year (int): year to plot
 
@@ -116,9 +116,10 @@ def plot_year_contribution_types(year, merged_campaign_dataframe):
     fig.show()
 
 
-def plot_committee_types_by_year(year, merged_campaign_dataframe):
-    """
-    Plots committees contributions per year by type
+def plot_committee_types_by_year(
+    year: int, merged_campaign_dataframe: pd.DataFrame
+) -> None:
+    """Plots committees contributions per year by type
 
     Inputs: year (int): year to plot
 
@@ -145,9 +146,10 @@ def plot_committee_types_by_year(year, merged_campaign_dataframe):
     fig.show()
 
 
-def update_plots(year_selector, merged_campaign_dataframe):
-    """
-    Interactively update the plots using the Ipywidget
+def update_plots(
+    year_selector: object, merged_campaign_dataframe: pd.DataFrame
+) -> None:
+    """Interactively update the MI Contribution plots using the Ipywidget
 
     Inputs: year_selector (object): widget dropdown for 1999 - 2023
             merged_campaign_dataframe (dataframe): MI campaign data
@@ -160,3 +162,89 @@ def update_plots(year_selector, merged_campaign_dataframe):
         clear_output(wait=True)
         plot_committee_types_by_year(selected_year, merged_campaign_dataframe)
         plot_year_contribution_types(selected_year, merged_campaign_dataframe)
+
+
+def plot_expenditure_committee_types_by_year(
+    year: int, merged_campaign_dataframe: pd.DataFrame
+) -> None:
+    """Plots committees contributions per year by type
+
+    Inputs: year (int): year to plot
+
+    Return: None
+    """
+    filtered_data = merged_campaign_dataframe[
+        merged_campaign_dataframe["doc_stmnt_year"] == year
+    ]
+    filtered_data = filtered_data[
+        filtered_data["com_type"] != "MENOMINEE COUNTY DEMOCRATIC PARTY"
+    ]
+    filtered_data = filtered_data["com_type"].value_counts().reset_index()
+    filtered_data.columns = ["Committee_Type", "Count"]
+
+    fig = px.bar(
+        filtered_data,
+        x="Committee_Type",
+        y="Count",
+        title=f"Expenditures by Committee Type from {year}",
+        text="Count",
+    )
+    fig.update_layout(xaxis_title="Committee Types")
+    fig.update_layout(
+        yaxis_title=f"{year} Count", xaxis={"categoryorder": "total ascending"}
+    )
+
+    fig.show()
+
+
+def plot_year_schedule_types(
+    year: int, merged_campaign_dataframe: pd.DataFrame
+) -> None:
+    """Plots committees contributions per year by type
+
+    Inputs: year (int): year to plot
+
+    Return: None
+    """
+    filtered_data = merged_campaign_dataframe[
+        merged_campaign_dataframe["doc_stmnt_year"] == year
+    ]
+    filtered_data = filtered_data[
+        filtered_data["com_type"] != "MENOMINEE COUNTY DEMOCRATIC PARTY"
+    ]
+    filtered_data = filtered_data["schedule_desc"].value_counts().reset_index()
+    filtered_data.columns = ["Schedule_Type", "Count"]
+
+    fig = px.bar(
+        filtered_data,
+        x="Schedule_Type",
+        y="Count",
+        title=f"Expenditures by Schedule Type from {year}",
+        text="Count",
+    )
+    fig.update_layout(
+        xaxis_title="Schedule Types",
+        yaxis_title=f"{year} Count",
+        xaxis={"categoryorder": "total ascending"},
+    )
+    fig.show()
+
+
+def update_expenditure_plots(
+    year_selector: object, merged_campaign_dataframe: pd.DataFrame
+) -> None:
+    """Interactively update the MI Expenditure plots using the Ipywidget
+
+      Inputs: year_selector (object): widget dropdown for 2018 - 2023
+              merged_campaign_dataframe (dataframe): MI expenditure data
+
+    Returns: None
+    """
+    selected_year = year_selector.value
+    output = widgets.Output()
+    with output:
+        clear_output(wait=True)
+        plot_expenditure_committee_types_by_year(
+            selected_year, merged_campaign_dataframe
+        )
+        plot_year_schedule_types(selected_year, merged_campaign_dataframe)

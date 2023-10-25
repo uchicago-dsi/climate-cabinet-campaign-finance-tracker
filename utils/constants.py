@@ -1,6 +1,7 @@
 """
 Constants to be used in various parts of the project
 """
+
 EXP_FILEPATH = "/Users/necabotheking/Documents/Github/2023-fall-clinic-climate-cabinet/data/Expenditure/"
 
 FILEPATH = "../data/Contributions/"
