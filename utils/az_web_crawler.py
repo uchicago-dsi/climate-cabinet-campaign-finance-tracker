@@ -15,7 +15,7 @@ options.add_argument("--headless=new")
 # note, right now only does the first 1000 rows, create an iterator
 def az_individual_base_scraper(
     # fmt: off
-        start_year=2023, end_year=2023, t=5, *args, **kwargs
+        start_year=2023, end_year=2023, t=5, *args, **kwargs: int
 ):
     # fmt: on
     """Scrape Arizona individual donors table
@@ -83,8 +83,8 @@ def az_individual_sub_scraper(
     end_year=2023,
     t=5,
     table_length=100,
-    *args,
-    **kwargs,
+    *args: str,
+    **kwargs: int,
 ):
     """Scrape detailed transactions for individual contributors
 
@@ -144,8 +144,8 @@ def az_individual_sub_scraper_iterator(
     table_length=100,
     start_page=1,
     end_page=1,
-    *args,
-    **kwargs,
+    *args: str,
+    **kwargs: int,
 ):
     """Iterate the sub scraper through many pages
 
