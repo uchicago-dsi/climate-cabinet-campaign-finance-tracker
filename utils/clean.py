@@ -16,9 +16,7 @@ class StateCleaner(ABC):
         return self._entity_name_dictionary
 
     # this method should be the same for all subclasses so we implement it here
-    def standardize_entity_names(
-        self, entity_table: pd.DataFrame
-    ) -> pd.DataFrame:
+    def standardize_entity_names(self, entity_table: pd.DataFrame) -> pd.DataFrame:
         """Creates a new 'standard_entity_type' column from 'raw_entity_type'
 
         Args:
@@ -26,9 +24,7 @@ class StateCleaner(ABC):
         Returns: entity_table with 'standard_entity_type created from the
             entity_name_dictionary
         """
-        entity_table["standard_entity_type"] = entity_table[
-            "raw_entity_type"
-        ].map(
+        entity_table["standard_entity_type"] = entity_table["raw_entity_type"].map(
             lambda raw_entity_type: self.entity_name_dictionary.get(
                 raw_entity_type, None
             )
@@ -38,9 +34,7 @@ class StateCleaner(ABC):
     # this is probably different for all so we make it abstract and
     # leave it blank
     @abstractmethod
-    def standardize_amounts(
-        self, transaction_table: pd.DataFrame
-    ) -> pd.DataFrame:
+    def standardize_amounts(self, transaction_table: pd.DataFrame) -> pd.DataFrame:
         """Convert 'amount' column to a float representing value in USD
 
         Args:
