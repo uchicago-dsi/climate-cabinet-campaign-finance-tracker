@@ -7,7 +7,12 @@ from zipfile import ZipFile
 import requests
 from bs4 import BeautifulSoup
 
-from utils.constants import MI_CON_FILEPATH, MI_EXP_FILEPATH, HEADERS, MI_SOS_URL
+from utils.constants import (
+    HEADERS,
+    MI_CON_FILEPATH,
+    MI_EXP_FILEPATH,
+    MI_SOS_URL,
+)
 
 
 def scrape_and_download_mi_data() -> None:
