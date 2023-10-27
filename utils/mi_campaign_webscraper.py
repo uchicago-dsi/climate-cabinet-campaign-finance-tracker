@@ -7,7 +7,7 @@ from zipfile import ZipFile
 import requests
 from bs4 import BeautifulSoup
 
-from utils.constants import EXP_FILEPATH, FILEPATH, HEADERS, URL
+from utils.constants import MI_CON_FILEPATH, MI_EXP_FILEPATH, HEADERS, MI_SOS_URL
 
 
 def scrape_and_download_mi_data() -> None:
@@ -54,7 +54,7 @@ def capture_data(year_lst: list) -> (list, list):
     contribution_urls = []
     expenditure_urls = []
 
-    response = requests.get(URL, headers=HEADERS)
+    response = requests.get(MI_SOS_URL, headers=HEADERS)
     if response.status_code == 200:
         # create beautiful soup object to parse the table for contributions
         soup = BeautifulSoup(response.content, "html.parser")
@@ -94,10 +94,10 @@ def make_request(url: str) -> None:
 
     if response.status_code == 200 and "contribution" in url:
         zip_file = BytesIO(response.content)
-        unzip_file(zip_file, FILEPATH)
+        unzip_file(zip_file, MI_CON_FILEPATH)
     elif response.status_code == 200 and "expenditure" in url:
         zip_file = BytesIO(response.content)
-        unzip_file(zip_file, EXP_FILEPATH)
+        unzip_file(zip_file, MI_EXP_FILEPATH)
 
     else:
         print(f"Failed to retrieve page. Status code: {response.status_code}")
@@ -129,7 +129,7 @@ def create_directory() -> None:
 
     Inputs: FILEPATH (str): filepath to the directory
     """
-    FILEPATHS = [FILEPATH, EXP_FILEPATH]
+    FILEPATHS = [MI_CON_FILEPATH, MI_EXP_FILEPATH]
 
     for path in FILEPATHS:
         if os.path.exists(path):
