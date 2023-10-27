@@ -1,3 +1,4 @@
+import datetime
 import os
 import shutil
 from io import BytesIO
@@ -6,36 +7,54 @@ from zipfile import ZipFile
 import requests
 from bs4 import BeautifulSoup
 
-from utils.constants import FILEPATH, URL
+from utils.constants import EXP_FILEPATH, FILEPATH, HEADERS, URL
 
 
-def scrape_and_download_mi_data():
-    """
+def scrape_and_download_mi_data() -> None:
+    """Scrapes and Downloads MI data
+
     Web scraper that navigates to the MI Secretary of State page and downloads
-    the contribution data and README
+    the contribution and expenditure data and README
     """
     create_directory()
-    url_lst = capture_contributions_data()
+    year_lst = get_year_range()
+    contribution_urls, expenditure_urls = capture_data(year_lst)
 
-    for urls in url_lst:
-        url, file_name = urls
-        full_file_path = url + file_name
-        make_request(full_file_path, file_name)
-    print("Michigan Campaign Data Downloaded")
+    for url in contribution_urls:
+        make_request(url)
+    print("Michigan Campaign Contribution Data Downloaded")
+
+    for url in expenditure_urls:
+        make_request(url)
+    print("Michigan Campaign Expenditure Data Downloaded")
 
 
-def capture_contributions_data():
-    """
-    Makes a request and saves the urls directly to the MI contributions data
+def get_year_range() -> list:
+    """Returns year range for webscraper
 
     Inputs: None
 
-    Returns: url_lst (lst): list of urls to MI contributions data
+    Returns: year_range (lst): Range of years to pull
     """
-    url_lst = []
+    current_year = datetime.now().year
+    year_range = [year for year in range(2018, current_year + 1)]
 
-    response = requests.get(URL)
+    return year_range
 
+
+def capture_data(year_lst: list) -> (list, list):
+    """
+    Makes a request and saves the urls directly to the MI  data
+
+    Inputs: year_lst: list of years to capture data from
+
+    Returns: (contribution_urls, expenditure_urls) (tuple): tuple with two
+            lists of urls to MI data
+    """
+    contribution_urls = []
+    expenditure_urls = []
+
+    response = requests.get(URL, headers=HEADERS)
     if response.status_code == 200:
         # create beautiful soup object to parse the table for contributions
         soup = BeautifulSoup(response.content, "html.parser")
@@ -44,42 +63,57 @@ def capture_contributions_data():
 
         for anchor in table.find_all("a"):
             anchor_text = anchor.get_text(strip=True)
-            if "contribution" in anchor_text.lower():
+            if "contributions" in anchor_text and any(
+                str(year) in anchor_text for year in year_lst
+            ):
                 href = URL + anchor["href"]
-                url_lst.append((href, anchor_text))
+                contribution_urls.append(href)
+            elif "expenditures" in anchor_text.lower() and any(
+                str(year) in anchor_text for year in year_lst
+            ):
+                href = URL + anchor["href"]
+                expenditure_urls.append(href)
+            else:
+                continue
+
     else:
         # print the status code if the response failed to retrive the page
         print(f"Failed to retrieve page. Status code: {response.status_code}")
+    return (contribution_urls, expenditure_urls)
 
-    return url_lst
 
-
-def make_request(url, file_name):
+def make_request(url: str) -> None:
     """
     Make a request and download the campaign contributions zip files
 
-    Inputs: url (str): URL to the contributions zip file
+    Inputs: url (str): URL to the MI campaign zip file
 
     Returns: zip_file (io.BytesIO): An in-memory ZIP file as a BytesIO stream
     """
-    response = requests.get(url)
-    if response.status_code == 200:
+    response = requests.get(url, headers=HEADERS)
+
+    if response.status_code == 200 and "contribution" in url:
         zip_file = BytesIO(response.content)
-        unzip_file(zip_file, file_name, FILEPATH)
+        unzip_file(zip_file, FILEPATH)
+    elif response.status_code == 200 and "expenditure" in url:
+        zip_file = BytesIO(response.content)
+        unzip_file(zip_file, EXP_FILEPATH)
 
     else:
         print(f"Failed to retrieve page. Status code: {response.status_code}")
 
 
-def unzip_file(zip_file, file_name, directory):
+def unzip_file(zip_file: BytesIO, directory: str) -> None:
     """
     Unzips the zip file and reads the file into the directory
 
     Inputs: zipfile (io.BytesIO): An in-memory ZIP file as a BytesIO stream
-            file_name (str)
             directory (str): directory for the files to be saved
+
+    Returns: None
     """
     with ZipFile(zip_file, "r") as zip_reference:
+        file_name = zip_reference.namelist()[0]
         with zip_reference.open(file_name) as target_zip_file:
             content = target_zip_file.read()
             target_zip_file_path = os.path.join(directory, file_name)
@@ -89,14 +123,22 @@ def unzip_file(zip_file, file_name, directory):
     print(f"Extracted and saved: {file_name}")
 
 
-def create_directory():
+def create_directory() -> None:
     """
     Creates the directory for the MI contributions data
+
+    Inputs: FILEPATH (str): filepath to the directory
     """
-    FILEPATH = "data/Contributions"
-    if os.path.exists(FILEPATH):
-        shutil.rmtree(FILEPATH)
-        print(f"Deleted existing directory: {FILEPATH}")
-    else:
-        os.makedirs(FILEPATH)
-        print(f"Created directory: {FILEPATH}")
+    FILEPATHS = [FILEPATH, EXP_FILEPATH]
+
+    for path in FILEPATHS:
+        if os.path.exists(path):
+            # remove existing MI contribution data
+            shutil.rmtree(path)
+            print(f"Deleted existing directory: {path}")
+
+            os.makedirs(path)
+            print(f"Created directory: {path}")
+        else:
+            os.makedirs(path)
+            print(f"Created directory: {path}")
