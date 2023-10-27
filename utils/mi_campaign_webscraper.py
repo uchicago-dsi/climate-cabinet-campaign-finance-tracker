@@ -66,12 +66,12 @@ def capture_data(year_lst: list) -> (list, list):
             if "contributions" in anchor_text and any(
                 str(year) in anchor_text for year in year_lst
             ):
-                href = URL + anchor["href"]
+                href = MI_SOS_URL + anchor["href"]
                 contribution_urls.append(href)
             elif "expenditures" in anchor_text.lower() and any(
                 str(year) in anchor_text for year in year_lst
             ):
-                href = URL + anchor["href"]
+                href = MI_SOS_URL + anchor["href"]
                 expenditure_urls.append(href)
             else:
                 continue
