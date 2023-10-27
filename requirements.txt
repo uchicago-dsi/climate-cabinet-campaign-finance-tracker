@@ -6,3 +6,5 @@ ipykernel~=6.16
 
 # project packages
 pandas~=1.4
+matplotlib~=3.8
+ipynb~=0.5.1
