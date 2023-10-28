@@ -3,7 +3,8 @@ import pandas as pd
 
 def datasets_col_consistent(df_lst):
     ''' 
-    This function checks if a list of DataFrames have the same columns/features
+    Checks if a list of DataFrames have the same columns/features
+
     Args:
         df_lst (list): a list of DataFrames whose columns will be checked
     Returns: 
@@ -20,11 +21,16 @@ def datasets_col_consistent(df_lst):
             consistent_col_count += 1
     if consistent_col_count == len(df_lst):
         print('All dfs have consistent columns')
+ 
 
-
-def standardize_cand_df(df):
+def standardize_candidate_df(df):
     ''' 
-    This function preprocesses all candidate-recipient contribution dfs
+    Preprocesses all candidate-recipient contribution dfs. The input DataFrame
+    should have the following columns: recipient type, the office type (race) and 
+    candidate's last and first name, candidate's registration number, committee 
+    name, and donation information such as donor type and name, date, and amount
+    which are of object types
+
     Args:
         df (DataFrame): the DataFrames to preprocess
     Returns: 
@@ -44,9 +50,13 @@ def standardize_cand_df(df):
     return df_copy
 
 
-def standardize_noncand_df(df):
+def standardize_noncandidate_df(df):
     '''
-    This function preprocesses the non-candidate-recipient contribution df
+    Preprocesses the non-candidate-recipient contribution df. The input DataFrame
+    should have the following columns: recipient type and subtype, registration 
+    number, committee, donor name and type, donation date and amount which are
+    of object types.
+
     Args:
         df (DataFrame): the DataFrames to preprocess
     Returns:
@@ -66,14 +76,16 @@ def standardize_noncand_df(df):
 
 def preprocess_contribution_df(df_lst):
     ''' 
-    This function preprocesses separate dfs into a complete contribution df
+    Preprocesses separate dfs into a complete contribution df. The input list of
+    DataFrames should have same column types checked by datasets_col_consistent
+    and including columns of DonationDate, DonationAmount and InKindDonAmount
+
     Args:
         df_lst (list): a list of DataFrames to merge and adjust columns
     Returns: 
         DataFrame: the merged and preprocessed contribution df
     '''
 
-    contribution_df = pd.concat(df_lst, ignore_index=True)
 
     contribution_df['DonationDate'] = pd.to_datetime(contribution_df['DonationDate'])
     contribution_df['DonationYear'] = contribution_df['DonationDate'].dt.year
