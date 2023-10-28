@@ -1,7 +1,16 @@
-# column names:
-# in 2020 two additional columns were added to the original list of columns:
-# ReporterId & Timestamp. Thus depending on the year there might be 24 or 26
-# fields
+"""
+This document lists the constants used in web scraping and Exploratory
+Data Analysis
+
+"""
+# Web Scraping Constants:
+
+main_url = "https://www.dos.pa.gov"
+zipped_url = (
+    "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
+)
+
+# EDA constants:
 
 cont_cols_names_pre2022 = [
     "FilerID",

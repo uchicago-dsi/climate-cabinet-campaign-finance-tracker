@@ -1,5 +1,5 @@
 import pandas as pd
-import dask.dataframe as dd
+
 from utils import PA_constants as const
 
 
@@ -31,7 +31,7 @@ def initialize_PA_cont_year(cont_filepath: str, year: int) -> pd.DataFrame:
 
     Args: the filepath to the actual dataframe
     Returns: the dataframe"""
-    df = dd.read_csv(
+    df = pd.read_csv(
         cont_filepath,
         names=assign_col_names(cont_filepath, year),
         sep=",",
@@ -50,7 +50,7 @@ def initialize_PA_filer_year(filer_filepath: str, year: int) -> pd.DataFrame:
         the filepath to the actual dataframe
     Returns:
         the dataframe"""
-    df = dd.read_csv(
+    df = pd.read_csv(
         filer_filepath,
         names=assign_col_names(filer_filepath, year),
         sep=",",
@@ -96,7 +96,7 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
         .sort_values(by="TotalContAmt", ascending=False)
     )
 
-    if contributors > len(num_contributors):
+    if num_contributors > len(contributors):
         return contributors
     else:
         return contributors.head(num_contributors)
@@ -109,7 +109,7 @@ def merge_datasets(cont_file: pd.DataFrame, filer_file: pd.DataFrame) -> pd.Data
     Returns
         The merged pandas dataframe
     """
-    merged_df = dd.merge(cont_file, filer_file, how="left", on="FilerID")
+    merged_df = pd.merge(cont_file, filer_file, how="left", on="FilerID")
     return merged_df
 
 
