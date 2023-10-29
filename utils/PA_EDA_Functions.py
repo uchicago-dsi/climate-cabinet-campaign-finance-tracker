@@ -36,8 +36,7 @@ def initialize_PA_cont_year(cont_filepath: str, year: int) -> pd.DataFrame:
         names=assign_col_names(cont_filepath, year),
         sep=",",
         encoding="latin-1",
-        on_bad_lines="warn",
-        dtype=const.cont_year_dtypes,
+        on_bad_lines="warn"
     )
     df["TotalContAmt"] = df["ContAmt1"] + df["ContAmt2"] + df["ContAmt3"]
     return df
@@ -55,9 +54,8 @@ def initialize_PA_filer_year(filer_filepath: str, year: int) -> pd.DataFrame:
         names=assign_col_names(filer_filepath, year),
         sep=",",
         encoding="latin-1",
-        on_bad_lines="warn",
-        dtype=const.filer_year_dypes,
-    )
+        on_bad_lines="warn")
+    df = df.drop(columns='EYear')
     return df
 
 
@@ -102,8 +100,9 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
         return contributors.head(num_contributors)
 
 
-def merge_datasets(cont_file: pd.DataFrame, filer_file: pd.DataFrame) -> pd.DataFrame:
-    """merges the contributor and filer datasets using the unique filerID
+def merge_sameYear_datasets(cont_file: pd.DataFrame, filer_file: pd.DataFrame) -> pd.DataFrame:
+    """merges the contributor and filer datasets from the same year using the 
+    unique filerID
     Args:
         The contributor and filer datasets of a given year
     Returns
@@ -111,6 +110,15 @@ def merge_datasets(cont_file: pd.DataFrame, filer_file: pd.DataFrame) -> pd.Data
     """
     merged_df = pd.merge(cont_file, filer_file, how="left", on="FilerID")
     return merged_df
+
+def merge_all_datasets(datasets: list) -> pd.DataFrame:
+    """concatenates datasets from different years into one super dataset
+    Args:
+        a list of datasets
+    Returns
+        The merged pandas dataframe
+    """
+    return pd.concat(datasets)
 
 
 def group_filerType_Party(merged_dataset: pd.DataFrame) -> object:

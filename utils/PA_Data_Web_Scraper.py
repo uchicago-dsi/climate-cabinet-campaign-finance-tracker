@@ -17,8 +17,7 @@ def make_request(website_url: str):
 
 
 def download_PA_data(start_year: int, end_year: int):
-    """downloads PA contributor and filer datasets from specified years to a
-    local directory
+    """downloads PA datasets from specified years to a local directory
     Args:
         The desired years
     Returns:
@@ -30,8 +29,8 @@ def download_PA_data(start_year: int, end_year: int):
         req = requests.get(link)
 
         zippedfiles = zipfile.ZipFile(BytesIO(req.content))
-        for zippedfile in zippedfiles:
-            if (zippedfile.filename.startswith("contrib")) or (
-                zippedfile.filename.startswith("filer")
-            ):
-                zippedfile.extract("../project/data")
+
+        #only interested in contribution and filer datasets...
+        for zippedfile in zippedfiles.namelist():
+            if('contrib' in zippedfile) or ('filer' in zippedfile):
+                zippedfiles.extract(zippedfile,"../data")
