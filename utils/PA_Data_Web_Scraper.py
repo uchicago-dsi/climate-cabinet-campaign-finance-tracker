@@ -1,10 +1,12 @@
 import zipfile
 from io import BytesIO
+
 import numpy as np
 import requests
 from bs4 import BeautifulSoup as BS
 
 from utils import PA_constants as const
+
 
 def make_request(website_url: str):
     """makes a HTTML request to the specified url, whose data is pulled out into
