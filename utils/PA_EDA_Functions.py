@@ -1,6 +1,5 @@
 import pandas as pd
-
-from utils import PA_constants as const
+import PA_constants as const
 
 
 def assign_col_names(filepath: str, year: int) -> list:
@@ -36,15 +35,15 @@ def initialize_PA_cont_year(cont_filepath: str, year: int) -> pd.DataFrame:
         names=assign_col_names(cont_filepath, year),
         sep=",",
         encoding="latin-1",
-        on_bad_lines="warn"
+        on_bad_lines="warn",
     )
     df["TotalContAmt"] = df["ContAmt1"] + df["ContAmt2"] + df["ContAmt3"]
+    df["EYear"] = year
     return df
 
 
 def initialize_PA_filer_year(filer_filepath: str, year: int) -> pd.DataFrame:
     """Initializes the filer dataset
-
     Args:
         the filepath to the actual dataframe
     Returns:
@@ -54,15 +53,15 @@ def initialize_PA_filer_year(filer_filepath: str, year: int) -> pd.DataFrame:
         names=assign_col_names(filer_filepath, year),
         sep=",",
         encoding="latin-1",
-        on_bad_lines="warn")
-    df = df.drop(columns='EYear')
+        on_bad_lines="warn",
+    )
+    df = df.drop(columns="EYear")
     return df
 
 
 def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
-    """given a dataframe, retrieves the top n recipients of that
-    year based on contributions and returns a table
-
+    """given a dataframe, retrieves the top n recipients of that year based on
+    contributions and returns a table
     Args:
         a pandas DataFrame and the number of recipients
     Returns:
@@ -80,8 +79,8 @@ def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
 
 
 def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
-    """given a dataframe, retrieves the top n contributors of that
-    year based on contributions and returns a table
+    """given a dataframe, retrieves the top n contributors of that year based on
+    contributions and returns a table
 
     Args:
         a pandas DataFrame and the number of recipients
@@ -100,8 +99,10 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
         return contributors.head(num_contributors)
 
 
-def merge_sameYear_datasets(cont_file: pd.DataFrame, filer_file: pd.DataFrame) -> pd.DataFrame:
-    """merges the contributor and filer datasets from the same year using the 
+def merge_sameYear_datasets(
+    cont_file: pd.DataFrame, filer_file: pd.DataFrame
+) -> pd.DataFrame:
+    """merges the contributor and filer datasets from the same year using the
     unique filerID
     Args:
         The contributor and filer datasets of a given year
@@ -110,6 +111,7 @@ def merge_sameYear_datasets(cont_file: pd.DataFrame, filer_file: pd.DataFrame) -
     """
     merged_df = pd.merge(cont_file, filer_file, how="left", on="FilerID")
     return merged_df
+
 
 def merge_all_datasets(datasets: list) -> pd.DataFrame:
     """concatenates datasets from different years into one super dataset
@@ -140,9 +142,5 @@ def plot_recipients_byOffice(merged_dataset: pd.DataFrame) -> object:
     pd.options.plotting.backend = "plotly"
     group.plot.barh(
         title="Contributions Received per Office",
-        color="g",
-        figsize=(10, 5),
-        ylabel="Contributions Received ($)",
-        logx=True,
     )
     return group
