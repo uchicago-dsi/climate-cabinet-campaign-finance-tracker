@@ -1,5 +1,7 @@
-import PA_constants as const
 import pandas as pd
+import plotly.express as px
+
+from utils import PA_constants as const
 
 
 def assign_col_names(filepath: str, year: int) -> list:
@@ -124,23 +126,62 @@ def merge_all_datasets(datasets: list) -> pd.DataFrame:
 
 
 def group_filerType_Party(merged_dataset: pd.DataFrame) -> object:
-    """this func takes a merged dataset and returns a grouped table highlighting
-    the kinds of people who file the campaign reports (FilerType Key:
-    1:Candidate, 2:Committee, 3:Lobbyist.) and their political part
-    affiliation"""
+    """takes a merged dataset and returns a grouped table highlighting the kinds
+    of people who file the campaign reports (FilerType Key -> 1:Candidate,
+    2:Committee, 3:Lobbyist.) and their political party affiliation
+
+    Args: a pandas DataFrame
+    Returns: A table object"""
     return merged_dataset.groupby(["FilerType", "Party"]).agg({"TotalContAmt": sum})
 
 
 def plot_recipients_byOffice(merged_dataset: pd.DataFrame) -> object:
-    """plots a bargraph showing how much money was directed towards a state
-    position in a given year"""
-    group = (
-        merged_dataset.groupby(["Office"])
-        .agg({"ContAmt1": sum})
-        .sort_values(by="ContAmt1", ascending=True)
+    """returns a table and plots a bargraph of data highlighting the amount of
+    contributions each statewide race received over the years
+
+    Args: pandas DataFrame
+    Return A table object"""
+
+    recep_per_office = (
+        merged_dataset.groupby(["Office"]).agg({"ContAmt1": sum}).reset_index()
     )
-    pd.options.plotting.backend = "plotly"
-    group.plot.barh(
-        title="Contributions Received per Office",
+    recep_per_office["Office"] = recep_per_office["Office"].map(const.office_abb_dict)
+    recep_per_office["Office"] = recep_per_office["Office"].fillna(
+        const.office_abb_dict["MISC"]
     )
-    return group
+
+    fig = px.bar(
+        data_frame=recep_per_office,
+        x="Office",
+        y="ContAmt1",
+        title="Contributions received by Office type from 2018-2023",
+    )
+    fig.show()
+
+    return recep_per_office
+
+
+def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
+    """returns a table and plots a barplot highlighting the annual contributions
+    campaign finance report-filers received based on whether they are candidates
+    . committees, or lobbyists.
+
+    Args: pandas DataFrame
+    Return: pandas DataFrame
+    """
+    cont_by_donor = (
+        merged_dataset.groupby(["EYear", "FilerType"])
+        .agg({"TotalContAmt": sum})
+        .reset_index()
+    )
+    cont_by_donor["FilerType"] = cont_by_donor["FilerType"].map(const.filer_abb_dict)
+
+    fig = px.bar(
+        data_frame=cont_by_donor,
+        x="EYear",
+        y="TotalContAmt",
+        color="FilerType",
+        title="Recipients of Annual Contributions",
+    )
+    fig.show()
+    return cont_by_donor

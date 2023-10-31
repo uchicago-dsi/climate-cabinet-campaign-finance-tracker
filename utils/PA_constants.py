@@ -12,7 +12,7 @@ zipped_url = (
 
 # EDA constants:
 
-cont_cols_names_pre2022 = [
+cont_cols_names_pre2022: list = [
     "FilerID",
     "EYear",
     "Cycle",
@@ -39,7 +39,7 @@ cont_cols_names_pre2022 = [
     "ContDesc",
 ]
 
-cont_cols_names_post22 = [
+cont_cols_names_post22: list = [
     "FilerID",
     "ReporterID",
     "Timestamp",
@@ -68,7 +68,7 @@ cont_cols_names_post22 = [
     "ContDesc",
 ]
 
-filer_cols_names_pre2022 = [
+filer_cols_names_pre2022: list = [
     "FilerID",
     "EYear",
     "Cycle",
@@ -91,7 +91,7 @@ filer_cols_names_pre2022 = [
     "INKIND",
 ]
 
-filer_cols_names_post2022 = [
+filer_cols_names_post2022: list = [
     "FilerID",
     "ReporterID",
     "Timestamp",
@@ -115,60 +115,8 @@ filer_cols_names_post2022 = [
     "MONETARY",
     "INKIND",
 ]
-cont_year_dtypes = {
-    "FilerID": str,
-    "ReporterID": str,
-    "Timestamp": object,
-    "EYear": int,
-    "Cycle": object,
-    "Section": object,
-    "Contributor": str,
-    "Address1": str,
-    "Address2": str,
-    "City": str,
-    "State": str,
-    "Zipcode": object,
-    "occupation": str,
-    "Ename": str,
-    "EAddress1": str,
-    "EAddress2": str,
-    "ECity": str,
-    "EState": str,
-    "EZipcode": str,
-    "ContDate1": object,
-    "ContAmt1": float,
-    "ContDate2": object,
-    "ContAmt2": float,
-    "ContDate3": object,
-    "ContAmt3": float,
-    "ContDesc": object,
-}
-filer_year_dypes = {
-    "FilerID": str,
-    "ReporterID": str,
-    "Timestamp": object,
-    "EYear": int,
-    "Cycle": int,
-    "Amend": object,
-    "Terminate": object,
-    "FilerType": object,
-    "FilerName": str,
-    "Office": str,
-    "District": str,
-    "Party": str,
-    "Address1": str,
-    "Address2": str,
-    "City": str,
-    "State": str,
-    "Zipcode": object,
-    "County": object,
-    "PHONE": object,
-    "BEGINNING": object,
-    "MONETARY": object,
-    "INKIND": object,
-}
 
-office_abb_dict = {
+office_abb_dict: dict = {
     "GOV": "Governor",
     "LTG": "Liutenant Gov",
     "ATT": "Attorney General",
@@ -182,5 +130,7 @@ office_abb_dict = {
     "TCJ": "Judge of the Traffic Crt",
     "STS": "Senator (General Assembly)",
     "STH": "Rep (General Assembly)",
-    "OTH": "Other(local offices",
+    "OTH": "Other(local offices)",
+    "MISC": "Unknown",
 }
+filer_abb_dict: dict = {1.0: "Candidate", 2.0: "Committee", 3.0: "Lobbyist"}
