@@ -2,8 +2,8 @@ import re
 from datetime import datetime
 
 
-def convert_date(date_str):
-    """reformat Unix"""
+def convert_date(date_str: str):
+    """Reformat UNIX timestamp"""
     timestamp_match = re.match(r"/Date\((\d+)\)/", date_str)
     if timestamp_match:
         timestamp = int(timestamp_match.group(1))

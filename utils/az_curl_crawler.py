@@ -1,11 +1,12 @@
 import pandas as pd
 import requests
+from constants import AZ_base_data, AZ_head, AZ_pages_dict, AZ_valid_detailed_pages
 
 
 def az_wrapper(
     page: str, start_year=2023, end_year=2023, *args, **kwargs: int
 ) -> pd.DataFrame:
-    """Take desired page, start and end years, and return the scraped data
+    """Scrape data from arizona database at https://seethemoney.az.gov/
 
     This function retrieves and compiles the data from a given table
     from the arizona database, whether aggregate or detailed,
@@ -21,7 +22,7 @@ def az_wrapper(
     Returns: a pandas dataframe of the
     """
 
-    page = pages_dict[page]
+    page = AZ_pages_dict[page]
 
     if page < 10:
         return scrape_wrapper(page, start_year, end_year)
@@ -35,7 +36,7 @@ def az_wrapper(
 
 
 def detailed_wrapper_director(page: int) -> int:
-    """Turn detailed page number into parent page number
+    """Direct az_wrapper to base page from detailed page
 
     This function takes as input the number of the page input to
     scrape_wrapper in the course of az_wrapper, and derives the
@@ -43,34 +44,14 @@ def detailed_wrapper_director(page: int) -> int:
     entities first
 
     Args: page: the two-digit page number belonging to a
-    detailed page as shown in pages_dict.
+    detailed page as shown in AZ_pages_dict.
 
     Returns: an integer representing the parent page
     """
+    if page not in AZ_valid_detailed_pages:
+        raise ValueError("not a valid detailed page number")
 
-    if page in [20, 21, 22, 23, 24]:
-        return 1
-
-    elif page in [30, 31, 32, 33, 34, 35, 36]:
-        return 2
-
-    elif page in [40, 41, 42]:
-        return 3
-
-    elif page in [50, 51, 52, 53, 54]:
-        return 4
-
-    elif page in [60, 61, 62]:
-        return 5
-
-    elif page in [70, 71, 72]:
-        return 6
-
-    elif page in [80]:
-        return 7
-
-    elif page in [90]:
-        return 8
+    return int(str(page)[0]) - 1
 
 
 def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
@@ -82,7 +63,7 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
 
     Args: page: the one-digit number representing one of the eight
     basic pages in the arizona dataset, such as Candidates, PAC,
-    Individual Contributions, etc. Refer to pages_dict
+    Individual Contributions, etc. Refer to AZ_pages_dict
     start_year: earliest year to include scraped data, inclusive
     end_year: last year to include scraped data, inclusive
 
@@ -90,7 +71,7 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     the selected timeframe
     """
     params = parametrize(page, start_year, end_year)
-    res = scrape(params, head, base_data)
+    res = scrape(params, AZ_head, AZ_base_data)
     results = res.json()
     df = pd.DataFrame(data=results["data"])
     df = df.reset_index().drop(columns={"index"})
@@ -108,7 +89,7 @@ def detailed_scrape_wrapper(
 
     Args: page: the two-digit number representing a sub-page of
     one of the eight basic pages, such as Candidates/Income,
-    PAC/All Transactions, etc. Refer to pages_dict
+    PAC/All Transactions, etc. Refer to AZ_pages_dict
     start_year: earliest year to include scraped data, inclusive
     end_year: last year to include scraped data, inclusive
 
@@ -153,8 +134,8 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
         "https://seethemoney.az.gov/Reporting/GetNEWTableData/",
         params=params,
         # cookies=cookies,
-        headers=head,
-        data=base_data,
+        headers=AZ_head,
+        data=AZ_base_data,
     )
 
 
@@ -174,7 +155,7 @@ def detailed_scrape(
     and table length.
     Note that 'page' encodes the page to be scraped, such as
     Candidates, IndividualContributions, etc. Refer to the
-    attached Pages dictionary for details.
+    AZ_pages_dict dictionary for details.
     headers: necessary for calling the response, provided above
     data: necessary for calling the response, provided above
     """
@@ -183,8 +164,8 @@ def detailed_scrape(
         "https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData/",
         params=detailed_params,
         # cookies=cookies,
-        headers=head,
-        data=base_data,
+        headers=AZ_head,
+        data=AZ_base_data,
     )
 
 
@@ -204,7 +185,7 @@ def parametrize(
 
     Kwargs: page: encodes the page to be scraped, such as
     Candidates, Individual Contributions, etc. Refer to the
-    attached Pages dictionary for details.
+    AZ_pages_dict dictionary for details.
     start_year: earliest year to include scraped data, inclusive
     end_year: last year to include scraped data, inclusive
     table_page: the numbered page to be accessed. Only necessary
@@ -259,73 +240,3 @@ def detailed_parametrize(
         "IsLessActive": "false",  # have yet to experiment with these
         "ShowOfficeHolder": "false",  # have yet to experiment with these
     }
-
-
-pages_dict = {
-    "Candidate": 1,
-    "PAC": 2,
-    "Political Party": 3,
-    "Organzations": 4,
-    "Independent Expenditures": 5,
-    "Ballot Measures": 6,
-    "Individual Contributors": 7,
-    "Vendors": 8,
-    "Name": 11,
-    "Candidate/Income": 20,
-    "Candidate/Expense": 21,
-    "Candidate/IEFor": 22,
-    "Candidate/IEAgainst": 23,
-    "Candidate/All Transactions": 24,
-    "PAC/Income": 30,
-    "PAC/Expense": 31,
-    "PAC/IEFor": 32,
-    "PAC/IEAgainst": 33,
-    "PAC/BMEFor": 34,
-    "PAC/BMEAgainst": 35,
-    "PAC/All Transactions": 36,
-    "Political Party/Income": 40,
-    "Political Party/Expense": 41,
-    "Political Party/All Transactions": 42,
-    "Organizations/IEFor": 50,
-    "Organizations/IEAgainst": 51,
-    "Organizations/BMEFor": 52,
-    "Organizations/BME Against": 53,
-    "Organizations/All Transactions": 54,
-    "Independent Expenditures/IEFor": 60,
-    "Independent Expenditures/IEAgainst": 61,
-    "Independent Expenditures/All Transactions": 62,
-    "Ballot Measures/Amount For": 70,
-    "Ballot Measures/Amount Against": 71,
-    "Ballot Measures/All Transactions": 72,
-    "Individuals/All Transactions": 80,
-    "Vendors/All Transactions": 90,
-}
-
-head = {
-    "authority": "seethemoney.az.gov",
-    "accept": "application/json, text/javascript, */*; q=0.01",
-    "accept-language": "en-US,en;q=0.7",
-    "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "origin": "https://seethemoney.az.gov",
-    "referer": "https://seethemoney.az.gov/Reporting/Explore",
-    "sec-ch-ua": '"Chromium";v="116", "Not)A;Brand";v="24", "Brave";v="116"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
-    "sec-gpc": "1",
-    """user-agent""": """Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
-    AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36""",
-    "x-requested-with": "XMLHttpRequest",
-}
-
-base_data = {
-    "draw": "2",
-    "order[0][column]": "0",
-    "order[0][dir]": "asc",
-    "start": "0",
-    "length": "500000",
-    "search[value]": "",
-    "search[regex]": "false",
-}
