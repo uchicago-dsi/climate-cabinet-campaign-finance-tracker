@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.express as px
 from IPython.display import clear_output
 
-from utils.constants import VALUES_TO_CHECK
-
 
 def fix_mi_dataframes(filepath, columns):
     """
@@ -51,17 +49,6 @@ def read_and_skip_errors(filepath: str, columns: list) -> pd.DataFrame:
     """
     if filepath.endswith("00.txt"):
         # MI files that contain 00 or between 1998 and 2003 contain headers
-        # VALUES_TO_CHECK contains the years between 1998 and 2003
-        df = pd.read_csv(
-            filepath,
-            delimiter="\t",
-            index_col=False,
-            encoding="mac_roman",
-            usecols=columns,
-            low_memory=False,
-            on_bad_lines="skip",
-        )
-    elif any(year in filepath for year in VALUES_TO_CHECK):
         df = pd.read_csv(
             filepath,
             delimiter="\t",
@@ -72,8 +59,6 @@ def read_and_skip_errors(filepath: str, columns: list) -> pd.DataFrame:
             on_bad_lines="skip",
         )
     else:
-        # all other MI contribution files do not contain headers
-        # read in with columns defined
         df = pd.read_csv(
             filepath,
             delimiter="\t",

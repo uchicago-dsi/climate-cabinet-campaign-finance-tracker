@@ -1,14 +1,18 @@
 """
 Constants to be used in various parts of the project
 """
+"""
+Constants to be used in various parts of the project
+"""
+from pathlib import Path
 
-EXP_FILEPATH = "../data/Expenditure/"
+BASE_FILEPATH = Path(__file__).resolve().parent.parent
 
-FILEPATH = "../data/Contributions/"
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
 
-URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contributions"
 
-VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
+MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
 MI_CONTRIBUTION_COLUMNS = [
     "doc_seq_no",
