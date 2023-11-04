@@ -6,3 +6,4 @@ ipykernel~=6.16
 
 # project packages
 pandas~=1.4
+plotly~=5.17.0
