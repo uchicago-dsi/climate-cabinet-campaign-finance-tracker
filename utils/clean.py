@@ -101,6 +101,6 @@ class StateCleaner(ABC):
                             Organizations, and Transactions tables in a tuple
         """
         StateCleaner.create_tables()
-        # should run create tables, which runs through the functions above 
+        # should run create tables, which runs through the functions above
         # to preprocess, clean, standardizes and create the following tables
         # (invividuals_table, organizations_table, transactions_table)
