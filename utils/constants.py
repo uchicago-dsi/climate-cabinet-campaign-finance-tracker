@@ -1,9 +1,6 @@
 """
 Constants to be used in various parts of the project
 """
-"""
-Constants to be used in various parts of the project
-"""
 from pathlib import Path
 
 BASE_FILEPATH = Path(__file__).resolve().parent.parent
