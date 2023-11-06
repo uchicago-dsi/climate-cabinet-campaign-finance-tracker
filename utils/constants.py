@@ -1,10 +1,20 @@
 """
 Constants to be used in various parts of the project
 """
+from pathlib import Path
 
-FILEPATH = "../data/Contributions/"
+BASE_FILEPATH = Path(__file__).resolve().parent.parent
 
-VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
+USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+                (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
+
+HEADERS = {"User-Agent": USER_AGENT}
+
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
+
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contributions"
+
+MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
 MI_CONTRIBUTION_COLUMNS = [
     "doc_seq_no",
