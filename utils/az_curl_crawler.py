@@ -1,6 +1,13 @@
+import time
+
 import pandas as pd
 import requests
 from constants import AZ_base_data, AZ_head, AZ_pages_dict, AZ_valid_detailed_pages
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 def az_wrapper(
@@ -70,12 +77,49 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     Returns: a pandas dataframe containing the table data for
     the selected timeframe
     """
-    params = parametrize(page, start_year, end_year)
-    res = scrape(params, AZ_head, AZ_base_data)
-    results = res.json()
-    df = pd.DataFrame(data=results["data"])
-    df = df.reset_index().drop(columns={"index"})
-    return df
+
+    url = (
+        """https://seethemoney.az.gov/Reporting/Explore#
+    JurisdictionId=0%7CPage|Page="""
+        + str(page)
+        + """|startYear
+    ="""
+        + str(start_year)
+        + """|endYear="""
+        + str(end_year)
+        + """|IsLessActive=false|ShowOfficeHolder=false|
+        View=Detail|TablePage=1|TableLength=500000"""
+    )
+
+    options = Options()
+    options.add_argument("--headless=new")
+
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()), options=options
+    )
+    driver.get(url)
+
+    time.sleep(5)
+
+    nested_element = driver.find_element(By.CLASS_NAME, "paginate_of")
+    page = nested_element.text
+
+    driver.quit()
+
+    size = int(page[4:])
+
+    dfs = []
+
+    for i in range(size):
+        params = parametrize(page, start_year, end_year, table_page=i)
+        res = scrape(params, AZ_head, AZ_base_data)
+        results = res.json()
+        df = pd.DataFrame(data=results["data"])
+        df = df.reset_index().drop(columns={"index"})
+        dfs.append(df)
+
+    concatenated_df = pd.concat(dfs)
+    return concatenated_df
 
 
 def detailed_scrape_wrapper(
@@ -213,6 +257,33 @@ def parametrize(
     }
 
 
+def base_construct(table_length, start_position):
+    """Create a base for post request
+
+    This function adds the start position into the base
+    in order to iterate through long tables. At this point,
+    it only comes into play for scraping decade+ length
+    individual contributions tables
+
+    Args: table_length:
+
+    start_position: the index of the first row to scrape,
+    used to enable iteration through many table pages
+
+    """
+
+    AZ_base_data = {
+        "draw": "2",
+        "order[0][column]": "0",
+        "order[0][dir]": "asc",
+        "start": start_position,
+        "length": table_length,
+        "search[value]": "",
+        "search[regex]": "false",
+    }
+    return AZ_base_data
+
+
 def detailed_parametrize(
     entity_id,
     page=1,
@@ -223,7 +294,27 @@ def detailed_parametrize(
     *args: int,
     **kwargs: int
 ) -> dict:
-    """ """
+    """Input parameters for detailed_scrape and return as dict
+
+    This function takes in a similar list of parameters as parametrize()
+    and creates the params dictionary used by detailed_scrape.
+
+    Args: entity_id: the unique id given to eahc entity in the
+    arizona database
+    Kwargs: page: encodes the page to be scraped, such as
+    Candidates, Individual Contributions, etc. Refer to the
+    AZ_pages_dict dictionary for details.
+    start_year: earliest year to include scraped data, inclusive
+    end_year: last year to include scraped data, inclusive
+    table_page: the numbered page to be accessed. Only necessary
+    to iterate on this if accessing large quantities of Individual
+    Contributions data, as all other data will be captured whole by
+    the default table_length
+    table_length: the length of the table to be scraped. The default
+    setting should scrape the entirety of the desired data unless
+    looking at Individual Contributions
+    """
+
     return {
         "Page": str(page),  # refers to the overall page, like candidates
         # or individual expenditures
