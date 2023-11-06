@@ -20,16 +20,22 @@ class StateCleaner(ABC):
         return self.entity_name_dictionary
 
     @abstractmethod
-    def preprocess(self) -> pd.DataFrame:
+    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
         """
         Preprocesses the state data and returns a dataframe
 
         Reads in the state's data, makes any necessary bug fixes, and
-        combines the data into one Pandas DataFrame
+        combines the data into a list of DataFrames
 
-        Inputs: None
+        Inputs:
+            filepaths_list: list of absolute filepaths to relevant state data.
+                required naming conventions, order, and extensions
+                defined per state.
 
-        Returns: dataframe
+        Returns: a list of dataframes. If state data is all in one format
+            (i.e. there are not separate individual and transaction tables),
+            a list containing a single dataframe. Otherwise a list of three
+            DataFrames that represent [transactions, individuals, organizations]
         """
         pass
 
@@ -91,16 +97,22 @@ class StateCleaner(ABC):
         """
         pass
 
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    def clean_state(
+        self, filepaths_list: list[str]
+    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """
-            Runs the StateCleaner and returns the SQL Dabase records
+        Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
 
-        Inputs: None
+        Inputs:
+            filepaths_list: list of absolute filepaths to relevant state data.
+                required naming conventions, order, and extensions
+                defined per state.
 
         Returns: cleans the state and returns the standardized Inidividuals,
                             Organizations, and Transactions tables in a tuple
         """
-        StateCleaner.create_tables()
+        # initial_dataframes = self.preprocess(filepaths_list)
+
         # should run create tables, which runs through the functions above
         # to preprocess, clean, standardizes and create the following tables
         # (invividuals_table, organizations_table, transactions_table)
