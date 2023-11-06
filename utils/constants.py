@@ -5,6 +5,11 @@ from pathlib import Path
 
 BASE_FILEPATH = Path(__file__).resolve().parent.parent
 
+USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+                (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
+
+HEADERS = {"User-Agent": USER_AGENT}
+
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
 
 MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contributions"
