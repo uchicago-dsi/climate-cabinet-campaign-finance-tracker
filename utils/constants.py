@@ -89,20 +89,11 @@ AZ_head = {
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-origin",
     "sec-gpc": "1",
-    """user-agent""": """Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+    "user-agent": """Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
     AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36""",
     "x-requested-with": "XMLHttpRequest",
 }
 
-AZ_base_data = {
-    "draw": "2",
-    "order[0][column]": "0",
-    "order[0][dir]": "asc",
-    "start": "0",
-    "length": "500000",
-    "search[value]": "",
-    "search[regex]": "false",
-}
 
 AZ_valid_detailed_pages = [
     20,
@@ -134,3 +125,14 @@ AZ_valid_detailed_pages = [
     80,
     90,
 ]
+
+
+AZ_base_data = {
+    "draw": "2",
+    "order[0][column]": "0",
+    "order[0][dir]": "asc",
+    "start": "0",
+    "length": "500000",
+    "search[value]": "",
+    "search[regex]": "false",
+}
