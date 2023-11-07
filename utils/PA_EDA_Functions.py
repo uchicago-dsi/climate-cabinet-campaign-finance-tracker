@@ -1,7 +1,6 @@
 import pandas as pd
 import plotly.express as px
-import sys
-sys.path.append('/home/alankagiri/2023-fall-clinic-climate-cabinet')
+
 from utils import constants as const
 
 
@@ -29,56 +28,66 @@ def assign_col_names(filepath: str, year: int) -> list:
     elif "expense" in file_type:
         if year < 2022:
             return const.PA_EXPENSE_COLS_NAMES_PRE2022
-        else: 
+        else:
             return const.PA_EXPENSE_COLS_NAMES_POST2022
 
-def initialize_PA_dataset(data_filepath:str, year:int)->pd.DataFrame:
+
+def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     """initializes the PA data appropriately based on whether the data contains
     filer, contributor, or expense information
-    
+
     Args: the filepath to the actual dataframe and the year from which the data
     originates
     Returns: the dataframe
     """
     df = pd.read_csv(
         data_filepath,
-        names=assign_col_names(data_filepath,year),
+        names=assign_col_names(data_filepath, year),
         sep=",",
         encoding="latin-1",
-        on_bad_lines="warn")
-    
+        on_bad_lines="warn",
+    )
+
     dir = data_filepath.split("/")
-    file_type = dir[len(dir) - 1]    
+    file_type = dir[len(dir) - 1]
 
     if "contrib" in file_type:
         df["TotalContAmt"] = df["ContAmt1"] + df["ContAmt2"] + df["ContAmt3"]
         df["EYear"] = year
-        if 'Timestamp' in df.columns:
+        if "Timestamp" in df.columns:
             df = df.drop(columns="Timestamp")
-        
-        df.rename(columns={'EYear':'Year',
-        'Address1':'Contributor Address1',
-        'Address2':'Contributor Address2',
-        'City':'Contributor City',
-        'State':'Contributor State',
-        'Zipcode':'Contributor Zipcode',
-        'Cycle':'Contributor Cycle Code'
-        }, inplace=True)
+
+        df.rename(
+            columns={
+                "EYear": "Year",
+                "Address1": "Contributor Address1",
+                "Address2": "Contributor Address2",
+                "City": "Contributor City",
+                "State": "Contributor State",
+                "Zipcode": "Contributor Zipcode",
+                "Cycle": "Contributor Cycle Code",
+            },
+            inplace=True,
+        )
         return df
-    
+
     elif "filer" in file_type:
         df = df.drop(columns="EYear")
-        df.rename(columns={'Cycle':'Filer Cycle Code',
-        'Address1':'Filer Address1',
-        'Address2':'Filer Address2',
-        'City':'Filer City',
-        'State':'Filer State',
-        'Zipcode':'Filer Zipcode'}, inplace=True)
+        df.rename(
+            columns={
+                "Cycle": "Filer Cycle Code",
+                "Address1": "Filer Address1",
+                "Address2": "Filer Address2",
+                "City": "Filer City",
+                "State": "Filer State",
+                "Zipcode": "Filer Zipcode",
+            },
+            inplace=True,
+        )
         return df
-    
-    #elif "expense" in file_type:
+    else:
+        return df
 
-    else: return df
 
 def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
     """given a dataframe, retrieves the top n recipients of that year based on
@@ -131,11 +140,14 @@ def merge_same_year_datasets(
         The merged pandas dataframe
     """
     merged_df = pd.merge(cont_file, filer_file, how="left", on="FilerID")
-    merged_df.rename(columns={'EYear':'Year',
-    'ReporterID_x':'Contributor ReporterID',
-    'ReporterID_y':'FilerReporterID',
-
-    }, inplace=True)
+    merged_df.rename(
+        columns={
+            "EYear": "Year",
+            "ReporterID_x": "Contributor ReporterID",
+            "ReporterID_y": "FilerReporterID",
+        },
+        inplace=True,
+    )
     return merged_df
 
 
@@ -169,8 +181,8 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
     recep_per_office = (
         merged_dataset.groupby(["Office"]).agg({"ContAmt1": sum}).reset_index()
     )
-    recep_per_office.replace({"Office":const.PA_OFFICE_ABBREV_DICT},inplace=True)
-    #recep_per_office["Office"] = recep_per_office["Office"].fillna(
+    (recep_per_office.replace({"Office": const.PA_OFFICE_ABBREV_DICT}, inplace=True))
+    # recep_per_office["Office"] = recep_per_office["Office"].fillna(
     #    const.PA_OFFICE_ABBREV_DICT["MISC"])
 
     fig = px.bar(
@@ -178,7 +190,7 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
         x="Office",
         y="ContAmt1",
         title="PA Contributions Received by Office-Type From 2018-2023",
-        labels={"ContAmt1":"Total Contribution Amount"}
+        labels={"ContAmt1": "Total Contribution Amount"},
     )
     fig.show()
 
@@ -193,14 +205,16 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
     Args: pandas DataFrame
     Return: pandas DataFrame
     """
-    pd.set_option('display.float_format', '{:.2f}'.format)
+    pd.set_option("display.float_format", "{:.2f}".format)
     cont_by_donor = (
         merged_dataset.groupby(["Year", "FilerType"])
         .agg({"TotalContAmt": sum})
         .reset_index()
     )
-    cont_by_donor["FilerType"] = cont_by_donor["FilerType"].map(const.PA_FILER_ABBREV_DICT)
-    #cont_by_donor.style.format(precision=9, thousands=",",decimal=".")
+    cont_by_donor["FilerType"] = cont_by_donor["FilerType"].map(
+        const.PA_FILER_ABBREV_DICT
+    )
+    # cont_by_donor.style.format(precision=9, thousands=",",decimal=".")
 
     fig = px.bar(
         data_frame=cont_by_donor,
@@ -208,8 +222,10 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
         y="TotalContAmt",
         color="FilerType",
         title="PA Recipients of Annual Contributions (2018 - 2023)",
-        labels={"TotalContAmt":"Total Contribution Amount",
-                "FilerType":"Type of Filer"}
+        labels={
+            "TotalContAmt": "Total Contribution Amount",
+            "FilerType": "Type of Filer",
+        },
     )
     fig.show()
     return cont_by_donor
