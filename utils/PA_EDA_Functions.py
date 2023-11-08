@@ -1,7 +1,9 @@
+# import sys
+
 import pandas as pd
 import plotly.express as px
-import sys
-sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
+
+# sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
 
@@ -10,10 +12,10 @@ def assign_col_names(filepath: str, year: int) -> list:
 
     Args:
         filepath: the path in which the data is stored/located.
-        
+
         year: to make parsing through the data more manageable, the year from
         which the data originates is also taken.
-    
+
     Returns:
         a list of the appropriate column names for the dataset
     """
@@ -41,12 +43,12 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     """initializes the PA data appropriately based on whether the data contains
     filer, contributor, or expense information
 
-    Args: 
-        data_filepath: the path in which the data is stored/located. 
-        
+    Args:
+        data_filepath: the path in which the data is stored/located.
+
         year: the year from which the data originates
 
-    Returns: 
+    Returns:
         a pandas dataframe whose columns are appropriately formatted, and
         any dirty rows with inconsistent columns names dropped.
     """
@@ -62,8 +64,7 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     file_type = dir[len(dir) - 1]
 
     if "contrib" in file_type:
-        df["TOTAL_CONT_AMT"] = (df["CONT_AMT_1"] + df["CONT_AMT_2"] 
-                                + df["CONT_AMT_3"])
+        df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
         df["YEAR"] = year
         if "TIMESTAMP" in df.columns:
             df = df.drop(columns="TIMESTAMP")
@@ -98,9 +99,11 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     elif "expense" in file_type:
         return df
     else:
-        raise ValueError("This function is currently formatted for filer, \
+        raise ValueError(
+            "This function is currently formatted for filer, \
                         expense, and contributor datasets. Make sure your data \
-                        is from these sources.")
+                        is from these sources."
+        )
 
 
 def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
@@ -108,7 +111,7 @@ def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
     contributions and returns a table
     Args:
         df: a pandas DataFrame with a contributions column
-        
+
         num_recipients: an integer specifying how many recipients are desired.
         If this value is larger than the possible amount of recipients, then all
         recipients are returned instead.
@@ -132,7 +135,7 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
 
     Args:
         df: a pandas DataFrame with a contributions column
-        
+
         num_contributors: an integer specifying how many contributors are
         desired. If this value is larger than the possible amount of
         contributors, then all contributors are returned instead.
@@ -158,7 +161,7 @@ def merge_same_year_datasets(
     unique filerID
     Args:
         cont_file: The contributor dataset
-         
+
         filer_file: the filer dataset from the same year as the cont_file.
     Returns
         The merged pandas dataframe
@@ -178,7 +181,7 @@ def merge_all_datasets(datasets: list) -> pd.DataFrame:
     """concatenates datasets from different years into one super dataset
     Args:
         datasets: a list of datasets
-    
+
     Returns:
         The merged pandas dataframe
     """
@@ -190,11 +193,11 @@ def group_filerType_Party(dataset: pd.DataFrame) -> object:
     of people who file the campaign reports (FilerType Key -> 1:Candidate,
     2:Committee, 3:Lobbyist.) and their political party affiliation
 
-    Args: 
+    Args:
         dataset: a pandas DataFrame containing columns and values from the filer
         dataset.
 
-    Returns: 
+    Returns:
         A table object"""
     return dataset.groupby(["FILER_TYPE", "PARTY"]).agg({"TOTAL_CONT_AMT": sum})
 
@@ -211,11 +214,9 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
         A table object"""
 
     recep_per_office = (
-        merged_dataset.groupby(
-            ["OFFICE"]).agg({"TOTAL_CONT_AMT": sum}).reset_index()
+        merged_dataset.groupby(["OFFICE"]).agg({"TOTAL_CONT_AMT": sum}).reset_index()
     )
-    recep_per_office.replace(
-        {"OFFICE": const.PA_OFFICE_ABBREV_DICT}, inplace=True)
+    recep_per_office.replace({"OFFICE": const.PA_OFFICE_ABBREV_DICT}, inplace=True)
 
     fig = px.bar(
         data_frame=recep_per_office,
@@ -234,10 +235,10 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
     campaign finance report-filers received based on whether they are candidates
     , committees, or lobbyists.
 
-    Args: 
+    Args:
         merged_dataset: A (merged) pandas DataFrame containing columns from both
         the filer and contributor datasets.
-    Return: 
+    Return:
         A pandas DataFrame
     """
     pd.set_option("display.float_format", "{:.2f}".format)

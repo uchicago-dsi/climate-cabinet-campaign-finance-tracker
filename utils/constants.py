@@ -81,7 +81,7 @@ PA_CONT_COLS_NAMES_PRE2022: list = [
     "CONT_AMT_2",
     "CONT_DATE_3",
     "CONT_AMT_3",
-    "CONT_DESCRIP"
+    "CONT_DESCRIP",
 ]
 
 PA_CONT_COLS_NAMES_POST2022: list = [
@@ -110,7 +110,7 @@ PA_CONT_COLS_NAMES_POST2022: list = [
     "CONT_AMT_2",
     "CONT_DATE_3",
     "CONT_AMT_3",
-    "CONT_DESCRIP"
+    "CONT_DESCRIP",
 ]
 
 PA_FILER_COLS_NAMES_PRE2022: list = [
@@ -133,7 +133,7 @@ PA_FILER_COLS_NAMES_PRE2022: list = [
     "PHONE",
     "BEGINNING",
     "MONETARY",
-    "INKIND"
+    "INKIND",
 ]
 
 PA_FILER_COLS_NAMES_POST2022: list = [
@@ -158,7 +158,7 @@ PA_FILER_COLS_NAMES_POST2022: list = [
     "PHONE",
     "BEGINNING",
     "MONETARY",
-    "INKIND"
+    "INKIND",
 ]
 
 PA_EXPENSE_COLS_NAMES_PRE2022: list = [
