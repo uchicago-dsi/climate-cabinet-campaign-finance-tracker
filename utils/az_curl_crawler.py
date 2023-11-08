@@ -1,13 +1,6 @@
-import time
-
 import pandas as pd
 import requests
 from constants import AZ_base_data, AZ_head, AZ_pages_dict, AZ_valid_detailed_pages
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 def az_wrapper(
@@ -26,7 +19,10 @@ def az_wrapper(
     start_year: earliest year to include scraped data, inclusive
     end_year: last year to include scraped data, inclusive
 
-    Returns: a pandas dataframe of the
+    Returns: two pandas dataframes and two lists. The first dataframe
+    contains the requested transactions data. The following two lists
+    contain either the entity or committee name, and the final dataframe
+    contains the information on those entities or committees
     """
 
     page = AZ_pages_dict[page]
@@ -78,48 +74,28 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     the selected timeframe
     """
 
-    url = (
-        """https://seethemoney.az.gov/Reporting/Explore#
-    JurisdictionId=0%7CPage|Page="""
-        + str(page)
-        + """|startYear
-    ="""
-        + str(start_year)
-        + """|endYear="""
-        + str(end_year)
-        + """|IsLessActive=false|ShowOfficeHolder=false|
-        View=Detail|TablePage=1|TableLength=500000"""
-    )
+    # a leftover from the selenium version, I think
+    # leave it in for now in case we go back
+    # url = (
+    #     """https://seethemoney.az.gov/Reporting/Explore#
+    # JurisdictionId=0%7CPage|Page="""
+    #     + str(page)
+    #     + """|startYear
+    # ="""
+    #     + str(start_year)
+    #     + """|endYear="""
+    #     + str(end_year)
+    #     + """|IsLessActive=false|ShowOfficeHolder=false|
+    #     View=Detail|TablePage=1|TableLength=500000"""
+    # )
 
-    options = Options()
-    options.add_argument("--headless=new")
+    params = parametrize(page, start_year, end_year)
+    res = scrape(params, AZ_head, AZ_base_data)
+    results = res.json()
+    df = pd.DataFrame(data=results["data"])
+    df = df.reset_index().drop(columns={"index"})
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-    driver.get(url)
-
-    time.sleep(5)
-
-    nested_element = driver.find_element(By.CLASS_NAME, "paginate_of")
-    page = nested_element.text
-
-    driver.quit()
-
-    size = int(page[4:])
-
-    dfs = []
-
-    for i in range(size):
-        params = parametrize(page, start_year, end_year, table_page=i)
-        res = scrape(params, AZ_head, AZ_base_data)
-        results = res.json()
-        df = pd.DataFrame(data=results["data"])
-        df = df.reset_index().drop(columns={"index"})
-        dfs.append(df)
-
-    concatenated_df = pd.concat(dfs)
-    return concatenated_df
+    return df
 
 
 def detailed_scrape_wrapper(
@@ -142,19 +118,38 @@ def detailed_scrape_wrapper(
     """
 
     d_params = []
+    info_params = []
 
     for entity in entities:
         ent = detailed_parametrize(entity, page, start_year, end_year)
-        d_params.append(ent)
+        name_details = detailed_parametrize(entity, 11, start_year, end_year)
 
-    dfs = []
+        d_params.append(ent)
+        info_params.append(name_details)
+
+    detail_dfs = []
+    entity_names = []
+    committee_names = []
+    info_dfs = []
 
     for d_param in d_params:
-        res = detailed_scrape(d_param, start_year, end_year)
+        res = detailed_scrape(d_param)
         results = res.json()
-        dfs.append(pd.DataFrame(data=results["data"]))
+        detail_dfs.append(pd.DataFrame(data=results["data"]))
 
-    return pd.concat(dfs).reset_index().drop(columns={"index"})
+    for info_param in info_params:
+        entity_name, committee_name, info = info_scrape(info_param)
+        info_table = info.json()
+        entity_names.append(entity_name)
+        committee_names.append(committee_name)
+        info_dfs.append(pd.DataFrame(data=info_table))
+
+    return (
+        pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
+        entity_names,
+        committee_names,
+        pd.concat(info_dfs).reset_index().drop(columns={"index"}),
+    )
 
 
 def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
@@ -183,9 +178,7 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
     )
 
 
-def detailed_scrape(
-    detailed_params: dict, headers: dict, data: dict
-) -> requests.models.Response:
+def detailed_scrape(detailed_params: dict) -> requests.models.Response:
     """Scrape a sub-table from the arizona database
 
     This function takes an entity number, which can be
@@ -257,33 +250,6 @@ def parametrize(
     }
 
 
-def base_construct(table_length, start_position):
-    """Create a base for post request
-
-    This function adds the start position into the base
-    in order to iterate through long tables. At this point,
-    it only comes into play for scraping decade+ length
-    individual contributions tables
-
-    Args: table_length:
-
-    start_position: the index of the first row to scrape,
-    used to enable iteration through many table pages
-
-    """
-
-    AZ_base_data = {
-        "draw": "2",
-        "order[0][column]": "0",
-        "order[0][dir]": "asc",
-        "start": start_position,
-        "length": table_length,
-        "search[value]": "",
-        "search[regex]": "false",
-    }
-    return AZ_base_data
-
-
 def detailed_parametrize(
     entity_id,
     page=1,
@@ -316,6 +282,8 @@ def detailed_parametrize(
     """
 
     return {
+        "CommitteeId": str(entity_id),
+        "NameId": str(entity_id),
         "Page": str(page),  # refers to the overall page, like candidates
         # or individual expenditures
         "startYear": str(start_year),
@@ -331,3 +299,34 @@ def detailed_parametrize(
         "IsLessActive": "false",  # have yet to experiment with these
         "ShowOfficeHolder": "false",  # have yet to experiment with these
     }
+
+
+# roll this into detailed_scrape?
+def info_scrape(detailed_params: dict) -> requests.models.Response:
+    """Scrape the name and filer information of individuals and organizations"""
+
+    entity_name_response = requests.get(
+        "https://seethemoney.az.gov/Reporting/GetEntityName/",
+        params=detailed_params,
+        headers=AZ_head,
+    )
+
+    if str(entity_name_response.json()) == "  ":
+        entity_name_response = None
+
+    committee_name_response = requests.get(
+        "https://seethemoney.az.gov/Reporting/GetCommitteeName/",
+        params=detailed_params,
+        headers=AZ_head,
+    )
+
+    if str(committee_name_response) == "<Response [500]>":
+        committee_name_response = None
+
+    info_response = requests.post(
+        "https://seethemoney.az.gov/Reporting/GetDetailedInformation",
+        params=detailed_params,
+        headers=AZ_head,
+    )
+
+    return entity_name_response, committee_name_response, info_response
