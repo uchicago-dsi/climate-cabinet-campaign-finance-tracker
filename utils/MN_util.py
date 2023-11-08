@@ -167,17 +167,31 @@ def preprocess_general_exp_df(df: pd.DataFrame) -> pd.DataFrame:
 
     df_copy = df.copy(deep=True)
     columns_to_keep = [
-        'Committee reg num', 'Committee name', 'Entity type', 'Vendor name',
-        'Amount', 'Unpaid amount', 'Date', 'Year', 'Purpose', 'Type',
-        'In-kind?', 'In-kind descr', 'Affected committee name',
-        'Affected committee reg num'
-        ]
+        "Committee reg num",
+        "Committee name",
+        "Entity type",
+        "Vendor name",
+        "Amount",
+        "Unpaid amount",
+        "Date",
+        "Year",
+        "Purpose",
+        "Type",
+        "In-kind?",
+        "In-kind descr",
+        "Affected committee name",
+        "Affected committee reg num",
+    ]
     column_mapping = {
-        'Committee reg num': 'SpenderRegNum', 'Committee name': 'SpenderName',
-        'Entity type': 'SpenderType', 'Vendor name': 'VendorName',
-        'Unpaid amount': 'UnpaidAmount', 'In-kind descr': 'InKindDescription',
-        'Affected committee name': 'AffectedCommitteeName',
-        'Affected committee reg num': 'AffectedCommitteeRegNum'}
+        "Committee reg num": "SpenderRegNum",
+        "Committee name": "SpenderName",
+        "Entity type": "SpenderType",
+        "Vendor name": "VendorName",
+        "Unpaid amount": "UnpaidAmount",
+        "In-kind descr": "InKindDescription",
+        "Affected committee name": "AffectedCommitteeName",
+        "Affected committee reg num": "AffectedCommitteeRegNum",
+    }
 
     df_copy = df_copy[columns_to_keep]
     df_copy.rename(columns=column_mapping, inplace=True)
@@ -197,16 +211,32 @@ def preprocess_independent_exp_df(df: pd.DataFrame) -> pd.DataFrame:
 
     df_copy = df.copy(deep=True)
     columns_to_keep = [
-        'Spender Reg Num', 'Spender', 'Spender type', 'Vendor name', 'Amount',
-        'Unpaid amount', 'Date', 'Year', 'Purpose', 'Type', 'In kind?',
-        'In kind descr', 'Affected Comte Name', 'Affected Cmte Reg Num']
+        "Spender Reg Num",
+        "Spender",
+        "Spender type",
+        "Vendor name",
+        "Amount",
+        "Unpaid amount",
+        "Date",
+        "Year",
+        "Purpose",
+        "Type",
+        "In kind?",
+        "In kind descr",
+        "Affected Comte Name",
+        "Affected Cmte Reg Num",
+    ]
     column_mapping = {
-        'Spender Reg Num': 'SpenderRegNum', 'Spender': 'SpenderName',
-        'Spender type': 'SpenderType', 'Vendor name': 'VendorName',
-        'Unpaid amount': 'UnpaidAmount', 'In kind?': 'In-kind?',
-        'In kind descr': 'InKindDescription',
-        'Affected Comte Name': 'AffectedCommitteeName',
-        'Affected Cmte Reg Num': 'AffectedCommitteeRegNum'}
+        "Spender Reg Num": "SpenderRegNum",
+        "Spender": "SpenderName",
+        "Spender type": "SpenderType",
+        "Vendor name": "VendorName",
+        "Unpaid amount": "UnpaidAmount",
+        "In kind?": "In-kind?",
+        "In kind descr": "InKindDescription",
+        "Affected Comte Name": "AffectedCommitteeName",
+        "Affected Cmte Reg Num": "AffectedCommitteeRegNum",
+    }
 
     df_copy = df_copy[columns_to_keep]
     df_copy.rename(columns=column_mapping, inplace=True)
