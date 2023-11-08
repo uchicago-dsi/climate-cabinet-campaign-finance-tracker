@@ -142,7 +142,7 @@ def detailed_scrape_wrapper(
         info_table = info.json()
         entity_names.append(entity_name)
         committee_names.append(committee_name)
-        info_dfs.append(pd.DataFrame(data=info_table))
+        info_dfs.append(pd.DataFrame(data=info_table[["ReportFilerInfo"]]))
 
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
