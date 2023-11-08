@@ -1,9 +1,9 @@
-# import sys
+import sys
 
 import pandas as pd
 import plotly.express as px
 
-# sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
+sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
 
