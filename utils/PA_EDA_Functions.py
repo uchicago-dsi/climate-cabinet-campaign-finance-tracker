@@ -1,9 +1,9 @@
-import sys
+# import sys
 
 import pandas as pd
 import plotly.express as px
 
-sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
+# sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
 
@@ -39,6 +39,33 @@ def assign_col_names(filepath: str, year: int) -> list:
             return const.PA_EXPENSE_COLS_NAMES_POST2022
 
 
+def classify_contributor(contributor: str) -> str:
+    """Takes a string input and compares it against a list of identifiers most
+    commonly associated with organizations/corporations/PACs, and classifies the
+    string input as belong to an individual or organization
+
+    Args:
+        contributor: a string
+    Returns:
+        string "ORGANIZATION" or "INDIVIDUAL" depending on the classification of
+        the parameter
+    """
+    split = contributor.split()
+    loc = 0
+    while loc < len(split):
+        if split[loc].upper() in const.PA_CORPORATION_IDENTIFIERS:
+            return "CORPORATION"
+        loc += 1
+
+    split = contributor.split()
+    loc = 0
+    while loc < len(split):
+        if split[loc].upper() in const.PA_PAC_IDENTIFIERS:
+            return "ORGANIZATION"
+        loc += 1
+    return "INDIVIDUAL"
+
+
 def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     """initializes the PA data appropriately based on whether the data contains
     filer, contributor, or expense information
@@ -66,6 +93,8 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     if "contrib" in file_type:
         df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
         df["YEAR"] = year
+        df["CONTRIBUTOR"] = df["CONTRIBUTOR"].astype("str")
+        df["CONTRIBUTOR_TYPE"] = df["CONTRIBUTOR"].apply(classify_contributor)
         if "TIMESTAMP" in df.columns:
             df = df.drop(columns="TIMESTAMP")
 
