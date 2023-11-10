@@ -4,6 +4,7 @@ import pandas as pd
 
 from utils.cleaner_utils import convert_date
 
+
 class StateCleaner(ABC):
     """
     This abstract class is the one that all the state cleaners will be built on
