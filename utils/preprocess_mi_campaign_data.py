@@ -1,7 +1,5 @@
-import ipywidgets as widgets
 import pandas as pd
 import plotly.express as px
-from IPython.display import clear_output
 
 
 def fix_mi_dataframes(filepath, columns):
@@ -74,9 +72,7 @@ def read_contribution_data(filepath: str, columns: list) -> pd.DataFrame:
     return df
 
 
-def plot_year_contribution_types(
-    year: int, all_year_contribution_dataframe: pd.DataFrame
-) -> None:
+def plot_year_contribution_types(all_year_contribution_dataframe: pd.DataFrame) -> None:
     """Plots contributions per year by type
 
     Inputs: year: year to plot
@@ -85,29 +81,30 @@ def plot_year_contribution_types(
 
     Return: None
     """
-    filtered_data = all_year_contribution_dataframe[
-        all_year_contribution_dataframe["doc_stmnt_year"] == year
-    ]
-    filtered_data = filtered_data["contribtype"].value_counts().reset_index()
-    filtered_data.columns = ["Cont_Type", "Count"]
+
+    contribution_type_by_year = (
+        all_year_contribution_dataframe.groupby("doc_stmnt_year")["contribtype"]
+        .value_counts()
+        .reset_index()
+    )
 
     fig = px.bar(
-        filtered_data,
-        x="Cont_Type",
-        y="Count",
-        title=f"Polital Contributions Count from {year} by Type",
-        text="Count",
-    )
-    fig.update_layout(
-        xaxis_title="Contribution Types",
-        yaxis_title=f"{year} Count",
+        contribution_type_by_year,
+        x="doc_stmnt_year",
+        y="count",
+        color="contribtype",
+        barmode="stack",
+        labels={
+            "doc_stmnt_year": "Year",
+            "count": "Count",
+            "contribtype": "Contribution Type",
+        },
+        title="Stacked Bar Chart for Contribution Types by Year",
     )
     fig.show()
 
 
-def plot_committee_types_by_year(
-    year: int, all_year_contribution_dataframe: pd.DataFrame
-) -> None:
+def plot_committee_types_by_year(all_year_contribution_dataframe: pd.DataFrame) -> None:
     """Plots committees contributions per year by type
 
     Inputs: year : year to plot
@@ -116,126 +113,107 @@ def plot_committee_types_by_year(
 
     Return: None
     """
-    filtered_data = all_year_contribution_dataframe[
-        all_year_contribution_dataframe["doc_stmnt_year"] == year
-    ]
-
-    filtered_data = filtered_data["com_type"].value_counts().reset_index()
-    filtered_data.columns = ["Committee_Type", "Count"]
+    contribution_committee_type_by_year = (
+        all_year_contribution_dataframe.groupby("doc_stmnt_year")["com_type"]
+        .value_counts()
+        .reset_index()
+    )
 
     fig = px.bar(
-        filtered_data,
-        x="Committee_Type",
-        y="Count",
-        title=f"Donations by Committee Type from {year}",
-        text="Count",
+        contribution_committee_type_by_year,
+        x="doc_stmnt_year",
+        y="count",
+        color="com_type",
+        barmode="stack",
+        labels={
+            "doc_stmnt_year": "Year",
+            "count": "Count",
+            "com_type": "Committee Tyoe",
+        },
+        title="Stacked Bar Chart for Contributions Committee Types by Year",
     )
-    fig.update_layout(xaxis_title="Committee Types")
-    fig.update_layout(yaxis_title=f"{year} Count")
     fig.show()
 
 
-def update_contribution_plots(
-    year_selector: object, all_year_contribution_dataframe: pd.DataFrame
+def plot_expenditure_committee_types_by_year(
+    all_year_expenditure_dataframe: pd.DataFrame,
 ) -> None:
-    """Interactively update the MI Contribution plots using the Ipywidget
+    """Plots committees contributions per year by type
 
-    Inputs: year_selector: widget dropdown for 1999 - 2023
+    Inputs: year: year to plot
+            all_year_expenditure_dataframe: dataframe containing the 2018
+            to 2023 Michigan campaign expenditure data
+
+    Return: None
+    """
+    expenditure_committee_type_by_year = (
+        all_year_expenditure_dataframe.groupby("doc_stmnt_year")["com_type"]
+        .value_counts()
+        .reset_index()
+    )
+
+    fig = px.bar(
+        expenditure_committee_type_by_year,
+        x="doc_stmnt_year",
+        y="count",
+        color="com_type",
+        barmode="stack",
+        labels={
+            "doc_stmnt_year": "Year",
+            "count": "Count",
+            "com_type": "Committee Tyoe",
+        },
+        title="Stacked Bar Chart for Expenditure Committee Types by Year",
+    )
+    fig.show()
+
+
+def plot_year_schedule_types(all_year_expenditure_dataframe: pd.DataFrame) -> None:
+    """Plots committees contributions per year by type
+
+    Inputs: year: year to plot
+            all_year_expenditure_dataframe: dataframe containing the 2018
+            to 2023 Michigan campaign expenditure data
+
+    Return: None
+    """
+    expenditure_schedule_types_by_year = (
+        all_year_expenditure_dataframe.groupby("doc_stmnt_year")["schedule_desc"]
+        .value_counts()
+        .reset_index()
+    )
+
+    fig = px.bar(
+        expenditure_schedule_types_by_year,
+        x="doc_stmnt_year",
+        y="count",
+        color="schedule_desc",
+        barmode="stack",
+        labels={
+            "doc_stmnt_year": "Year",
+            "count": "Count",
+            "schedule_desc": "Schedule Description",
+        },
+        title="Stacked Bar Chart for Expenditure Schedule Types by Year",
+    )
+    fig.show()
+
+
+def create_all_plots(
+    all_year_expenditure_dataframe: pd.DataFrame,
+    all_year_contribution_dataframe: pd.DataFrame,
+):
+    """Creates all of the plots for the MI expenditure and Contribution data
+
+    Inputs:
+            all_year_expenditure_dataframe: dataframe containing the 2018
+            to 2023 Michigan campaign expenditure data
             all_year_contribution_dataframe: dataframe containing the 2018
             to 2023 Michigan campaign contributon data
 
     Returns: None
     """
-    selected_year = year_selector.value
-    output = widgets.Output()
-    with output:
-        clear_output(wait=True)
-        plot_committee_types_by_year(selected_year, all_year_contribution_dataframe)
-        plot_year_contribution_types(selected_year, all_year_contribution_dataframe)
-
-
-def plot_expenditure_committee_types_by_year(
-    year: int, all_year_expenditure_dataframe: pd.DataFrame
-) -> None:
-    """Plots committees contributions per year by type
-
-    Inputs: year: year to plot
-            all_year_expenditure_dataframe: dataframe containing the 2018
-            to 2023 Michigan campaign expenditure data
-
-    Return: None
-    """
-    filtered_data = all_year_expenditure_dataframe[
-        all_year_expenditure_dataframe["doc_stmnt_year"] == year
-    ]
-
-    filtered_data = filtered_data["com_type"].value_counts().reset_index()
-    filtered_data.columns = ["Committee_Type", "Count"]
-
-    fig = px.bar(
-        filtered_data,
-        x="Committee_Type",
-        y="Count",
-        title=f"Expenditures by Committee Type from {year}",
-        text="Count",
-    )
-    fig.update_layout(xaxis_title="Committee Types")
-    fig.update_layout(
-        yaxis_title=f"{year} Count", xaxis={"categoryorder": "total ascending"}
-    )
-
-    fig.show()
-
-
-def plot_year_schedule_types(
-    year: int, all_year_expenditure_dataframe: pd.DataFrame
-) -> None:
-    """Plots committees contributions per year by type
-
-    Inputs: year: year to plot
-            all_year_expenditure_dataframe: dataframe containing the 2018
-            to 2023 Michigan campaign expenditure data
-
-    Return: None
-    """
-    filtered_data = all_year_expenditure_dataframe[
-        all_year_expenditure_dataframe["doc_stmnt_year"] == year
-    ]
-
-    filtered_data = filtered_data["schedule_desc"].value_counts().reset_index()
-    filtered_data.columns = ["Schedule_Type", "Count"]
-
-    fig = px.bar(
-        filtered_data,
-        x="Schedule_Type",
-        y="Count",
-        title=f"Expenditures by Schedule Type from {year}",
-        text="Count",
-    )
-    fig.update_layout(
-        xaxis_title="Schedule Types",
-        yaxis_title=f"{year} Count",
-        xaxis={"categoryorder": "total ascending"},
-    )
-    fig.show()
-
-
-def update_expenditure_plots(
-    year_selector: object, all_year_expenditure_dataframe: pd.DataFrame
-) -> None:
-    """Interactively update the MI Expenditure plots using the Ipywidget
-
-      Inputs: year_selector (object): widget dropdown for 2018 - 2023
-              all_year_expenditure_dataframe: dataframe containing the 2018
-                to 2023 Michigan campaign expenditure data
-
-    Returns: None
-    """
-    selected_year = year_selector.value
-    output = widgets.Output()
-    with output:
-        clear_output(wait=True)
-        plot_expenditure_committee_types_by_year(
-            selected_year, all_year_expenditure_dataframe
-        )
-        plot_year_schedule_types(selected_year, all_year_expenditure_dataframe)
+    plot_year_schedule_types(all_year_expenditure_dataframe)
+    plot_expenditure_committee_types_by_year(all_year_expenditure_dataframe)
+    plot_committee_types_by_year(all_year_contribution_dataframe)
+    plot_year_contribution_types(all_year_contribution_dataframe)
