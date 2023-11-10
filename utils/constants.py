@@ -166,8 +166,8 @@ PA_EXPENSE_COLS_NAMES_PRE2022: list = [
     "YEAR",
     "EXPENSE_CYCLE",
     "EXPENSE_NAME",
-    "EXPENSE_ADDRESS1",
-    "EXPENSE_ADDRESS2",
+    "EXPENSE_ADDRESS_1",
+    "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
@@ -216,7 +216,7 @@ PA_OFFICE_ABBREV_DICT: dict = {
     "OTH": "Other(local offices)",
 }
 PA_FILER_ABBREV_DICT: dict = {1.0: "Candidate", 2.0: "Committee", 3.0: "Lobbyist"}
-PA_PAC_IDENTIFIERS: list = [
+PA_ORGANIZATION_IDENTIFIERS: list = [
     "FRIENDS",
     "CITIZENS",
     "UNION",
@@ -241,8 +241,6 @@ PA_PAC_IDENTIFIERS: list = [
     "REPUBLICAN",
     "DEMOCRAT",
     "DEMOCRATS",
-]
-PA_CORPORATION_IDENTIFIERS = [
     "CORPORATION",
     "CORP",
     "COMPANY",

@@ -1,9 +1,9 @@
-# import sys
+import sys
 
 import pandas as pd
 import plotly.express as px
 
-# sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
+sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
 
@@ -53,14 +53,7 @@ def classify_contributor(contributor: str) -> str:
     split = contributor.split()
     loc = 0
     while loc < len(split):
-        if split[loc].upper() in const.PA_CORPORATION_IDENTIFIERS:
-            return "CORPORATION"
-        loc += 1
-
-    split = contributor.split()
-    loc = 0
-    while loc < len(split):
-        if split[loc].upper() in const.PA_PAC_IDENTIFIERS:
+        if split[loc].upper() in const.PA_ORGANIZATION_IDENTIFIERS:
             return "ORGANIZATION"
         loc += 1
     return "INDIVIDUAL"
@@ -86,46 +79,42 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
         encoding="latin-1",
         on_bad_lines="warn",
     )
-
+    
+    df["YEAR"] = year
+    df["FILER_ID"] = df["FILER_ID"].astype("str")
     dir = data_filepath.split("/")
     file_type = dir[len(dir) - 1]
 
     if "contrib" in file_type:
         df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
-        df["YEAR"] = year
         df["CONTRIBUTOR"] = df["CONTRIBUTOR"].astype("str")
         df["CONTRIBUTOR_TYPE"] = df["CONTRIBUTOR"].apply(classify_contributor)
+        df.drop(columns={"ADDRESS_1","ADDRESS_2","CITY","STATE","ZIPCODE",
+                        "OCCUPATION","E_NAME","E_ADDRESS_1","E_ADDRESS_2",
+                        "E_CITY","E_STATE","E_ZIPCODE","SECTION","CYCLE",
+                        "CONT_DATE_1", "CONT_DATE_2","CONT_DATE_3"},
+                        inplace=True)
+        
         if "TIMESTAMP" in df.columns:
-            df = df.drop(columns="TIMESTAMP")
+            df.drop(columns={"TIMESTAMP","REPORTER_ID"}, inplace=True)
 
-        df.rename(
-            columns={
-                "ADDRESS_1": "CONTRIB_ADDRESS_1",
-                "ADDRESS_2": "CONTRIB_ADDRESS_2",
-                "CITY": "CONTRIB_CITY",
-                "STATE": "CONTRIB_STATE",
-                "ZIPCODE": "CONTRIB_ZIPCODE",
-                "CYCLE": "CONTRIB_CYCLE_CODE",
-            },
-            inplace=True,
-        )
         return df
 
     elif "filer" in file_type:
-        df = df.drop(columns="YEAR")
-        df.rename(
-            columns={
-                "CYCLE": "FILER_CYCLE_CODE",
-                "ADDRESS_1": "FILER_ADDRESS_1",
-                "ADDRESS_2": "FILER_ADDRESS_2",
-                "CITY": "FILER_CITY",
-                "STATE": "FILER_STATE",
-                "ZIPCODE": "FILER_ZIPCODE",
-            },
-            inplace=True,
-        )
+        df.drop(columns={"YEAR","CYCLE","AMEND","TERMINATE","DISTRICT",
+                        "ADDRESS_1","ADDRESS_2","CITY","STATE","ZIPCODE",
+                        "COUNTY","PHONE","BEGINNING",}, inplace=True)
+        if "TIMESTAMP" in df.columns:
+            df.drop(columns={"TIMESTAMP","REPORTER_ID"}, inplace=True)
+        
         return df
     elif "expense" in file_type:
+        df.drop(columns={"EXPENSE_CYCLE","EXPENSE_ADDRESS_1",
+                              "EXPENSE_ADDRESS_2","EXPENSE_CITY","EXPENSE_STATE",
+                              "EXPENSE_ZIPCODE"}, inplace=True)
+        if "EXPENSE_REPORTER_ID" in df.columns:
+            df.drop(columns={"EXPENSE_TIMESTAMP","EXPENSE_REPORTER_ID"}, 
+                    inplace=True)
         return df
     else:
         raise ValueError(
@@ -196,13 +185,6 @@ def merge_same_year_datasets(
         The merged pandas dataframe
     """
     merged_df = pd.merge(cont_file, filer_file, how="left", on="FILER_ID")
-    merged_df.rename(
-        columns={
-            "REPORTER_ID_x": "CONTRIB_REPORTER_ID",
-            "REPORTER_ID_y": "FILER_REPORTED_ID",
-        },
-        inplace=True,
-    )
     return merged_df
 
 
