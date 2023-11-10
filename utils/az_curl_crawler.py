@@ -74,21 +74,6 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     the selected timeframe
     """
 
-    # a leftover from the selenium version, I think
-    # leave it in for now in case we go back
-    # url = (
-    #     """https://seethemoney.az.gov/Reporting/Explore#
-    # JurisdictionId=0%7CPage|Page="""
-    #     + str(page)
-    #     + """|startYear
-    # ="""
-    #     + str(start_year)
-    #     + """|endYear="""
-    #     + str(end_year)
-    #     + """|IsLessActive=false|ShowOfficeHolder=false|
-    #     View=Detail|TablePage=1|TableLength=500000"""
-    # )
-
     params = parametrize(page, start_year, end_year)
     res = scrape(params, AZ_head, AZ_base_data)
     results = res.json()
@@ -172,7 +157,6 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
     return requests.post(
         "https://seethemoney.az.gov/Reporting/GetNEWTableData/",
         params=params,
-        # cookies=cookies,
         headers=AZ_head,
         data=AZ_base_data,
     )
@@ -200,7 +184,6 @@ def detailed_scrape(detailed_params: dict) -> requests.models.Response:
     return requests.post(
         "https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData/",
         params=detailed_params,
-        # cookies=cookies,
         headers=AZ_head,
         data=AZ_base_data,
     )
@@ -241,7 +224,7 @@ def parametrize(
         "startYear": str(start_year),
         "endYear": str(end_year),
         "JurisdictionId": "0|Page",  # we keep this in here,
-        # but don't use it, not sure what it does?
+        # but don't use it, don't need to be fine-toothed
         "TablePage": str(table_page),
         "TableLength": str(table_length),
         "ChartName": str(page),
@@ -289,7 +272,7 @@ def detailed_parametrize(
         "startYear": str(start_year),
         "endYear": str(end_year),
         "JurisdictionId": "0|Page",  # we keep this in here,
-        # but don't use it, not sure what it does?
+        # but don't use it, don't need to be fine-toothed
         "TablePage": str(table_page),
         "TableLength": str(table_length),
         "Name": "1~" + str(entity_id),  # these two get used
