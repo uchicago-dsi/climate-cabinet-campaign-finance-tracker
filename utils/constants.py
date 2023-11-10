@@ -187,4 +187,3 @@ AZ_base_data = {
     "search[value]": "",
     "search[regex]": "false",
 }
-
