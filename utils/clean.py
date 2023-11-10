@@ -4,7 +4,6 @@ import pandas as pd
 
 from utils.cleaner_utils import convert_date
 
-
 class StateCleaner(ABC):
     """
     This abstract class is the one that all the state cleaners will be built on
@@ -118,23 +117,3 @@ class StateCleaner(ABC):
         # should run create tables, which runs through the functions above
         # to preprocess, clean, standardizes and create the following tables
         # (invividuals_table, organizations_table, transactions_table)
-
-
-class AzCleaner(StateCleaner):
-    """This class is based on the StateCleaner abstract class,
-    and cleans Arizona data"""
-
-    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
-        """Reads in arizona files and does some basic processing"""
-
-        df_list = []
-
-        for file in filepaths_list:
-            df_list.append(pd.read_csv(file))
-
-        return df_list
-
-    def clean(self):
-        """This function cleans arizona dataframes"""
-        # cleans transactions dates
-        self["TransactionDate"] = self["TransactionDate"].apply(convert_date)
