@@ -2,7 +2,6 @@ import pandas as pd
 
 
 def pre_process_az():
-
     inds_14_22 = pd.read_csv("inds_14_22.csv")
     pac_14_22 = pd.read_csv("pac_14_22.csv")
     org_14_22 = pd.read_csv("org_14_22.csv")
