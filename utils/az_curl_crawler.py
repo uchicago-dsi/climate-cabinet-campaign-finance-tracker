@@ -284,7 +284,6 @@ def detailed_parametrize(
     }
 
 
-# roll this into detailed_scrape?
 def info_scrape(detailed_params: dict) -> requests.models.Response:
     """Scrape the name and filer information of individuals and organizations"""
 
