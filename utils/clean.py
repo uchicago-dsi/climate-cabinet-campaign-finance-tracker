@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-from utils.cleaner_utils import convert_date
-
 
 class StateCleaner(ABC):
     """
