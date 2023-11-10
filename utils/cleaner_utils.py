@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 
 
-def convert_date(date_str: str):
+def convert_date(date_str: str) -> datetime.utcfromtimestamp:
     """Reformat UNIX timestamp"""
     timestamp_match = re.match(r"/Date\((\d+)\)/", date_str)
     if timestamp_match:
