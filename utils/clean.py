@@ -2,6 +2,14 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from utils import (
+    az_individuals_convert,
+    az_organizations_convert,
+    az_transactions_convert,
+    convert_date,
+    name_clean,
+)
+
 
 class StateCleaner(ABC):
     """
@@ -116,3 +124,45 @@ class StateCleaner(ABC):
         # should run create tables, which runs through the functions above
         # to preprocess, clean, standardizes and create the following tables
         # (invividuals_table, organizations_table, transactions_table)
+
+
+class AzCleaner(StateCleaner):
+    """This class is based on the StateCleaner abstract class,
+    and cleans Arizona data"""
+
+    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
+        """Reads in arizona files and does some basic processing"""
+
+        df_list = []
+
+        for file in filepaths_list:
+            df_list.append(pd.read_csv(file))
+
+        return df_list
+
+    def clean_state(self):
+        """Clean the arizona dataframes
+
+        Call on the list of four preprocessed dataframes
+
+        """
+
+        # cleans transactions dates
+        self[0]["TransactionDate"] = self[0]["TransactionDate"].apply(convert_date)
+
+        self[0] = name_clean(self[0])
+
+        az_transactions = az_transactions_convert(self[0])
+
+        az_individuals = az_individuals_convert(self[3])
+
+        az_organizations = az_organizations_convert(self[3])
+
+        return az_transactions, az_individuals, az_organizations
+
+        # if it's bla1, apply convert? this .clean is getting called on what, individual
+
+
+# convert transactions table into our proper transactions table
+
+# code for converting transactions table from bla1
