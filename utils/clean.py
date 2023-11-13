@@ -48,7 +48,7 @@ class StateCleaner(ABC):
         pass
 
     @abstractmethod
-    def clean(self, merged_campaign_df: pd.Dataframe) -> pd.DataFrame:
+    def clean(self, merged_campaign_df: pd.DataFrame) -> pd.DataFrame:
         """Cleans the state dataframe as needed and returns the dataframe
 
         Cleans the columns and converts the dtyes as needed to return one
@@ -92,7 +92,7 @@ class StateCleaner(ABC):
 
     @abstractmethod
     def create_tables(
-        self, standardized_df: pd.Dataframe
+        self, standardized_df: pd.DataFrame
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """
         Creates the Individuals, ORganizations, and Transactions tables from
@@ -117,7 +117,7 @@ class StateCleaner(ABC):
                 defined per state.
 
         Returns: cleans the state and returns the standardized Inidividuals,
-                            Organizations, and Transactions tables in a tuple
+        Organizations, and Transactions tables in a tuple
         """
         # initial_dataframes = self.preprocess(filepaths_list)
 
@@ -143,16 +143,25 @@ class AzCleaner(StateCleaner):
     def clean_state(self):
         """Clean the arizona dataframes
 
-        Call on the list of four preprocessed dataframes
+        args: list fo four preprocessed dataframes
+
+        returns: three schema-compliant tables for
+        transactions, individuals, and organizations
 
         """
 
         # cleans transactions dates
         self[0]["TransactionDate"] = self[0]["TransactionDate"].apply(convert_date)
 
-        self[0] = name_clean(self[0])
+        self[3] = name_clean(self[3])
 
         az_transactions = az_transactions_convert(self[0])
+
+        # at present, it is not clear how to distinguish between
+        # tables detailing individuals and organizations
+        # based only on the information
+        # plan to pipe in this information from elsewhere
+        # but not yet implemented
 
         az_individuals = az_individuals_convert(self[3])
 
@@ -160,9 +169,13 @@ class AzCleaner(StateCleaner):
 
         return az_transactions, az_individuals, az_organizations
 
-        # if it's bla1, apply convert? this .clean is getting called on what, individual
+    def standardize():
+        """standardize names of entities"""
 
+    def clean(df: pd.DataFrame) -> pd.DataFrame:
+        """clean the contents of the columns
+        and make them the right dtypes
 
-# convert transactions table into our proper transactions table
+        also make everything lowercase
 
-# code for converting transactions table from bla1
+        """

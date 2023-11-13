@@ -33,7 +33,7 @@ def az_wrapper(
     else:
         det = detailed_wrapper_director(page)
         agg_df = scrape_wrapper(det, start_year, end_year)
-        entities = entities = agg_df["EntityID"]
+        entities = agg_df["EntityID"]
 
         return detailed_scrape_wrapper(entities, page, start_year, end_year)
 
@@ -127,7 +127,7 @@ def detailed_scrape_wrapper(
         info_table = info.json()
         entity_names.append(entity_name)
         committee_names.append(committee_name)
-        info_dfs.append(pd.DataFrame(data=info_table[["ReportFilerInfo"]]))
+        info_dfs.append(pd.DataFrame(data=info_table)[["ReportFilerInfo"]])
 
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
@@ -312,3 +312,42 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     )
 
     return entity_name_response, committee_name_response, info_response
+
+
+def info_process(info_df):
+    """ """
+
+    l2 = []
+    for i in range(int(len(info_df) / 20)):
+        it = 20 * i
+        lst = []
+
+        for i in range(20):
+            lst.append(info_df[it : it + 20].values[i][0])
+        l2.append(lst)
+
+    dat = pd.DataFrame(l2)
+    dat.columns = [
+        "candidate",
+        "candidate_email",
+        "candidate_phone",
+        "chairman",
+        "committee_address",
+        "committee_name",
+        "committee_type_name",
+        "county_name",
+        "designee",
+        "email",
+        "last_amended_date",
+        "last_filed_date",
+        "mailing_address",
+        "master_committee_id",
+        "office_name",
+        "party_name",
+        "phone_number",
+        "registration_date",
+        "status",
+        "treasurer",
+    ]
+
+    return dat
