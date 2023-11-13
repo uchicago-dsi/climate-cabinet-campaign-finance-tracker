@@ -96,10 +96,10 @@ def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
     states_list = []
     for i in df["committee_address"].str.split(" "):
         abb = i[-2]
-        if abb not in state_abbreviations:
+        if abb.upper() not in state_abbreviations:
             states_list.append(None)
         else:
-            states_list.append(i[-2])
+            states_list.append(i[-2].upper())
 
     d = {
         "id": df["master_committee_id"],
@@ -132,10 +132,10 @@ def az_organizations_convert(df):
     states_list = []
     for i in df["committee_address"].str.split(" "):
         abb = i[-2]
-        if abb not in state_abbreviations:
+        if abb.upper() not in state_abbreviations:
             states_list.append(None)
         else:
-            states_list.append(i[-2])
+            states_list.append(i[-2].upper())
 
     d = {
         "id": df["master_committee_id"],
