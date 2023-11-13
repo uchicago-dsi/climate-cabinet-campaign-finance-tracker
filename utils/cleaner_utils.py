@@ -92,12 +92,16 @@ def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
 
     last_name = names.iloc[:, 0]
 
+    states_list = []
+    for i in df["committee_address"].str.split(" "):
+        states_list.append(i[-2])
+
     d = {
         "id": df["master_committee_id"],
         "first_name": first_name,
         "last_name": last_name,
-        "full_name": first_name + " " + last_name,  # full_name,
-        # 'state': df[""], #pipe in from elsewhere? TransactionState?
+        "full_name": first_name + " " + last_name,
+        "state": states_list,
         "party": df["party_name"],
         # 'company': df[""] #pipe in from TransactionEmployer?
     }
@@ -120,10 +124,14 @@ def az_organizations_convert(df):
 
     """
 
+    states_list = []
+    for i in df["committee_address"].str.split(" "):
+        states_list.append(i[-2])
+
     d = {
         "id": df["master_committee_id"],
         "name": df["candidate"],
-        # 'state': df[""], #pipe in from elsewhere? TransactionState?
+        "state": states_list,
         "entity_type": df["committee_type_name"],
     }
 
