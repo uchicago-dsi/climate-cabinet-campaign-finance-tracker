@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 
 import pandas as pd
+from constants import state_abbreviations
 
 
 def convert_date(date_str: str) -> datetime.utcfromtimestamp:
@@ -94,7 +95,11 @@ def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
 
     states_list = []
     for i in df["committee_address"].str.split(" "):
-        states_list.append(i[-2])
+        abb = i[-2]
+        if abb not in state_abbreviations:
+            states_list.append(None)
+        else:
+            states_list.append(i[-2])
 
     d = {
         "id": df["master_committee_id"],
@@ -126,7 +131,11 @@ def az_organizations_convert(df):
 
     states_list = []
     for i in df["committee_address"].str.split(" "):
-        states_list.append(i[-2])
+        abb = i[-2]
+        if abb not in state_abbreviations:
+            states_list.append(None)
+        else:
+            states_list.append(i[-2])
 
     d = {
         "id": df["master_committee_id"],
