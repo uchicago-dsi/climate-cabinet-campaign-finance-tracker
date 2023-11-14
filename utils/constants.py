@@ -43,3 +43,84 @@ MI_CONTRIBUTION_COLUMNS = [
     "aggregate",
     "extra_desc",
 ]
+
+MN_CANDIDATE_CONTRIBUTION_COL = [
+    "OfficeSought",
+    "Party",
+    "CandRegNumb",
+    "CandFirstName",
+    "CandLastName",
+    "DonationDate",
+    "DonorType",
+    "DonorName",
+    "DonationAmount",
+    "InKindDonAmount",
+    "InKindDescriptionText",
+]
+
+MN_CANDIDATE_CONTRIBUTION_MAP = {
+    "OfficeSought": "office_sought",
+    "Party": "party",
+    "CandRegNumb": "recipient_id",
+    "CandFirstName": "recipient_first_name",
+    "CandLastName": "recipient_last_name",
+    "DonationDate": "date",
+    "DonorType": "donor_type",
+    "DonorName": "donor_full_name",
+    "DonationAmount": "amount",
+    "InKindDonAmount": "inkind_amount",
+    "InKindDescriptionText": "purpose",
+}
+
+MN_NONCANDIDATE_CONTRIBUTION_COL = [
+    "PCFRegNumb",
+    "Committee",
+    "ETType",
+    "DonationDate",
+    "DonorType",
+    "DonorRegNumb",
+    "DonorName",
+    "DonationAmount",
+    "InKindDonAmount",
+    "InKindDescriptionText",
+]
+
+MN_NONCANDIDATE_CONTRIBUTION_MAP = {
+    "PCFRegNumb": "recipient_id",
+    "Committee": "recipient_full_name",
+    "ETType": "recipient_type",
+    "DonationDate": "date",
+    "DonorType": "donor_type",
+    "DonorRegNumb": "donor_id",
+    "DonorName": "donor_full_name",
+    "DonationAmount": "amount",
+    "InKindDonAmount": "inkind_amount",
+    "InKindDescriptionText": "purpose",
+}
+
+MN_INDEPENDENT_EXPENDITURE_COL = [
+    "Spender",
+    "Spender Reg Num",
+    "Spender type",
+    "Affected Comte Name",
+    "Affected Cmte Reg Num",
+    "For /Against",
+    "Date",
+    "Type",
+    "Amount",
+    "Purpose",
+    "Vendor State",
+]
+
+MN_INDEPENDENT_EXPENDITURE_MAP = {
+    "Spender": "donor_full_name",
+    "Spender Reg Num": "donor_id",
+    "Spender type": "donor_type",
+    "Affected Comte Name": "recipient_full_name",
+    "Affected Cmte Reg Num": "recipient_id",
+    "Date": "date",
+    "Amount": "amount",
+    "Purpose": "purpose",
+    "Type": "transaction_type",
+    "Vendor State": "state",
+}

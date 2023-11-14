@@ -40,7 +40,7 @@ class StateCleaner(ABC):
         pass
 
     @abstractmethod
-    def clean(self, merged_campaign_df: pd.Dataframe) -> pd.DataFrame:
+    def clean(self, df: pd.DataFrame) -> pd.DataFrame:
         """Cleans the state dataframe as needed and returns the dataframe
 
         Cleans the columns and converts the dtyes as needed to return one
@@ -55,7 +55,7 @@ class StateCleaner(ABC):
         pass
 
     @abstractmethod
-    def standardize(self, cleaned_dataframe: pd.DataFrame) -> pd.DataFrame:
+    def standardize(self, df: pd.DataFrame) -> pd.DataFrame:
         """Standardizes the dataframe into the necessary format for the schema
 
         Inputs:
@@ -67,24 +67,24 @@ class StateCleaner(ABC):
         """
         pass
 
-    def standardize_entity_names(self, entity_table: pd.DataFrame) -> pd.DataFrame:
+    def standardize_entity_names(self, entity: pd.DataFrame) -> pd.DataFrame:
         """Creates a new 'standard_entity_type' column from 'raw_entity_type'
         Args:
             entity_table: an entity dataframe containing 'raw_entity_type'
 
-                Returns: entity_table with 'standard_entity_type created from the
+        Returns: entity_table with 'standard_entity_type created from the
             entity_name_dictionary
         """
-        entity_table["standard_entity_type"] = entity_table["raw_entity_type"].map(
+        entity["standard_entity_type"] = entity["raw_entity_type"].map(
             lambda raw_entity_type: self.entity_name_dictionary.get(
                 raw_entity_type, None
             )
         )
-        return entity_table
+        return entity
 
     @abstractmethod
     def create_tables(
-        self, standardized_df: pd.Dataframe
+        self, standardized_df: pd.DataFrame
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """
         Creates the Individuals, ORganizations, and Transactions tables from
