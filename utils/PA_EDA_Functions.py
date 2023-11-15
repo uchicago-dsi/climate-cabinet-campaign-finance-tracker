@@ -71,6 +71,7 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
     """
     df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
     df["CONTRIBUTOR"] = df["CONTRIBUTOR"].astype("str")
+    df["CONTRIBUTOR"] = df["CONTRIBUTOR"].str.upper()
     df["CONTRIBUTOR_TYPE"] = df["CONTRIBUTOR"].apply(classify_contributor)
     df.drop(
         columns={

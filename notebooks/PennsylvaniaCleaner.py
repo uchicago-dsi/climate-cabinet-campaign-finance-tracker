@@ -28,6 +28,8 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             a list containing a single dataframe. Otherwise a list of three
             DataFrames that represent [transactions, individuals, organizations]
         """
+        # desired column names: 
+
         for path in filepaths_list:
             dir = path.split("_")
             year = dir[len(dir) - 1].replace(".txt","")
