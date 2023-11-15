@@ -114,7 +114,6 @@ def detailed_scrape_wrapper(
 
     detail_dfs = []
     entity_names = []
-    committee_names = []
     info_dfs = []
 
     for d_param in d_params:
@@ -123,16 +122,14 @@ def detailed_scrape_wrapper(
         detail_dfs.append(pd.DataFrame(data=results["data"]))
 
     for info_param in info_params:
-        entity_name, committee_name, info = info_scrape(info_param)
+        entity_name, info = info_scrape(info_param)
         info_table = info.json()
         entity_names.append(entity_name)
-        committee_names.append(committee_name)
         info_dfs.append(pd.DataFrame(data=info_table)[["ReportFilerInfo"]])
 
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
         entity_names,
-        committee_names,
         pd.concat(info_dfs).reset_index().drop(columns={"index"}),
     )
 
@@ -296,22 +293,13 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     if str(entity_name_response.json()) == "  ":
         entity_name_response = None
 
-    committee_name_response = requests.get(
-        "https://seethemoney.az.gov/Reporting/GetCommitteeName/",
-        params=detailed_params,
-        headers=AZ_head,
-    )
-
-    if str(committee_name_response) == "<Response [500]>":
-        committee_name_response = None
-
     info_response = requests.post(
         "https://seethemoney.az.gov/Reporting/GetDetailedInformation",
         params=detailed_params,
         headers=AZ_head,
     )
 
-    return entity_name_response, committee_name_response, info_response
+    return entity_name_response, info_response
 
 
 def info_process(info_df):
