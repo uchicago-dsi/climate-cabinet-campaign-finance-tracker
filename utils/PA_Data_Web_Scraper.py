@@ -1,5 +1,6 @@
 import zipfile
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 import requests
@@ -7,6 +8,13 @@ from bs4 import BeautifulSoup as BS
 
 from utils import constants as const
 
+# resolve to the path of the current python file
+curr_python_file = Path(__file__).resolve()
+# repo_root will be the absolute path to the root of the repository,
+# no matter where the repository is. 
+# For pathlib Path objects, `.parent` gets the parent directory and `/`
+# can be used like `/` in unix style paths.
+repo_root = curr_python_file.parent.parent
 
 def make_request(website_url: str) -> object:
     """makes a HTTML request to the specified url, whose data is pulled out into
@@ -38,4 +46,6 @@ def download_PA_data(start_year: int, end_year: int):
         req = requests.get(link)
 
         zippedfiles = zipfile.ZipFile(BytesIO(req.content))
-        zippedfiles.extractall("../data")
+        for zippedfile in zippedfiles.infolist():
+            zippedfile.filename = zippedfile.filename.replace(".txt","_"+str(year)+".txt")
+            zippedfiles.extract(zippedfile,"../data")

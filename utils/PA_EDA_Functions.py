@@ -88,9 +88,13 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
             "E_ZIPCODE",
             "SECTION",
             "CYCLE",
+            "CONT_DESCRIP",
             "CONT_DATE_1",
+            "CONT_AMT_1",
             "CONT_DATE_2",
+            "CONT_AMT_2",
             "CONT_DATE_3",
+            "CONT_AMT_3",
         },
         inplace=True,
     )
@@ -195,6 +199,7 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
 
     df["YEAR"] = year
     df["FILER_ID"] = df["FILER_ID"].astype("str")
+    df["FILER_ID"] = "PA_" + df["FILER_ID"]
     dir = data_filepath.split("/")
     file_type = dir[len(dir) - 1]
 
