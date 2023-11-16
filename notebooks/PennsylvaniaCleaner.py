@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+
 import pandas as pd
 
-from utils import clean
-from utils import constants
 from utils import PA_Data_Web_Scraper as scrape
 from utils import PA_EDA_Functions as eda
+from utils import clean, constants
+
 
 class PennsylvaniaCleaner(clean.StateCleaner):
 
@@ -28,7 +29,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             a list containing a single dataframe. Otherwise a list of three
             DataFrames that represent [transactions, individuals, organizations]
         """
-        # desired column names: 
+        # desired column names:
 
         for path in filepaths_list:
             dir = path.split("_")
@@ -38,13 +39,13 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             contributor_datasets, filer_datasets, expense_datasets = [],[],[]
             df = eda.initialize_PA_dataset(path, year)
             if "contrib" in path:
-                contributor_datasets.append(df)                
+                contributor_datasets.append(df)
             elif "filer" in path:
                 filer_datasets.append(df)
             elif "expense" in path:
                 expense_datasets.append(df)
             else:
-                   # do nothing 
+                   # do nothing
 
         pass
 
