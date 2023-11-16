@@ -1,18 +1,17 @@
-from clean import StateCleaner
-import pandas as pd
-import numpy as np
-from collections import defaultdict
 import uuid
+import warnings
+
+import numpy as np
+import pandas as pd
+from clean import StateCleaner
 from constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
-    MN_NONCANDIDATE_CONTRIBUTION_COL,
-    MN_INDEPENDENT_EXPENDITURE_COL,
     MN_CANDIDATE_CONTRIBUTION_MAP,
-    MN_NONCANDIDATE_CONTRIBUTION_MAP,
+    MN_INDEPENDENT_EXPENDITURE_COL,
     MN_INDEPENDENT_EXPENDITURE_MAP,
+    MN_NONCANDIDATE_CONTRIBUTION_COL,
+    MN_NONCANDIDATE_CONTRIBUTION_MAP,
 )
-
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -300,11 +299,24 @@ class MNStateCleaner(StateCleaner):
     def clean_state(
         self, filepaths_list: list[str]
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+        preprocessed_df = self.preprocess(filepaths_list)
+        cleaned_df = self.clean(preprocessed_df)[0]
+        standardized_df = self.standardize(cleaned_df)
+        table1, table2, table3 = self.create_tables(standardized_df)
         pass
 
 
 mn_filepaths_lst = [
     "/project/data/cand_con.csv/AG.csv",
+    "/project/data/cand_con.csv/AP.csv",
+    "/project/data/cand_con.csv/DC.csv",
+    "/project/data/cand_con.csv/GC.csv",
+    "/project/data/cand_con.csv/House.csv",
+    "/project/data/cand_con.csv/SA.csv",
+    "/project/data/cand_con.csv/SC.csv",
+    "/project/data/cand_con.csv/Senate.csv",
+    "/project/data/cand_con.csv/SS.csv",
+    "/project/data/cand_con.csv/ST.csv",
     "/project/data/non_candidate_con.csv",
     "/project/data/independent_exp.csv",
 ]
@@ -314,4 +326,6 @@ if __name__ == "__main__":
 
     result = mn_cleaner.preprocess(mn_filepaths_lst)
     result_df = result[0]
-    print(result_df.columns)
+    clean_df = mn_cleaner.clean(result_df)[0]
+    standardized_df = mn_cleaner.standardize(clean_df)
+    print(clean_df.columns)
