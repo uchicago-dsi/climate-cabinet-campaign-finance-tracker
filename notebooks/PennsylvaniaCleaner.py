@@ -2,14 +2,14 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-from utils import PA_Data_Web_Scraper as scrape
+# from utils import PA_Data_Web_Scraper as scrape
 from utils import PA_EDA_Functions as eda
-from utils import clean, constants
+from utils import clean  # , constants
 
 
 class PennsylvaniaCleaner(clean.StateCleaner):
 
-   #filepaths_list = pd.read_csv(repo_root / "data" / "results.csv")
+    # filepaths_list = pd.read_csv(repo_root / "data" / "results.csv")
 
     @abstractmethod
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
@@ -33,10 +33,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         for path in filepaths_list:
             dir = path.split("_")
-            year = dir[len(dir) - 1].replace(".txt","")
+            year = dir[len(dir) - 1].replace(".txt", "")
             year = int(year)
 
-            contributor_datasets, filer_datasets, expense_datasets = [],[],[]
+            contributor_datasets, filer_datasets, expense_datasets = [], [], []
             df = eda.initialize_PA_dataset(path, year)
             if "contrib" in path:
                 contributor_datasets.append(df)
@@ -45,9 +45,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             elif "expense" in path:
                 expense_datasets.append(df)
             else:
-                   # do nothing
-
+                pass  # do nothing
         pass
+
 
 class StateCleaner(ABC):
     """TODO: what does this class represent? What does it do?"""
@@ -89,4 +89,4 @@ class StateCleaner(ABC):
         pass
 
 
-#class PACleaner(StateCleaner):
+# class PACleaner(StateCleaner):
