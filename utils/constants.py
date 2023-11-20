@@ -123,6 +123,21 @@ MN_INDEPENDENT_EXPENDITURE_MAP = {
     "Purpose": "purpose",
     "Type": "transaction_type",
     "Vendor State": "state",
+}
+
+MN_RACE_MAP = {
+    "GC": "Governor",
+    "AG": "Attorney General",
+    "SS": "Secretary of State",
+    "SA": "State Auditor",
+    "ST": "State Treasurer",
+    "Senate": "State Senator",
+    "House": "State Representative",
+    "SC": "State Supreme Court Justice",
+    "AP": "State Appeals Court Judge",
+    "DC": "State District Court Judge",
+}
+
 
 MI_EXPENDITURE_COLUMNS = [
     "doc_seq_no",

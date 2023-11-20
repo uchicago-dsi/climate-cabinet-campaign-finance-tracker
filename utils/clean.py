@@ -88,7 +88,6 @@ class StateCleaner(ABC):
         )
         return entity
 
-
     @abstractmethod
     def create_tables(
         self, data: list[pd.DataFrame]
