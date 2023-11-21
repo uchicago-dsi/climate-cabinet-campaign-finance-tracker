@@ -84,7 +84,7 @@ class StateCleaner(ABC):
         """Convert 'amount' column to a float representing value in USD
 
         Args:
-            transactions_table: must contain "amount" column
+            transactions_table: must contain "amount" column.
         """
         pass
 
