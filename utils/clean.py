@@ -131,7 +131,17 @@ class AzCleaner(StateCleaner):
     and cleans Arizona data"""
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
-        """Reads in arizona files and does some basic processing"""
+        """Reads in arizona files and does some basic processing
+
+        what gets passed into preprocess? List of as many files as we
+        can, of all types.
+
+        Might need to be nested list of files, transactions list,
+        individuals list, organizations list, with varying number of files in each
+
+        or rather, transactions files, name files,
+
+        """
 
         df_list = []
 
@@ -151,9 +161,12 @@ class AzCleaner(StateCleaner):
         """
 
         # cleans transactions dates
-        self[0]["TransactionDate"] = self[0]["TransactionDate"].apply(convert_date)
+        try:
+            self[0]["TransactionDate"] = self[0]["TransactionDate"].apply(convert_date)
+        except TypeError:
+            self[0]["TransactionDate"] = self[0]["TransactionDate"]
 
-        self[3] = name_clean(self[3])
+        self[2] = name_clean(self[2])
 
         az_transactions = az_transactions_convert(self[0])
 
@@ -163,14 +176,23 @@ class AzCleaner(StateCleaner):
         # plan to pipe in this information from elsewhere
         # but not yet implemented
 
-        az_individuals = az_individuals_convert(self[3])
+        # az_individuals = az_individuals_convert(self[2], self[3])
+        az_individuals = az_individuals_convert(self[0], self[1], self[2])
 
-        az_organizations = az_organizations_convert(self[3])
+        # az_organizations = az_organizations_convert(self[3])
+        az_organizations = az_organizations_convert(self[0], self[2])
 
         return az_transactions, az_individuals, az_organizations
 
     def standardize():
         """standardize names of entities"""
+
+        # entity_name_dictionary = {
+        #     "Organizations": "Company",
+        #     "PACs": "Committee",
+        #     "Parties": "Party",
+        #     "": "",
+        # }
 
     def clean(df: pd.DataFrame) -> pd.DataFrame:
         """clean the contents of the columns

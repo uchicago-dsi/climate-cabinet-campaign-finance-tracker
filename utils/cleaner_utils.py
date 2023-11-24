@@ -68,7 +68,9 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(data=d)
 
 
-def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
+def az_individuals_convert(
+    transactions: pd.DataFrame, names: list, df: pd.DataFrame
+) -> pd.DataFrame:
     """Make individuals detail table schema compliant
 
     INCOMPLETE
@@ -87,34 +89,41 @@ def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
 
     """
 
-    names = df["candidate"].str.split(",", expand=True)  # .iloc[:, 0],
+    employers = (
+        transactions.groupby("CommitteeId")["TransactionEmployer"]
+        .apply(set)
+        .apply(list)
+        .values
+    )
 
-    first_name = names.iloc[:, 1:].fillna("").sum(axis=1)
+    entity_type = (
+        transactions.groupby("CommitteeId")["CommitteeGroupName"].apply(set).values
+    )
 
-    last_name = names.iloc[:, 0]
+    full_name = names
 
     states_list = []
     for i in df["committee_address"].str.split(" "):
-        abb = i[-2]
-        if abb.upper() not in state_abbreviations:
-            states_list.append(None)
+        if i is not None:
+            states_list.append(i[-2])
         else:
-            states_list.append(i[-2].upper())
+            states_list.append(None)
 
     d = {
         "id": df["master_committee_id"],
-        "first_name": first_name,
-        "last_name": last_name,
-        "full_name": first_name + " " + last_name,
+        "first_name": None,
+        "last_name": None,
+        "full_name": full_name,
+        "entity_type": entity_type,
         "state": states_list,
         "party": df["party_name"],
-        # 'company': df[""] #pipe in from TransactionEmployer?
+        "company": employers,
     }
 
     return pd.DataFrame(data=d)
 
 
-def az_organizations_convert(df):
+def az_organizations_convert(transactions: pd.DataFrame, df: pd.DataFrame):
     """Make organizations detail table schema compliant
 
     INCOMPLETE
@@ -128,20 +137,26 @@ def az_organizations_convert(df):
     returns: schema-compliant organizations dataframe
 
     """
+    entity_type = (
+        transactions.groupby("CommitteeId")["CommitteeGroupName"].apply(set).values
+    )
 
     states_list = []
     for i in df["committee_address"].str.split(" "):
-        abb = i[-2]
-        if abb.upper() not in state_abbreviations:
-            states_list.append(None)
+        if i is not None:
+            abb = i[-2]
+            if " " + abb.upper() + " " not in state_abbreviations:
+                states_list.append(None)
+            else:
+                states_list.append(i[-2].upper())
         else:
-            states_list.append(i[-2].upper())
+            states_list.append(None)
 
     d = {
         "id": df["master_committee_id"],
         "name": df["candidate"],
         "state": states_list,
-        "entity_type": df["committee_type_name"],
+        "entity_type": entity_type,  # df["committee_type_name"]
     }
 
     return pd.DataFrame(data=d)
