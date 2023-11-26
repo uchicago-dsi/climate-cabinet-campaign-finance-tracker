@@ -46,7 +46,8 @@ def read_contribution_data(filepath: str, columns: list) -> pd.DataFrame:
     Returns: df (Pandas DataFrame): dataframe of the MI campaign data
     """
     if filepath.endswith("00.txt"):
-        # MI files that contain 00 contain headers
+        # MI files that contain 00 or between 1998 and 2003 contain headers
+        # VALUES_TO_CHECK contains the years between 1998 and 2003
         df = pd.read_csv(
             filepath,
             delimiter="\t",
@@ -56,7 +57,6 @@ def read_contribution_data(filepath: str, columns: list) -> pd.DataFrame:
             low_memory=False,
             on_bad_lines="skip",
         )
-
     else:
         df = pd.read_csv(
             filepath,

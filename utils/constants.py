@@ -3,20 +3,18 @@ Constants to be used in various parts of the project
 """
 from pathlib import Path
 
-MI_FILEPATH = "../data/Contributions/"
+BASE_FILEPATH = Path.cwd()
 
-MI_VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
-
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
+#BASE_FILEPATH = Path.cwd().parent
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
 
 HEADERS = {"User-Agent": USER_AGENT}
 
-MI_EXP_FILEPATH = str(BASE_FILEPATH / "data" / "Expenditure")
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
 
-MI_CON_FILEPATH = str(BASE_FILEPATH / "data" / "Contribution")
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contribution"
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
@@ -288,6 +286,60 @@ MI_EXPENDITURE_COLUMNS = [
     "vend_zip",
     "gotv_ink_ind",
     "fundraiser",
+]
+
+MICHIGAN_CONTRIBUTION_COLS_REORDER = [
+    "doc_seq_no",
+    "page_no",
+    "contribution_id",
+    "cont_detail_id",
+    "doc_stmnt_year",
+    "doc_type_desc",
+    "common_name",
+    "com_type",
+    "can_first_name",
+    "can_last_name",
+    "contribtype",
+    "f_name",
+    "l_name_or_org",
+    "address",
+    "city",
+    "state",
+    "zip", 
+    "occupation",
+    "employer",
+    "amount",
+    "received_date",
+    "aggregate",
+    "extra_desc",
+    "amount"
+]
+
+MICHIGAN_CONTRIBUTION_COLS_RENAME = [
+    "doc_seq_no",
+    "page_no",
+    "contribution_id",
+    "cont_detail_id",
+    "doc_stmnt_year",
+    "doc_type_desc",
+    "com_legal_name",
+    "common_name",
+    "cfr_com_id",
+    "com_type",
+    "can_first_name",
+    "can_last_name",
+    "contribtype",
+    "f_name",
+    "l_name_or_org",
+    "address",
+    "city",
+    "state",
+    "zip",
+    "occupation",
+    "employer",
+    "received_date",
+    "amount",
+    "aggregate",
 ]
 
 
