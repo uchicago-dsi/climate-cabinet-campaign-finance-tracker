@@ -5,7 +5,7 @@ from pathlib import Path
 
 BASE_FILEPATH = Path.cwd()
 
-#BASE_FILEPATH = Path.cwd().parent
+# BASE_FILEPATH = Path.cwd().parent
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
@@ -305,14 +305,14 @@ MICHIGAN_CONTRIBUTION_COLS_REORDER = [
     "address",
     "city",
     "state",
-    "zip", 
+    "zip",
     "occupation",
     "employer",
     "amount",
     "received_date",
     "aggregate",
     "extra_desc",
-    "amount"
+    "amount",
 ]
 
 MICHIGAN_CONTRIBUTION_COLS_RENAME = [
