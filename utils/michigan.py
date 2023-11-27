@@ -1,5 +1,6 @@
 import uuid
 
+import numpy as np
 import pandas as pd
 
 from utils.clean import StateCleaner
@@ -19,7 +20,7 @@ from utils.preprocess_mi_campaign_data import (
 
 class MichiganCleaner(StateCleaner):
     entity_name_dictionary = {
-        "cfr_com_id": "com_id",
+        "cfr_com_id": "original_com_id",
         "f_name": "first_name",
         "l_name_or_org": "last_name",
         "employer": "company",
@@ -255,14 +256,14 @@ class MichiganCleaner(StateCleaner):
             + merged_contribution_dataframe["l_name_or_org"]
         )
 
-        merged_contribution_dataframe["full_name"] = merged_contribution_dataframe[
-            "full_name"
-        ].astype(str)
-        merged_contribution_dataframe = merged_contribution_dataframe[
-            merged_contribution_dataframe["full_name"].apply(
-                lambda x: isinstance(x, str)
-            )
-        ]
+        merged_contribution_dataframe["candidate_full_name"] = np.where(
+            merged_contribution_dataframe["can_first_name"].notna()
+            & merged_contribution_dataframe["can_last_name"].notna(),
+            merged_contribution_dataframe["can_first_name"]
+            + " "
+            + merged_contribution_dataframe["can_last_name"],
+            np.nan,
+        )
 
         return merged_contribution_dataframe
 
@@ -328,15 +329,6 @@ class MichiganCleaner(StateCleaner):
             + merged_expenditure_dataframe["l_name_or_org"]
         )
 
-        merged_expenditure_dataframe["full_name"] = merged_expenditure_dataframe[
-            "full_name"
-        ].astype(str)
-        merged_expenditure_dataframe = merged_expenditure_dataframe[
-            merged_expenditure_dataframe["full_name"].apply(
-                lambda x: isinstance(x, str)
-            )
-        ]
-
         return merged_expenditure_dataframe
 
     def standardize(
@@ -357,9 +349,7 @@ class MichiganCleaner(StateCleaner):
             a list containing a single dataframe. Otherwise a list of three
             DataFrames that represent [transactions, individuals, organizations]
         """
-        # contribution_dataframe, expenditure_dataframe = cleaned_dataframe_lst
-
-        contribution_dataframe, expenditure_dataframe = self.add_uuid(
+        contribution_dataframe, expenditure_dataframe = self.add_uuid_columns(
             cleaned_dataframe_lst
         )
 
@@ -368,47 +358,74 @@ class MichiganCleaner(StateCleaner):
 
         return [contribution_dataframe, expenditure_dataframe]
 
-    # TODO: Helper methods for standardize are below
+    # Helper methods for standardize are below
 
-    def add_uuid(self, cleaned_dataframe_lst: list[pd.DataFrame]) -> list[pd.DataFrame]:
-        """Create unique identifiers for organizations and individuals
+    def add_uuid_columns(
+        self, cleaned_dataframe_lst: list[pd.DataFrame]
+    ) -> list[pd.DataFrame]:
+        """Generate a UUID for a pandas DataFrame
 
         Inputs:
-            cleaned_dataframe_lst:
-             a list of 1 or 3 dataframes as outputted from clean method.
+            merged_expenditure_dataframe: Merged Michigan campaign
+                expenditure or contribution dataframe
 
         Returns:
-            cleaned_dataframe_lst:
-             a list of 1 or 3 dataframes modified in place
+            merged_expenditure_dataframe: Merged Michigan campaign
+                expenditure or contribution dataframe modified in place
         """
         contribution_dataframe, expenditure_dataframe = cleaned_dataframe_lst
 
-        ind_org_uuid_mapping = {}
-
-        contribution_dataframe["ind_org_uuid"] = contribution_dataframe[
-            "full_name"
-        ].apply(lambda x: self.generate_uuid(x, ind_org_uuid_mapping)[0])
-        expenditure_dataframe["ind_org_uuid"] = expenditure_dataframe[
-            "full_name"
-        ].apply(lambda x: self.generate_uuid(x, ind_org_uuid_mapping)[0])
+        contribution_dataframe = self.generate_uuid(
+            contribution_dataframe,
+            ["full_name", "candidate_full_name", "com_legal_name"],
+        )
+        # generate uuid for contribution dataframe
+        expenditure_dataframe = self.generate_uuid(
+            expenditure_dataframe, ["full_name", "com_legal_name"]
+        )
+        # generate uuid for expenditure dataframe
 
         return [contribution_dataframe, expenditure_dataframe]
 
-    def generate_uuid(self, full_name: str, uuid_mapping: dict) -> tuple[str, dict]:
-        """Generate a UUID for the given full name and update the UUID mapping.
+    def generate_uuid(
+        self, merged_campaign_dataframe: pd.DataFrame, column_names: [str]
+    ) -> pd.DataFrame:
+        """Generates uuids for the pandas DataFrame based on the colummn names provided
+
+        Inputs:
+            merged_campaign_dataframe:  Merged Michigan campaign
+            expenditure or contribution dataframe
+        column_names: List of column names for which UUIDs will be generated
+
+        Returns:
+            merged_campaign_dataframe: Merged Michigan campaign
+            expenditure or contribution dataframe modified in place
+
+        """
+        for col_name in column_names:
+            non_null_values = merged_campaign_dataframe[
+                merged_campaign_dataframe[col_name].notnull()
+            ][col_name]
+
+            ids = {value: str(uuid.uuid4()) for value in non_null_values}
+
+            # Map the generated UUIDs to a new column in the DataFrame
+            merged_campaign_dataframe[
+                "{}_uuid".format(col_name)
+            ] = merged_campaign_dataframe[col_name].map(ids)
+
+        # add a step here to add this to a csv mapp?
+        return merged_campaign_dataframe
+
+    # TODO: IMPLEMENT THE CSV OUTPUT OF THE UUID MAPPING ABOVE
+    def create_mapping_csv():
+        """
 
         Inputs:
 
-        Returns:
+        Returns: None, Creates output/MI_ID_MAP.csv
         """
-        if full_name in uuid_mapping:
-            return uuid_mapping[full_name], uuid_mapping
-        else:
-            name_bytes = str(full_name).encode("utf-8")
-            new_uuid = str(uuid.uuid5(uuid.NAMESPACE_OID, name_bytes))
-            # Store the UUID in the mapping
-            uuid_mapping[full_name] = new_uuid
-            return new_uuid, uuid_mapping
+        pass
 
     def create_tables(
         self, data: list[pd.DataFrame]
@@ -429,17 +446,55 @@ class MichiganCleaner(StateCleaner):
 
         return (individuals_table, organizations_table, transactions_table)
 
-    def create_individuals_table(self, data: list[pd.DataFrame]) -> pd.DataFrame:
+    def filter_dataframe(
+        self, merged_campaign_dataframe: pd.DataFrame, column_name: str
+    ):
+        """Filters the inputted dataframe based on the column name
+
+        Inputs:
+
+        Returns:
+
+        """
+        filtered_df = merged_campaign_dataframe[
+            merged_campaign_dataframe[column_name].notnull()
+        ]
+
+        return filtered_df
+
+    # TODO: Helper functions for create_tables() are below
+
+    def create_individuals_table(
+        self, standardized_dataframe_lst: list[pd.DataFrame]
+    ) -> pd.DataFrame:
         """
         Creates the Individuals tables from the dataframe list outputted
         from standardize
+
+        Inputs:
+            standardized_dataframe_lst: a list of 1 or 3 dataframes as
+            outputted from standardize method.
+
+        Returns:
+            individuals_table: table as defined in database schema
         """
-        pass
+        # columns to add: id, first_name, last_name, full_name, entity_type,
+        # party, company
+        individuals_table = pd.DataFrame()
+        contribution_dataframe, expenditure_dataframe = standardized_dataframe_lst
+
+        individuals_table["full_name"] = contribution_dataframe["full_name"]
 
     def create_organizations_table(self, data: list[pd.DataFrame]) -> pd.DataFrame:
         """
         Creates the Organizations tables from the dataframe list outputted
         from standardize
+
+        Inputs:
+            data: a list of 1 or 3 dataframes as outputted from standardize method.
+
+        Returns:
+            organizations_table: table as defined in database schema
         """
         pass
 
@@ -447,6 +502,12 @@ class MichiganCleaner(StateCleaner):
         """
         Creates the Transactions tables from the dataframe list outputted
         from standardize
+
+        Inputs:
+            data: a list of 1 or 3 dataframes as outputted from standardize method.
+
+        Returns:
+            transactions_table: table as defined in database schema
         """
         pass
 
