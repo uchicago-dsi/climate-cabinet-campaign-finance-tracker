@@ -127,7 +127,7 @@ class StateCleaner(ABC):
         # (invividuals_table, organizations_table, transactions_table)
 
 
-class AzCleaner(StateCleaner):
+class ArizonaCleaner(StateCleaner):
     """This class is based on the StateCleaner abstract class,
     and cleans Arizona data"""
 
