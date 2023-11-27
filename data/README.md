@@ -72,14 +72,14 @@ contribution data and READMEs in a Google Drive for the duration of this project
 #### Minnesota Campaign Finance Data
 
 ##### Summary
-- The Minnesota Campaign Finance data are publicly available on the 
-[Minnesota Campaign Finance and Public Disclosure Board](https://cfb.mn.gov/reports-and-data/self-help/data-downloads/campaign-finance/) in csv format and has no anti-webscraping defenses. 
+- The Minnesota Campaign Finance data are available 
+[here](https://drive.google.com/drive/u/2/folders/1uA70woWDhTf3_0F8AbadDa_XIKraCeoc) in csv format and has no anti-webscraping defenses. 
 
-- However, there is an glitch in the data available through the Data Downloads page above: this dataset does not include contributions reported by the committees of candidates for State Court of Appeals Judge. Consequently, I have utilized an alternative dataset provided by the Minnesota Campaign Finance website developer. This dataset comprises 10 separate CSV files, each documenting contributions made to a specific recipient type from 1998 to 2023. I have consolidated these files into a single dataset to ensure comprehensive coverage.
+- The above dataset is provided by the Minnesota Campaign Finance website developer. This dataset comprises 10 separate CSV files, each documenting contributions made to a specific recipient type from 1998 to 2023. I have consolidated these files into a single dataset to ensure comprehensive coverage. This dataset also includes a non-candidate contribution dataset and an independent expenditure dataset.
 
 - The old dataset comprises itemized records of contributions and expenditures made since 2015, specifically including transactions exceeding $200, which aligns with the reporting threshold set at $200 in Minnesota campaign finance regulations. The new dataset itemizes all contributions to candidates from 1998 to 2023.
 
-- For the purpose of our project I will focus on contribution, not expenditure.
+- For the purpose of our project I will focus on contribution and independent expenditure.
 
 ##### Features
 - Races / Office Sought:
@@ -99,9 +99,8 @@ contribution data and READMEs in a Google Drive for the duration of this project
 - Trasactions required to report and itemize: Contributions received from any particular source in excess of $200 within a calendar year
 
 - Limitation:
-    1. This new dataset only covers contributions made to candidates, i.e., all recipients are candidates
-    2. Only covers contributions over 200$ by MN campaign finance regulation
-    3. This dataset only dates back to 1998. Pre-1998 is not digitized so access to that data is limited to paper reports.
+    1. Only covers contributions over 200$ by MN campaign finance regulation
+    2. This dataset only dates back to 1998. Pre-1998 is not digitized so access to that data is limited to paper reports.
 
 
 - Additional information: 
