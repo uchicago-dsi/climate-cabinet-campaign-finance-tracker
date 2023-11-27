@@ -15,7 +15,7 @@ def convert_date(date_str: str) -> datetime.utcfromtimestamp:
         return None  # Return None for invalid date formats
 
 
-def name_clean(df: pd.DataFrame) -> pd.DataFrame:
+def az_name_clean(df: pd.DataFrame) -> pd.DataFrame:
     """Replace empty 'candidate' value with 'committee_name' value
 
     Because in some cases the 'candidate' column of the tables,

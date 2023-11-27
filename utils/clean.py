@@ -5,10 +5,10 @@ from constants import entity_name_dictionary
 
 from utils import (
     az_individuals_convert,
+    az_name_clean,
     az_organizations_convert,
     az_transactions_convert,
     convert_date,
-    name_clean,
 )
 
 
@@ -102,7 +102,7 @@ class StateCleaner(ABC):
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """
         Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
-        
+
         Returns: use preprocess, clean, standardize, and create_tables methods
         to output (individuals_table, organizations_table, transactions_table)
         as defined in database schema
@@ -115,13 +115,13 @@ class StateCleaner(ABC):
         Returns: cleans the state and returns the standardized Inidividuals,
         Organizations, and Transactions tables in a tuple
         """
-        
+
         # initial_dataframes = self.preprocess(filepaths_list)
 
         # should run create tables, which runs through the functions above
         # to preprocess, clean, standardizes and create the following tables
         # (invividuals_table, organizations_table, transactions_table)
-        
+
         pass
 
 
@@ -129,24 +129,31 @@ class ArizonaCleaner(StateCleaner):
     """This class is based on the StateCleaner abstract class,
     and cleans Arizona data"""
 
-    def preprocess(self: list[str]) -> list[pd.DataFrame]:
+    def preprocess(filepaths: list[str]) -> list[pd.DataFrame]:
         """Turns filepaths into dataframes
 
         The input must be a list of valid filepaths which lead
         to pandas dataframes. Typically, these should be just two
         files: a transactions file and a details file, as
-        harvested by az_curl_crawler
+        harvested by az_curl_crawler. If these conditions are not
+        met, the rest of the pipeline will not work
+
+        args: list of two filepaths for dataframes,
+        transactions and details, in that order
+
+        returns: a list of two dataframes, transactions and details,
+        in that order
 
         """
 
         df_list = []
 
-        for filepath in self:
+        for filepath in filepaths:
             df_list.append(pd.read_csv(filepath))
 
         return df_list
 
-    def clean_state(self):
+    def clean_state(filepaths: list[str]) -> pd.DataFrame:
         """Calls the other methods in order
 
         args: list of two filepaths which lead to dataframes
@@ -156,7 +163,7 @@ class ArizonaCleaner(StateCleaner):
 
         """
 
-        transactions, details = self.preprocess()
+        transactions, details = ArizonaCleaner.preprocess(filepaths)
 
         # # cleans transactions dates
         # try:
@@ -180,18 +187,24 @@ class ArizonaCleaner(StateCleaner):
 
         # details["entity_type"] = entity_type
 
-        cleaned_transactions, cleaned_details = self.clean(transactions, details)
+        cleaned_transactions, cleaned_details = ArizonaCleaner.clean(
+            transactions, details
+        )
         # not sure the calling syntax is right here
 
-        cleaned_details = self.standardize(cleaned_details)
+        cleaned_details = ArizonaCleaner.standardize(cleaned_details)
 
-        az_transactions, az_individuals, az_organizations = self.create_tables(
-            cleaned_transactions, cleaned_details
-        )
+        (
+            az_transactions,
+            az_individuals,
+            az_organizations,
+        ) = ArizonaCleaner.create_tables(cleaned_transactions, cleaned_details)
 
         return az_transactions, az_individuals, az_organizations
 
-    def create_tables(cs_transactions, cs_details):
+    def create_tables(
+        cs_transactions: pd.DataFrame, cs_details: pd.DataFrame
+    ) -> (pd.DataFrame):
         """split up cleaned and standardized tables to undergo final formatting
 
         We split up the details tables into individuals (individual contributors
@@ -199,7 +212,10 @@ class ArizonaCleaner(StateCleaner):
         conversion into fully schema-compatible transactions, individual details
         and organization details tables.
 
-        args: cleaned tr
+        args: cleaned and standardized transactions and details tables
+
+        returns: three tables for transactions,
+        individual details, and organization details
 
         """
 
@@ -231,11 +247,16 @@ class ArizonaCleaner(StateCleaner):
 
         return az_transactions, az_individuals, az_organizations
 
-    def standardize(df):
+    def standardize(details_df: pd.DataFrame) -> pd.DataFrame:
         """standardize names of entities
 
         takes in details dataframe and replaces the names of
         organization types to fit into the schema when appropriate
+
+        args: details dataframe
+
+        returns: details dataframe with relevant entity type
+        names replaced by those for the regular schema
         """
 
         # entity_name_dictionary = {
@@ -244,15 +265,22 @@ class ArizonaCleaner(StateCleaner):
         #     'Parties': 'Party',
         #     'Vendors': 'Vendor',
         # }
-        df.replace({"entity_type": entity_name_dictionary}, inplace=True)
+        details_df.replace({"entity_type": entity_name_dictionary}, inplace=True)
 
-        return df
+        return details_df
 
     def clean(transactions: pd.DataFrame, details: pd.DataFrame) -> pd.DataFrame:
         """clean the contents of the columns
 
         transactions and details dataframes undergo cleaning of
-        transaction dates,
+        transaction dates, names are imputed to the right column,
+        and employer information is retrieved,
+
+        args: transactions and details dataframes
+
+        returns: cleaned transactions and details dataframes
+
+        INCOMPLETE
         and make them the right dtypes
 
         also make everything lowercase
@@ -267,7 +295,7 @@ class ArizonaCleaner(StateCleaner):
         except TypeError:
             transactions["TransactionDate"] = transactions["TransactionDate"]
 
-        details = name_clean(details)
+        details = az_name_clean(details)
 
         employer = (
             transactions.groupby("CommitteeId")["TransactionEmployer"]
@@ -285,4 +313,3 @@ class ArizonaCleaner(StateCleaner):
         details["entity_type"] = entity_type
 
         return transactions, details
-
