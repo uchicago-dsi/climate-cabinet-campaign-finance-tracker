@@ -131,9 +131,11 @@ def detailed_scrape_wrapper(
         pd.concat(info_dfs).reset_index().drop(columns={"index"})
     )
 
+    info_complete["retrieved_name"] = entity_names
+
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
-        entity_names,  #
+        # entity_names,
         info_complete,
     )
 

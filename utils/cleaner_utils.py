@@ -60,7 +60,8 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
         "donor_id": df["TransactionNameId"],
         "year": df["TransactionDateYear"],
         "amount": df["Amount"],
-        "recipient_id": df["CommitteeUniqueId"],
+        "recipient_id": df["CommitteeId"],
+        "office_sought": df["office_sought"],
         "purpose": df["Memo"],
         "transaction_type": df["TransactionType"],
     }
@@ -68,9 +69,7 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(data=d)
 
 
-def az_individuals_convert(
-    transactions: pd.DataFrame, names: list, df: pd.DataFrame
-) -> pd.DataFrame:
+def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
     """Make individuals detail table schema compliant
 
     INCOMPLETE
@@ -89,18 +88,17 @@ def az_individuals_convert(
 
     """
 
-    employers = (
-        transactions.groupby("CommitteeId")["TransactionEmployer"]
-        .apply(set)
-        .apply(list)
-        .values
-    )
+    #     employers = transactions.groupby("CommitteeId")[
+    #         "TransactionEmployer"].apply(set).apply(list).values
 
-    entity_type = (
-        transactions.groupby("CommitteeId")["CommitteeGroupName"].apply(set).values
-    )
+    #     entity_type = transactions.groupby("CommitteeId")[
+    #         "CommitteeGroupName"].apply(set).values
 
-    full_name = names
+    full_name = df["retrieved_name"]
+
+    employer = df["company"]
+
+    entity_type = df["entity_type"]
 
     states_list = []
     for i in df["committee_address"].str.split(" "):
@@ -117,13 +115,13 @@ def az_individuals_convert(
         "entity_type": entity_type,
         "state": states_list,
         "party": df["party_name"],
-        "company": employers,
+        "company": employer,
     }
 
     return pd.DataFrame(data=d)
 
 
-def az_organizations_convert(transactions: pd.DataFrame, df: pd.DataFrame):
+def az_organizations_convert(df: pd.DataFrame):
     """Make organizations detail table schema compliant
 
     INCOMPLETE
@@ -137,9 +135,10 @@ def az_organizations_convert(transactions: pd.DataFrame, df: pd.DataFrame):
     returns: schema-compliant organizations dataframe
 
     """
-    entity_type = (
-        transactions.groupby("CommitteeId")["CommitteeGroupName"].apply(set).values
-    )
+    #     entity_type = transactions.groupby("CommitteeId")[
+    #         "CommitteeGroupName"].apply(set).values
+
+    entity_type = df["entity_type"]
 
     states_list = []
     for i in df["committee_address"].str.split(" "):
