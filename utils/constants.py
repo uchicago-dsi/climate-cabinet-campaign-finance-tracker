@@ -142,7 +142,6 @@ MN_RACE_MAP = {
     "DC": "State District Court Judge",
 }
 
-=======
 PA_MAIN_URL = "https://www.dos.pa.gov"
 PA_ZIPPED_URL = (
     "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
@@ -309,6 +308,7 @@ PA_OFFICE_ABBREV_DICT: dict = {
     "OTH": "Other(local offices)",
 }
 PA_FILER_ABBREV_DICT: dict = {1.0: "Candidate", 2.0: "Committee", 3.0: "Lobbyist"}
+
 PA_ORGANIZATION_IDENTIFIERS: list = [
     "FRIENDS",
     "CITIZENS",
