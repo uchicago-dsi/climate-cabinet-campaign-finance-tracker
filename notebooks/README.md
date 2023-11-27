@@ -1,7 +1,10 @@
 ### Notebook directory
 
-This should contain information about what is done in each notebook
+* `MN_EDA.ipynb` : Notebook containing the EDA and visualizations for Minnesota 
 
+* `mi_campaign_eda.ipynb`: Notebook containing the EDA and visualizations for Michigan
+
+* `AZ_EDA` : Notebook containing the EDA and visualizations for Arizona 
 
 * `Test.ipynb` : This is a test notebook to demonstrate how to use this repository.
 
@@ -15,3 +18,4 @@ This should contain information about what is done in each notebook
 * `AZ_EDA` : A notebook containing the EDA and plots for Arizona. 
 
 * `PA_EDA.ipynb` : This notebook contains the EDA for Pennsylvania datasets on contributions, filer information, and expenditure data from 2018-2023.
+
