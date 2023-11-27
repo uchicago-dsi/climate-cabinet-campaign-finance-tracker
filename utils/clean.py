@@ -43,11 +43,11 @@ class StateCleaner(ABC):
     def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """Cleans the state dataframe as needed and returns the dataframe
 
-        Cleans the columns, converts dtypes to match database schema, and drops rows
-        not representing minimal viable transactions
+        Cleans the columns, converts dtypes to match database schema, and drops
+        rows not representing minimal viable transactions
 
         Inputs:
-                data: a list of 1 or 3 dataframes as outputted from preprocess method.
+            data: a list of 1 or 3 dataframes as output from preprocess method.
 
         Returns: a list of dataframes. If state data is all in one format
             (i.e. there are not separate individual and transaction tables),
@@ -60,8 +60,8 @@ class StateCleaner(ABC):
     def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """Standardizes the dataframe into the necessary format for the schema
 
-        Maps entity/office types and column names as defined in schema, adjust and add
-        UUIDs as necessary
+        Maps entity/office types and column names as defined in schema, adjust
+         and add UUIDs as necessary
 
         Inputs:
             data: a list of 1 or 3 dataframes as outputted from clean method.
@@ -97,7 +97,7 @@ class StateCleaner(ABC):
         the dataframe list outputted from standardize
 
         Inputs:
-            data: a list of 1 or 3 dataframes as outputted from standardize method.
+            data: a list of 1 or 3 dataframes as output from standardize method.
 
         Returns: (individuals_table, organizations_table, transactions_table)
                     tuple containing the tables as defined in database schema
