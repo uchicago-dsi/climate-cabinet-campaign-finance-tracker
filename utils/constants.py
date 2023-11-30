@@ -48,9 +48,10 @@ MI_CONTRIBUTION_COLUMNS = [
     "extra_desc",
 ]
 
+# MN State Cleaner Constants:
+
 MN_CANDIDATE_CONTRIBUTION_COL = [
     "OfficeSought",
-    "Party",
     "CandRegNumb",
     "CandFirstName",
     "CandLastName",
@@ -64,7 +65,6 @@ MN_CANDIDATE_CONTRIBUTION_COL = [
 
 MN_CANDIDATE_CONTRIBUTION_MAP = {
     "OfficeSought": "office_sought",
-    "Party": "party",
     "CandRegNumb": "recipient_id",
     "CandFirstName": "recipient_first_name",
     "CandLastName": "recipient_last_name",

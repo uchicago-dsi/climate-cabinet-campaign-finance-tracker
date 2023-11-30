@@ -72,70 +72,52 @@ contribution data and READMEs in a Google Drive for the duration of this project
 #### Minnesota Campaign Finance Data
 
 ##### Summary
-- The Minnesota Campaign Finance data are available 
-[here](https://drive.google.com/drive/u/2/folders/1uA70woWDhTf3_0F8AbadDa_XIKraCeoc) in csv format and has no anti-webscraping defenses. 
+- The Minnesota Campaign Finance data are available in this shared
+[Google Drive](https://drive.google.com/drive/u/2/folders/1uA70woWDhTf3_0F8AbadDa_XIKraCeoc) in zip format and has no anti-webscraping defenses. Please first unzip it and store 12 csv files (10 candidate-recipient contribution dataset, 1 noncandidate-recipient dataset, and 1 expenditure dataset) to local repo in this format: repo root / "data" / "file name"
 
-- The above dataset is provided by the Minnesota Campaign Finance website developer. This dataset comprises 10 separate CSV files, each documenting contributions made to a specific recipient type from 1998 to 2023. I have consolidated these files into a single dataset to ensure comprehensive coverage. This dataset also includes a non-candidate contribution dataset and an independent expenditure dataset.
+- The above dataset is provided by the Minnesota Campaign Finance website developer. This dataset includes 10 separate CSV files, each documenting contributions made to a specific recipient type from 1998 to 2023. This dataset also includes a non-candidate contribution dataset dating back to 1998 and an independent expenditure dataset dating back to 2015.
 
-- The old dataset comprises itemized records of contributions and expenditures made since 2015, specifically including transactions exceeding $200, which aligns with the reporting threshold set at $200 in Minnesota campaign finance regulations. The new dataset itemizes all contributions to candidates from 1998 to 2023.
+- MN dataset comprises itemized records of contributions and expenditures exceeding $200, which aligns with the reporting threshold set at $200 in Minnesota campaign finance regulations. 
 
-- For the purpose of our project I will focus on contribution and independent expenditure.
+- For the purpose of our project I will focus on contribution and independent expenditure from 2018 to 2023.
 
 ##### Features
 - Races / Office Sought:
-    1. Governor (GC) 
-    2. Attorney General(AG)
-    3. Secretary of State(SS)
-    4. State Auditor(SA)
-    5. State Treasurer (ST, this office was abolished in 2003 and no longer exists)
-    6. State Senator(Senate)
-    7. State Representative(House)
-    8. State Supreme Court Justice(SC)
-    9. State Appeals Court Judge(AP) 
-    10. State District Court Judge(DC)
+    - AG: Attorney General
+    - AP: State Appeals Court Judge
+    - DC: State District Court Judge
+    - GC: Governor
+    - House: State Representative
+    - SA: State Auditor
+    - SC: State Supreme Court Justice
+    - Senate: State Senator
+    - SS: Secretary of State
+    - ST: State Treasurer (this office was abolished in 2003 and no longer exists)
 
-- This dataset covers 1998 to present
+- Donor Types:
+    - I: Individual 
+    - L: Lobbyist  
+    - C: Candidate Committee 
+    - F: Political Committee/Fund  
+    - S: Supporting Association
+    - P: Party Unit
+    - B: Businness
+    - H: Hennepin County Local Candidate Committee
+    - U: Association Not Registered in Board
+    - O: Other 
+    - PTU: Political Party Unit
+    - PCF: Political Committee and Fund
 
 - Trasactions required to report and itemize: Contributions received from any particular source in excess of $200 within a calendar year
 
-- Limitation:
-    1. Only covers contributions over 200$ by MN campaign finance regulation
-    2. This dataset only dates back to 1998. Pre-1998 is not digitized so access to that data is limited to paper reports.
+- Limitation: Only covers contributions over 200$ by MN campaign finance regulation
 
 
 - Additional information: 
     1. in-kind: Donations of things other than money are in-kind contributions to the receiving entity
     2. For the purpose of our project, I created a separate column of total donation by summing both monetary donation and in-kind donation
-    3. Type and Subtype Acronym:
-        - PCC: Political Contribution Committee
-        - PTU: Political Party Unit
-        - PCF - Political Committee Fund
-        - PF: Political Fund
-        - PC: Political Committee
-        - PCN: Positive Community Norms
-        - PFN: Professional Fundraising Network
-        - IEF: Independent Expenditure Fund
-        - IEC: Independent Expenditure Committee
-        - BC: Ballot Committee
-    4. Recipient Type and Subtype: 
-        - Candidates: Recipient Type PCC 
-        - Party Units: Recipient Type PTU
-        - State Party Units: Recipient Type PTU, Recipient Subtype SPU
-        - Party Unit Caucus Committees: Recipient Type PTU, Recipient subtype CAU
-        - Local Party Units: Recipient Type PTU
-        - Committees and Funds: Recipient Type PCF, Recipient Subtype PF, PC, PCN, PFN, IEF, IEC, BC
-        - Independent Expenditure Committees and Funds: Recipient Type PCF, Recipient Subtype IEF, IE
-    5. Contributors whose total contributions exceed $200 are individually itemized in separate rows. Contributions from donors who each give $200 or less are reported as aggregate totals and are not included in this dataset by definition.
-    6. Contributor/donor Types:
-        - C: Candidate Committee 
-        - I: Individual 
-        - L: Lobbyist  
-        - F: Political Committee/Fund  
-        - S: Self 
-        - P: Party Unit 
-        - H: Registered with Hennepin County 
-        - O: Other 
-    7. The new dataset has 467 missing rows, of which belong to "Registration fee for Netroots event" and have no recipient, donor, or total donation amount.
+    3. Contributors whose total contributions exceed $200 are individually itemized in separate rows. Contributions from donors who each give $200 or less are reported as aggregate totals and are not included in this dataset by definition.
+    4. The dataset has 467 missing rows, of which belong to "Registration fee for Netroots event" and have no recipient, donor, or total donation amount.
 
 
 #### Pennsylvania Campaign Finance Data
