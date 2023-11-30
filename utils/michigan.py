@@ -289,10 +289,10 @@ class MichiganCleaner(StateCleaner):
         merged_expenditure_dataframe["cfr_com_id"] = (
             merged_expenditure_dataframe["cfr_com_id"]
             .apply(pd.to_numeric, errors="coerce")
-            .astype("Int64")
+            .astype("int64")
         )
-        merged_expenditure_dataframe.rename(
-            columns={"lname_or_org": "l_name_or_org"}, inplace=True
+        merged_expenditure_dataframe = merged_expenditure_dataframe.rename(
+            columns={"lname_or_org": "l_name_or_org"}
         )
         # convert committee IDs to integer, amount col to float
         # rename last_name column for consistency in standardize
@@ -353,8 +353,12 @@ class MichiganCleaner(StateCleaner):
             cleaned_dataframe_lst
         )
 
-        contribution_dataframe.rename(columns=self.entity_name_dictionary, inplace=True)
-        expenditure_dataframe.rename(columns=self.entity_name_dictionary, inplace=True)
+        contribution_dataframe = contribution_dataframe.rename(
+            columns=self.entity_name_dictionary
+        )
+        expenditure_dataframe = expenditure_dataframe.rename(
+            columns=self.entity_name_dictionary
+        )
 
         return [contribution_dataframe, expenditure_dataframe]
 
@@ -381,7 +385,7 @@ class MichiganCleaner(StateCleaner):
         )
         # generate uuid for contribution dataframe
         expenditure_dataframe = self.generate_uuid(
-            expenditure_dataframe, ["full_name", "com_legal_name"]
+            expenditure_dataframe, ["full_name", "com_legal_name", "vend_name"]
         )
         # generate uuid for expenditure dataframe
 
@@ -452,15 +456,195 @@ class MichiganCleaner(StateCleaner):
         """Filters the inputted dataframe based on the column name
 
         Inputs:
+            merged_campaign_dataframe:
+            column_name: name of a column to filter the dataset on
 
         Returns:
+            filtered_df: dataframe filtered based on the given column name
 
         """
         filtered_df = merged_campaign_dataframe[
             merged_campaign_dataframe[column_name].notnull()
         ]
+        # returns all the columns and rows associated with the column name
+        # that are not null
 
         return filtered_df
+
+    def create_filtered_individuals_tables(
+        self, standardized_dataframe_lst: list[pd.DataFrame]
+    ) -> pd.DataFrame:
+        """Filters the list of dataframes to create the individuals dataframe
+
+        Inputs:
+            standardized_dataframe_lst:
+
+        Returns:
+            individuals_dataframe:
+        """
+        contribution_dataframe, expenditure_dataframe = standardized_dataframe_lst
+        contribution_individuals_df = self.filter_dataframe(
+            contribution_dataframe, "full_name_uuid"
+        )
+        contribution_candidates_df = self.filter_dataframe(
+            contribution_dataframe, "candidate_full_name_uuid"
+        )
+        expenditure_individuals_df = self.filter_dataframe(
+            expenditure_dataframe, "first_name"
+        )
+
+        # only keep the relevant columns for the individuals table
+        contribution_individuals_df = contribution_individuals_df[
+            [
+                "full_name_uuid",
+                "first_name",
+                "last_name",
+                "full_name",
+                "state",
+                "company",
+            ]
+        ].copy()
+        contribution_candidates_df = contribution_candidates_df[
+            [
+                "candidate_full_name_uuid",
+                "can_first_name",
+                "can_last_name",
+                "candidate_full_name",
+            ]
+        ].copy()
+        expenditure_individuals_df = expenditure_individuals_df[
+            ["full_name_uuid", "first_name", "last_name"]
+        ].copy()
+
+        # create entity_type column
+        contribution_individuals_df["entity_type"] = "individual"
+        contribution_candidates_df["entity_type"] = "candidate"
+        expenditure_individuals_df["entity_type"] = "individual"
+
+        # rename the columns so they can be concatenated
+        contribution_individuals_df = contribution_individuals_df.rename(
+            columns={"full_name_uuid": "id"}
+        )
+        contribution_candidates_df = contribution_candidates_df.rename(
+            columns={
+                "candidate_full_name_uuid": "id",
+                "can_first_name": "first_name",
+                "can_last_name": "last_name",
+                "candidate_full_name": "full_name",
+            }
+        )
+        expenditure_individuals_df = expenditure_individuals_df.rename(
+            columns={"full_name_uuid": "id"}
+        )
+
+        # concatenate individuals and add party column as null
+        individuals_df = pd.concat(
+            [
+                contribution_individuals_df,
+                contribution_candidates_df,
+                expenditure_individuals_df,
+            ],
+            ignore_index=True,
+            sort=False,
+        )
+        individuals_df["party"] = np.nan
+        individuals_df["state"] = individuals_df["state"].fillna("MI")
+
+        # reorder columns
+        individuals_df = individuals_df[
+            [
+                "id",
+                "first_name",
+                "last_name",
+                "full_name",
+                "entity_type",
+                "state",
+                "party",
+                "company",
+            ]
+        ].copy()
+
+        return individuals_df
+
+    def create_filtered_organizations_tables(
+        self, standardized_dataframe_lst: list[pd.DataFrame]
+    ) -> pd.DataFrame:
+        """Filters the list of dataframes to create the organizations dataframe
+
+        Inputs:
+            standardized_dataframe_lst:
+
+        Returns:
+            individuals_dataframe:
+
+        """
+        contribution_dataframe, expenditure_dataframe = standardized_dataframe_lst
+        # add corporations
+        contribution_corporations_df = contribution_dataframe[
+            contribution_dataframe["first_name"].isna()
+        ]
+        contribution_committees_df = self.filter_dataframe(
+            contribution_dataframe, "com_legal_name_uuid"
+        )
+        expenditure_committees_df = self.filter_dataframe(
+            expenditure_dataframe, "com_legal_name_uuid"
+        )
+        expenditure_vendors_df = self.filter_dataframe(
+            expenditure_dataframe, "vend_name_uuid"
+        )
+
+        contribution_corporations_df = contribution_corporations_df[
+            ["full_name_uuid", "full_name"]
+        ].copy()
+        contribution_committees_df = contribution_committees_df[
+            ["com_legal_name_uuid", "com_legal_name"]
+        ]
+        expenditure_committees_df = expenditure_committees_df[
+            ["com_legal_name_uuid", "com_legal_name"]
+        ].copy()
+        expenditure_vendors_df = expenditure_vendors_df[
+            ["vend_name_uuid", "vend_name"]
+        ].copy()
+
+        # create entity_type column
+        contribution_corporations_df["entity_type"] = "corporation"
+        contribution_committees_df["entity_type"] = "committee"
+        expenditure_committees_df["entity_type"] = "committee"
+        expenditure_vendors_df["entity_type"] = "vendor"
+
+        # rename the columns so they can be concatenated
+        contribution_corporations_df = contribution_corporations_df.rename(
+            columns={"full_name_uuid": "id", "full_name": "name"}
+        )
+        contribution_committees_df = contribution_committees_df.rename(
+            columns={"com_legal_name_uuid": "id", "com_legal_name": "name"}
+        )
+        expenditure_committees_df = expenditure_committees_df.rename(
+            columns={"com_legal_name_uuid": "id", "com_legal_name": "name"}
+        )
+        expenditure_vendors_df = expenditure_vendors_df.rename(
+            columns={"vend_name_uuid": "id", "vend_name": "name"}
+        )
+
+        # concatenate organiozations and add state
+        organizations_df = pd.concat(
+            [
+                contribution_corporations_df,
+                contribution_committees_df,
+                expenditure_committees_df,
+                expenditure_vendors_df,
+            ],
+            ignore_index=True,
+            sort=False,
+        )
+        organizations_df["state"] = "MI"
+
+        # reorder columns
+        organizations_df = organizations_df[
+            ["id", "name", "state", "entity_type"]
+        ].copy()
+
+        return organizations_df
 
     # TODO: Helper functions for create_tables() are below
 
@@ -478,25 +662,31 @@ class MichiganCleaner(StateCleaner):
         Returns:
             individuals_table: table as defined in database schema
         """
-        # columns to add: id, first_name, last_name, full_name, entity_type,
-        # party, company
-        individuals_table = pd.DataFrame()
-        contribution_dataframe, expenditure_dataframe = standardized_dataframe_lst
+        individuals_table = self.create_filtered_individuals_tables(
+            standardized_dataframe_lst
+        )
 
-        individuals_table["full_name"] = contribution_dataframe["full_name"]
+        return individuals_table
 
-    def create_organizations_table(self, data: list[pd.DataFrame]) -> pd.DataFrame:
+    def create_organizations_table(
+        self, standardized_dataframe_lst: list[pd.DataFrame]
+    ) -> pd.DataFrame:
         """
         Creates the Organizations tables from the dataframe list outputted
         from standardize
 
         Inputs:
-            data: a list of 1 or 3 dataframes as outputted from standardize method.
+            standardized_dataframe_lst: a list of 1 or 3 dataframes as
+            outputted from standardize method.
 
         Returns:
             organizations_table: table as defined in database schema
         """
-        pass
+        organizations_table = self.create_filtered_organizations_tables(
+            standardized_dataframe_lst
+        )
+
+        return organizations_table
 
     def create_transactions_table(self, data: list[pd.DataFrame]) -> pd.DataFrame:
         """
@@ -521,10 +711,12 @@ class MichiganCleaner(StateCleaner):
         to output (individuals_table, organizations_table, transactions_table)
         as defined in database schema
         """
-        # filepath_lst = self.create_filepaths_list()
-        # preprocessed_dataframe_lst =  self.preprocess(filepath_lst)
-        # clean_dataframe_lst = self.clean(preprocessed_dataframe_lst)
-        # standardized_dataframe_lst = self.standardize(clean_dataframe_lst)
-        # tables = self.create_tables(standardized_dataframe_lst)
-        # return tables
-        pass
+        filepath_lst = self.create_filepaths_list()
+        preprocessed_dataframe_lst = self.preprocess(filepath_lst)
+        cleaned_dataframe_lst = self.clean(preprocessed_dataframe_lst)
+        standardized_dataframe_lst = self.standardize(cleaned_dataframe_lst)
+        tables = self.create_tables(standardized_dataframe_lst)
+
+        return tables
+
+    # TODO: GET RID OF INPLACE = TRUE CREATE A NEW DATASTRUCTURE INSTEAD
