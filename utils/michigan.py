@@ -25,8 +25,9 @@ class MichiganCleaner(StateCleaner):
         "l_name_or_org": "last_name",
         "employer": "company",
         "doc_stmnt_year": "year",
-        "exp_desc": "purpose",
-        "transaction_type": "schedule_desc",
+        "exp_desc": "exp_desc",
+        "contribtype": "transaction_type",
+        "schedule_desc": "transaction_type",
     }  # map to entity types listed in the schema
 
     # columns to be added {full_name, entity_type, state, party, company,
@@ -418,6 +419,10 @@ class MichiganCleaner(StateCleaner):
                 "{}_uuid".format(col_name)
             ] = merged_campaign_dataframe[col_name].map(ids)
 
+        # create tranaction ID for each row of the dataframe
+        merged_campaign_dataframe["transaction_id"] = [
+            uuid.uuid4() for _ in range(len(merged_campaign_dataframe))
+        ]
         # add a step here to add this to a csv mapp?
         return merged_campaign_dataframe
 
@@ -579,7 +584,7 @@ class MichiganCleaner(StateCleaner):
 
         """
         contribution_dataframe, expenditure_dataframe = standardized_dataframe_lst
-        # add corporations
+        # contributing corporations have a first name that is null
         contribution_corporations_df = contribution_dataframe[
             contribution_dataframe["first_name"].isna()
         ]
@@ -592,6 +597,9 @@ class MichiganCleaner(StateCleaner):
         expenditure_vendors_df = self.filter_dataframe(
             expenditure_dataframe, "vend_name_uuid"
         )
+        expenditure_corporations_df = expenditure_dataframe[
+            expenditure_dataframe["first_name"].isna()
+        ]
 
         contribution_corporations_df = contribution_corporations_df[
             ["full_name_uuid", "full_name"]
@@ -605,12 +613,16 @@ class MichiganCleaner(StateCleaner):
         expenditure_vendors_df = expenditure_vendors_df[
             ["vend_name_uuid", "vend_name"]
         ].copy()
+        expenditure_corporations_df = expenditure_corporations_df[
+            ["full_name_uuid", "full_name"]
+        ].copy()
 
         # create entity_type column
         contribution_corporations_df["entity_type"] = "corporation"
         contribution_committees_df["entity_type"] = "committee"
         expenditure_committees_df["entity_type"] = "committee"
         expenditure_vendors_df["entity_type"] = "vendor"
+        expenditure_corporations_df["entity_type"] = "corporation"
 
         # rename the columns so they can be concatenated
         contribution_corporations_df = contribution_corporations_df.rename(
@@ -625,14 +637,18 @@ class MichiganCleaner(StateCleaner):
         expenditure_vendors_df = expenditure_vendors_df.rename(
             columns={"vend_name_uuid": "id", "vend_name": "name"}
         )
+        expenditure_corporations_df = expenditure_corporations_df.rename(
+            columns={"full_name_uuid": "id", "full_name": "name"}
+        )
 
-        # concatenate organiozations and add state
+        # concatenate organizations and add state column set to MI
         organizations_df = pd.concat(
             [
                 contribution_corporations_df,
                 contribution_committees_df,
                 expenditure_committees_df,
                 expenditure_vendors_df,
+                expenditure_corporations_df,
             ],
             ignore_index=True,
             sort=False,
@@ -645,6 +661,175 @@ class MichiganCleaner(StateCleaner):
         ].copy()
 
         return organizations_df
+
+    def create_filtered_transactions_tables(
+        self, standardized_dataframe_lst: list[pd.DataFrame]
+    ) -> pd.DataFrame:
+        """Creates the Transactions tables from the dataframe list outputted
+        from standardize
+
+        Inputs:
+            standardized_dataframe_lst: a list of 1 or 3 dataframes as
+            outputted from standardize method.
+
+        Returns:
+            transactions_table: table as defined in database schema
+        """
+        contribution_dataframe, expenditure_dataframe = standardized_dataframe_lst
+
+        # contributing corporations have a first name that is null
+
+        # contribution organization -> committee
+        contribution_org_to_com_transaction = contribution_dataframe[
+            contribution_dataframe["first_name"].isna()
+        ]
+        # contribution individual -> committee
+        contribution_ind_to_com_transaction = self.filter_dataframe(
+            contribution_dataframe, "first_name"
+        )
+
+        # expenditure organization -> committee
+        expenditure_org_to_com_transaction = expenditure_dataframe[
+            expenditure_dataframe["first_name"].isna()
+        ]
+        # expenditure individual -> committee
+        expenditure_ind_to_com_transaction = self.filter_dataframe(
+            expenditure_dataframe, "first_name"
+        )
+
+        # expenditure committee -> vendor
+        expenditure_com_to_vendor_transaction = self.filter_dataframe(
+            expenditure_dataframe, "vend_name_uuid"
+        )
+
+        contribution_org_to_com_transaction = contribution_org_to_com_transaction[
+            [
+                "transaction_id",
+                "full_name_uuid",
+                "year",
+                "amount",
+                "com_legal_name_uuid",
+                "transaction_type",
+            ]
+        ].copy()
+        contribution_ind_to_com_transaction = contribution_ind_to_com_transaction[
+            [
+                "transaction_id",
+                "full_name_uuid",
+                "year",
+                "amount",
+                "com_legal_name_uuid",
+                "transaction_type",
+            ]
+        ].copy()
+
+        expenditure_org_to_com_transaction = expenditure_org_to_com_transaction[
+            [
+                "transaction_id",
+                "full_name_uuid",
+                "year",
+                "amount",
+                "com_legal_name_uuid",
+                "purpose",
+                "transaction_type",
+            ]
+        ].copy()
+        expenditure_ind_to_com_transaction = expenditure_ind_to_com_transaction[
+            [
+                "transaction_id",
+                "full_name_uuid",
+                "year",
+                "amount",
+                "com_legal_name_uuid",
+                "purpose",
+                "transaction_type",
+            ]
+        ].copy()
+        expenditure_com_to_vendor_transaction = expenditure_com_to_vendor_transaction[
+            [
+                "transaction_id",
+                "com_legal_name_uuid",
+                "year",
+                "amount",
+                "vend_name_uuid",
+                "purpose",
+                "transaction_type",
+            ]
+        ].copy()
+
+        # create purpose columns in the contribution data set to NaN
+
+        contribution_org_to_com_transaction["purpose"] = np.nan
+        contribution_ind_to_com_transaction["purpose"] = np.nan
+
+        # rename columns to match schema
+
+        contribution_org_to_com_transaction = (
+            contribution_org_to_com_transaction.rename(
+                columns={
+                    "full_name_uuid": "donor_id",
+                    "com_legal_name_uuid": "recipient_id",
+                }
+            )
+        )
+        contribution_ind_to_com_transaction = (
+            contribution_ind_to_com_transaction.rename(
+                columns={
+                    "full_name_uuid": "donor_id",
+                    "com_legal_name_uuid": "recipient_id",
+                }
+            )
+        )
+        expenditure_org_to_com_transaction = expenditure_org_to_com_transaction.rename(
+            columns={
+                "full_name_uuid": "donor_id",
+                "com_legal_name_uuid": "recipient_id",
+            }
+        )
+        expenditure_ind_to_com_transaction = expenditure_ind_to_com_transaction.rename(
+            columns={
+                "full_name_uuid": "donor_id",
+                "com_legal_name_uuid": "recipient_id",
+            }
+        )
+        expenditure_com_to_vendor_transaction = (
+            expenditure_com_to_vendor_transaction.rename(
+                columns={
+                    "com_legal_name_uuid": "donor_id",
+                    "vend_name_uuid": "recipient_id",
+                }
+            )
+        )
+
+        # concatenate dataframes
+        transactions_df = pd.concat(
+            [
+                contribution_org_to_com_transaction,
+                contribution_ind_to_com_transaction,
+                expenditure_org_to_com_transaction,
+                expenditure_ind_to_com_transaction,
+                expenditure_com_to_vendor_transaction,
+            ],
+            ignore_index=True,
+            sort=False,
+        )
+
+        transactions_df["office_sought"] = np.nan
+
+        # reorder columns
+        transactions_df = transactions_df[
+            [
+                "donor_id",
+                "year",
+                "amount",
+                "recipient_id",
+                "office_sought",
+                "purpose",
+                "transaction_type",
+            ]
+        ].copy()
+
+        return transactions_df
 
     # TODO: Helper functions for create_tables() are below
 
@@ -688,18 +873,24 @@ class MichiganCleaner(StateCleaner):
 
         return organizations_table
 
-    def create_transactions_table(self, data: list[pd.DataFrame]) -> pd.DataFrame:
+    def create_transactions_table(
+        self, standardized_dataframe_lst: list[pd.DataFrame]
+    ) -> pd.DataFrame:
         """
         Creates the Transactions tables from the dataframe list outputted
         from standardize
 
         Inputs:
-            data: a list of 1 or 3 dataframes as outputted from standardize method.
+            standardized_dataframe_lst: a list of 1 or 3 dataframes as
+            outputted from standardize method.
 
         Returns:
             transactions_table: table as defined in database schema
         """
-        pass
+        transactions_table = self.create_filtered_transactions_tables(
+            standardized_dataframe_lst
+        )
+        return transactions_table
 
     # TODO: IMPLEMENT clean_state() below
 
