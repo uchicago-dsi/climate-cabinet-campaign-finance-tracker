@@ -1,8 +1,10 @@
 # import sys
 
 import pandas as pd
+import uuid
+import numpy as np
 import plotly.express as px
-
+import uuid
 # sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
@@ -23,10 +25,6 @@ def assign_col_names(filepath: str, year: int) -> list:
     file_type = dir[len(dir) - 1]
 
     if "contrib" in file_type:
-        # in 2022 PA changed its data storage format by adding an extra variable
-        # making the number and names of columns different from preceding years.
-        # The following if statements account for this by referencing the
-        # appropriate column list in  constants.py
         if year < 2022:
             return const.PA_CONT_COLS_NAMES_PRE2022
         else:
@@ -43,7 +41,37 @@ def assign_col_names(filepath: str, year: int) -> list:
             return const.PA_EXPENSE_COLS_NAMES_POST2022
 
 
-def classify_contributor(contributor: str) -> str:
+def replace_id_with_uuid(df:pd.DataFrame, col1:str, col2:str)-> tuple[dict, pd.DataFrame]:
+    """Creates a dictionary whose keys are generated UUIDs that map to values
+    corresponding to unique IDs from the donor and recipient IDs columns in df
+    
+    Args:
+        A pandas dataframe with at least two columns (col1, col1)
+        col1, col2: columns of df that should have IDs
+    Returns:
+        A tuple whose first value is the modified df, where the IDs have been
+        replaced with the UUIDS, and a dictionary correspondings to the UUIDs as
+        keys and the original IDs from col1 and col2 as the values
+    """
+    # a set is used because there could be IDs in the donor column that also
+    # appear in the recipient column due to concatenation, and I want to keep
+    # the IDs unique throughout
+    ids_1 = set(df[col1])
+    ids_2= set(df[col2])
+    unique_ids = list(ids_1.union(ids_2))
+
+    with_uuid = []
+    for id in unique_ids:
+        with_uuid.append([id,str(uuid.uuid4())])
+
+    mapped_dict = {lst[0]: (lst[1]) for lst in with_uuid}
+    df[col1] = df[col1].map(mapped_dict)
+    df[col2] = df[col2].map(mapped_dict)
+    mapped_dict = {value: key for key, value in mapped_dict.items()}
+    return mapped_dict, df
+
+
+def classify_contributor(donor: str) -> str:
     """Takes a string input and compares it against a list of identifiers most
     commonly associated with organizations/corporations/PACs, and classifies the
     string input as belong to an individual or organization
@@ -54,13 +82,13 @@ def classify_contributor(contributor: str) -> str:
         string "ORGANIZATION" or "INDIVIDUAL" depending on the classification of
         the parameter
     """
-    split = contributor.split()
+    split = donor.split()
     loc = 0
     while loc < len(split):
         if split[loc].upper() in const.PA_ORGANIZATION_IDENTIFIERS:
-            return "ORGANIZATION"
+            return "Organization"
         loc += 1
-    return "INDIVIDUAL"
+    return "Individual"
 
 
 def pre_process_contributor_dataset(df: pd.DataFrame):
@@ -73,9 +101,10 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
     Returns:
         a pandas dataframe whose columns are appropriately formatted.
     """
-    df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
+    df["AMOUNT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
+    df["RECIPIENT_ID"] = df["RECIPIENT_ID"].astype("str")
     df["DONOR"] = df["DONOR"].astype("str")
-    df["DONOR"] = df["DONOR"].str.upper()
+    df["DONOR"] = df["DONOR"].str.title()
     df["DONOR_TYPE"] = df["DONOR"].apply(classify_contributor)
     df.drop(
         columns={
@@ -106,7 +135,7 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
 
     if "TIMESTAMP" in df.columns:
         df.drop(columns={"TIMESTAMP", "REPORTER_ID"}, inplace=True)
-        df["DONOR"] = df["DONOR"].apply(lambda x: str(x).upper())
+        df["DONOR"] = df["DONOR"].apply(lambda x: str(x).title())
 
     return df
 
@@ -121,6 +150,7 @@ def pre_process_filer_dataset(df: pd.DataFrame):
     Returns:
         a pandas dataframe whose columns are appropriately formatted.
     """
+    df["RECIPIENT_ID"] = df["RECIPIENT_ID"].astype("str")
     df.drop(
         columns={
             "YEAR",
@@ -146,7 +176,7 @@ def pre_process_filer_dataset(df: pd.DataFrame):
 
     df.drop_duplicates(subset=["RECIPIENT_ID"], inplace=True)
     df["RECIPIENT_TYPE"] = df.RECIPIENT_TYPE.map(const.PA_FILER_ABBREV_DICT)
-    df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).upper())
+    df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).title())
     return df
 
 
@@ -160,6 +190,7 @@ def pre_process_expense_dataset(df: pd.DataFrame):
     Returns:
         a pandas dataframe whose columns are appropriately formatted.
     """
+    df["DONOR_ID"] = df["DONOR_ID"].astype("str")
     df.drop(
         columns={
             "EXPENSE_CYCLE",
@@ -174,9 +205,8 @@ def pre_process_expense_dataset(df: pd.DataFrame):
     )
     if "EXPENSE_REPORTER_ID" in df.columns:
         df.drop(columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True)
-    df["PURPOSE"] = df["PURPOSE"].apply(lambda x: str(x).upper())
-    df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).upper())
-
+    df["PURPOSE"] = df["PURPOSE"].apply(lambda x: str(x).title())
+    df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).title())
     return df
 
 
@@ -203,10 +233,6 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     )
 
     df["YEAR"] = year
-    if "RECIPIENT_ID" in df.columns:
-        df["RECIPIENT_ID"] = df["RECIPIENT_ID"].astype("str")
-    else:
-        df["DONOR_ID"] = df["DONOR_ID"].astype("str")
     dir = data_filepath.split("/")
     file_type = dir[len(dir) - 1]
 
@@ -226,57 +252,7 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
             is from these sources."
         )
 
-
-def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
-    """given a dataframe, retrieves the top n recipients of that year based on
-    contributions and returns a table
-    Args:
-        df: a pandas DataFrame with a contributions column
-
-        num_recipients: an integer specifying how many recipients are desired.
-        If this value is larger than the possible amount of recipients, then all
-        recipients are returned instead.
-    Returns:
-        A pandas table (object)"""
-    recipients = (
-        df.groupby(["RECIPIENT"])
-        .agg({"TOTAL_CONT_AMT": sum})
-        .sort_values(by="TOTAL_CONT_AMT", ascending=False)
-    )
-    pd.set_option("display.float_format", "{:.2f}".format)
-
-    if num_recipients > len(recipients):
-        return recipients
-    else:
-        return recipients.head(num_recipients)
-
-
-def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
-    """given a dataframe, retrieves the top n contributors of that year based on
-    contributions and returns a table
-
-    Args:
-        df: a pandas DataFrame with a contributions column
-
-        num_contributors: an integer specifying how many contributors are
-        desired. If this value is larger than the possible amount of
-        contributors, then all contributors are returned instead.
-    Returns:
-        a pandas table (object)"""
-
-    contributors = (
-        df.groupby(["DONOR"])
-        .agg({"TOTAL_CONT_AMT": sum})
-        .sort_values(by="TOTAL_CONT_AMT", ascending=False)
-    )
-    pd.set_option("display.float_format", "{:.2f}".format)
-    if num_contributors > len(contributors):
-        return contributors
-    else:
-        return contributors.head(num_contributors)
-
-
-def merge_same_year_datasets(
+def merge_contrib_filer_datasets(
     cont_file: pd.DataFrame, filer_file: pd.DataFrame
 ) -> pd.DataFrame:
     """merges the contributor and filer datasets from the same year using the
@@ -284,11 +260,31 @@ def merge_same_year_datasets(
     Args:
         cont_file: The contributor dataset
 
-        filer_file: the filer dataset from the same year as the cont_file.
+        filer_file: the filer dataset from the same year as the contributor
+        file.
     Returns
         The merged pandas dataframe
     """
-    merged_df = pd.merge(cont_file, filer_file, how="left", on="RECIPIENT_ID")
+    merged_df = pd.merge(
+        cont_file, filer_file, how="left", on="RECIPIENT_ID")
+    return merged_df
+
+def merge_expend_filer_datasets(
+    expend_file: pd.DataFrame, filer_file: pd.DataFrame
+) -> pd.DataFrame:
+    """merges the expenditure and filer datasets from the same year using the
+    unique filerID
+    Args:
+        expend_file: The expenditure dataset
+
+        filer_file: the filer dataset from the same year as the expenditure file
+    Returns
+        The merged pandas dataframe
+    """
+    merged_df = pd.merge(
+        expend_file, filer_file, 
+        left_on="DONOR_ID", 
+        right_on="RECIPIENT_ID").drop("RECIPIENT_ID",axis=1)
     return merged_df
 
 
@@ -302,78 +298,85 @@ def merge_all_datasets(datasets: list) -> pd.DataFrame:
     """
     return pd.concat(datasets)
 
-
-def group_filerType_Party(dataset: pd.DataFrame) -> object:
-    """takes a dataset and returns a grouped table highlighting the kinds
-    of people who file the campaign reports (FilerType Key -> 1:Candidate,
-    2:Committee, 3:Lobbyist.) and their political party affiliation
+def format_contrib_data_for_concat(df: pd.DataFrame) -> pd.DataFrame:
+    """ Reformartes the merged contributor-filer dataset such that it has the 
+    same columns as the merged expenditure-filer dataset so that concatenation
+    can occur
 
     Args:
-        dataset: a pandas DataFrame containing columns and values from the filer
-        dataset.
+        The merged contributor-filer dataset
 
     Returns:
-        A table object"""
-    return dataset.groupby(["RECIPIENT_TYPE", "PARTY"]).agg({"TOTAL_CONT_AMT": sum})
-
-
-def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
-    """returns a table and plots a bargraph of data highlighting the amount of
-    contributions each statewide race received over the years
-
-    Args:
-        merged_dataset: A (merged) pandas DataFrame containing columns and
-        values from the contributor and filer datasets.
-
-    Return:
-        A table object"""
-
-    recep_per_office = merged_dataset.replace({"OFFICE": const.PA_OFFICE_ABBREV_DICT})
-
-    recep_per_office = (
-        recep_per_office.groupby(["OFFICE"]).agg({"TOTAL_CONT_AMT": sum}).reset_index()
-    )
-
-    fig = px.bar(
-        data_frame=recep_per_office,
-        x="OFFICE",
-        y="TOTAL_CONT_AMT",
-        title="PA Contributions Received by Office-Type From 2018-2023",
-        labels={"TOTAL_CONT_AMT": "Total Contribution Amount"},
-    )
-    fig.show()
-
-    return recep_per_office
-
-
-def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
-    """returns a table and plots a barplot highlighting the annual contributions
-    campaign finance report-filers received based on whether they are candidates
-    , committees, or lobbyists.
-
-    Args:
-        merged_dataset: A (merged) pandas DataFrame containing columns from both
-        the filer and contributor datasets.
-    Return:
-        A pandas DataFrame
+        A new dataframe with the appropriate column formatting for concatenation
     """
-    pd.set_option("display.float_format", "{:.2f}".format)
-    cont_by_donor = (
-        merged_dataset.groupby(["YEAR", "RECIPIENT_TYPE"])
-        .agg({"TOTAL_CONT_AMT": sum})
-        .reset_index()
-    )
+    df["DONOR_ID"] = np.nan
+    df["DONOR_PARTY"] = np.nan
+    df["DONOR_OFFICE"] = np.nan
+    df["PURPOSE"] = "Donation"
+    columns = df.columns.to_list()
+    columns.sort()
+    df = df.loc[:,columns]
+    return df
 
-    fig = px.bar(
-        data_frame=cont_by_donor,
-        x="YEAR",
-        y="TOTAL_CONT_AMT",
-        color="RECIPIENT_TYPE",
-        title="PA Recipients of Annual Contributions (2018 - 2023)",
-        labels={
-            "TOTAL_CONT_AMT": "Total Contribution Amount",
-            "RECIPIENT_TYPE": "Type of Filer",
-        },
-    )
-    fig.show()
-    return cont_by_donor
+
+def format_expend_data_for_concat(df: pd.DataFrame)-> pd.DataFrame:
+    """ Reformartes the merged expenditure-filer dataset such that it has the 
+    same columns as the merged contributor-filer dataset so that concatenation
+    can occur
+
+    Args:
+        The merged expenditure-filer dataset
+
+    Returns:
+        A new dataframe with the appropriate column formatting for concatenation
+    """
+    df["RECIPIENT_ID"] = np.nan
+    df.rename(columns = {"RECIPIENT_x":"RECIPIENT",
+                         "RECIPIENT_y":"DONOR",
+                         "RECIPIENT_TYPE": "DONOR_TYPE",
+                         "RECIPIENT_PARTY":"DONOR_PARTY",
+                         "RECIPIENT_OFFICE":"DONOR_OFFICE"}, inplace=True)
+    df["RECIPIENT_TYPE"] = np.nan
+    df["RECIPIENT_OFFICE"] = np.nan
+    df["RECIPIENT_PARTY"] = np.nan
+    columns = df.columns.to_list()
+    columns.sort()
+    df = df.loc[:,columns]
+    return df
+
+def combine_contributor_expenditure_datasets(
+        contrib_ds:list[pd.DataFrame], 
+        filer_ds:list[pd.DataFrame], 
+        expend_ds:list[pd.DataFrame])-> pd.DataFrame:
+    """This function takes datasets with information from the contributor,
+    filer, and expenditure datasets in each given year, merges the contributor
+    and expenditure datasets with pertinent information from the filer dataset,
+    and concatenates the 3 datasets into 1 dataset with.
+
+    Args:
+        3 datasets: contributor, filer, and expenditure datasets. Each of the
+        datasets is a list of dataframes, with each entry in the dataframes
+        being a given file from a select year
+
+    Returns:
+        A concatenated dataframe with transaction information, contributor
+        information, and recipient information.
+    """
+    merged_cont_datasets_per_yr = []
+    merged_exp_dataset_per_yr = []
+    
+    for i in range(len(contrib_ds)):
+        cont_merged = merge_contrib_filer_datasets(contrib_ds[i],filer_ds[i])
+        expend_merged = merge_expend_filer_datasets(expend_ds[i],filer_ds[i])
+        merged_cont_datasets_per_yr.append(cont_merged)
+        merged_exp_dataset_per_yr.append(expend_merged)
+    
+    contrib_filer_info = format_contrib_data_for_concat(merge_all_datasets(merged_cont_datasets_per_yr))
+    expend_filer_info = format_expend_data_for_concat(merge_all_datasets(merged_exp_dataset_per_yr))
+    return merge_all_datasets([contrib_filer_info,expend_filer_info])
+
+def output_ID_mapping(dictionary:dict, df:pd.DataFrame):
+    pass
+
+def split_dataframe_into_tables(df:pd.DataFrame)->tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]:
+    pass
