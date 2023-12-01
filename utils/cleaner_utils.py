@@ -6,7 +6,13 @@ from constants import state_abbreviations
 
 
 def convert_date(date_str: str) -> datetime.utcfromtimestamp:
-    """Reformat UNIX timestamp"""
+    """Reformat UNIX timestamp
+
+    args: UNIX-formatted date string
+
+    returns: reformatted date string
+
+    """
     timestamp_match = re.match(r"/Date\((\d+)\)/", date_str)
     if timestamp_match:
         timestamp = int(timestamp_match.group(1))
@@ -43,7 +49,7 @@ def az_name_clean(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
-    """Make raw transactions table into schema-compliant
+    """Make raw transactions table schema-compliant
 
     We take the relevant columns of the raw transactions
     table and extract, reorder and relabel them
@@ -52,7 +58,6 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
     args: df: raw ransactions dataframe
 
     returns: schema-compliant transactions dataframe
-
     """
 
     d = {
@@ -69,52 +74,63 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(data=d)
 
 
-def az_individuals_convert(df: pd.DataFrame) -> pd.DataFrame:
+def az_individuals_convert(transactions_df, details_df: pd.DataFrame) -> pd.DataFrame:
     """Make individuals detail table schema compliant
 
     INCOMPLETE
 
     We take the relevant columns of the raw individual details
-    table and extract, reorder and relabel them
-    in compliance with the individuals table database schema
-    NOTE: Some names may end up a but mangled, because rare
-    elements such as 'Jr' or titles like 'EdD' attached to
-    named mess up the splitting. Their location is unfortunately
-    inconsistent
+    table and extract, reorder and relabel them in
+    compliance with the individuals table database schema
 
-    args: df: raw individuals dataframe
+    Presently, the function does not attempt to split names,
+    and instead leaves those columns blank and preserves the
+    available full names
 
-    returns: schema-compliant individuals dataframe
+    NOTE: Employers information is presently difficult to
+    extract owing to inconsistent id locations across
+    various kinds of tables. A fix is underway.
+
+    args: df: transactions dataframe and individual details dataframe
+
+    returns: schema-compliant individual details dataframe
 
     """
 
     #     employers = transactions.groupby("CommitteeId")[
     #         "TransactionEmployer"].apply(set).apply(list).values
 
-    #     entity_type = transactions.groupby("CommitteeId")[
-    #         "CommitteeGroupName"].apply(set).values
+    full_name = details_df["retrieved_name"]
 
-    full_name = df["retrieved_name"]
+    employer = details_df["company"]
 
-    employer = df["company"]
-
-    entity_type = df["entity_type"]
+    entity_type = details_df["entity_type"]
 
     states_list = []
-    for i in df["committee_address"].str.split(" "):
-        if i is not None:
-            states_list.append(i[-2])
+
+    for i in details_df["committee_address"].str.split(" "):
+        if i is not None:  # != None:
+            try:
+                abb = i[-2]
+                if " " + abb.upper() + " " not in state_abbreviations:
+                    states_list.append(None)
+                else:
+                    states_list.append(i[-2].upper())
+            except TypeError:
+                states_list.append(None)
         else:
             states_list.append(None)
 
     d = {
-        "id": df["master_committee_id"],
+        "id": transactions_df[
+            "TransactionNameGroupId"
+        ].unique(),  # details_df["master_committee_id"],
         "first_name": None,
         "last_name": None,
         "full_name": full_name,
         "entity_type": entity_type,
         "state": states_list,
-        "party": df["party_name"],
+        "party": details_df["party_name"],
         "company": employer,
     }
 
@@ -135,25 +151,28 @@ def az_organizations_convert(df: pd.DataFrame):
     returns: schema-compliant organizations dataframe
 
     """
-    #     entity_type = transactions.groupby("CommitteeId")[
-    #         "CommitteeGroupName"].apply(set).values
 
     entity_type = df["entity_type"]
 
     states_list = []
+
     for i in df["committee_address"].str.split(" "):
-        if i is not None:
-            abb = i[-2]
-            if " " + abb.upper() + " " not in state_abbreviations:
+        if i is not None:  # != None:
+            try:
+                abb = i[-2]
+                if " " + abb.upper() + " " not in state_abbreviations:
+                    states_list.append(None)
+                else:
+                    states_list.append(i[-2].upper())
+            except TypeError:
                 states_list.append(None)
-            else:
-                states_list.append(i[-2].upper())
         else:
             states_list.append(None)
 
     d = {
         "id": df["master_committee_id"],
-        "name": df["candidate"],
+        "name": df["committee_name"],
+        # "name": df["candidate"],
         "state": states_list,
         "entity_type": entity_type,  # df["committee_type_name"]
     }
@@ -166,6 +185,10 @@ def remove_nonstandard(col):
 
     Using regex, we remove html tags and turn inconsistent
     whitespace into single spaces
+
+    args: column of a pandas dataframe
+
+    returns: modified column of a pandas dataframe
     """
 
     col = col.str.replace(r"<[^<>]*>", " ", regex=True)

@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from constants import entity_name_dictionary
-
-from utils import (
+from cleaner_utils import (
     az_individuals_convert,
     az_name_clean,
     az_organizations_convert,
@@ -116,12 +114,6 @@ class StateCleaner(ABC):
         Organizations, and Transactions tables in a tuple
         """
 
-        # initial_dataframes = self.preprocess(filepaths_list)
-
-        # should run create tables, which runs through the functions above
-        # to preprocess, clean, standardizes and create the following tables
-        # (invividuals_table, organizations_table, transactions_table)
-
         pass
 
 
@@ -129,7 +121,7 @@ class ArizonaCleaner(StateCleaner):
     """This class is based on the StateCleaner abstract class,
     and cleans Arizona data"""
 
-    def preprocess(filepaths: list[str]) -> list[pd.DataFrame]:
+    def preprocess(filepaths_list: list[str]) -> list[pd.DataFrame]:
         """Turns filepaths into dataframes
 
         The input must be a list of valid filepaths which lead
@@ -148,13 +140,18 @@ class ArizonaCleaner(StateCleaner):
 
         df_list = []
 
-        for filepath in filepaths:
+        for filepath in filepaths_list:
             df_list.append(pd.read_csv(filepath))
 
         return df_list
 
-    def clean_state(filepaths: list[str]) -> pd.DataFrame:
+    def clean_state(filepaths: list[str]) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """Calls the other methods in order
+
+        This is the master function of the ArizonaCleaner
+        class, and calling it will activate the cleaning
+        pipeline which takes in filenames and outputs cleaned,
+        standardized, and schema-compliant tables
 
         args: list of two filepaths which lead to dataframes
 
@@ -165,16 +162,6 @@ class ArizonaCleaner(StateCleaner):
 
         transactions, details = ArizonaCleaner.preprocess(filepaths)
 
-        # # cleans transactions dates
-        # try:
-        #     transactions["TransactionDate"] = transactions[
-        #         "TransactionDate"].apply(convert_date)
-        # except TypeError:
-        #     transactions["TransactionDate"] = transactions[
-        #         "TransactionDate"]
-
-        # details = name_clean(details)
-
         # employer = transactions.groupby("CommitteeId")[
         #     "TransactionEmployer"].apply(lambda x: max(
         #         x, key=lambda y: y if y is not None else "")).values
@@ -182,29 +169,27 @@ class ArizonaCleaner(StateCleaner):
 
         # details["company"] = employer
 
-        # entity_type = transactions.groupby("CommitteeId")[
-        # "CommitteeGroupName"].apply(min).values
-
-        # details["entity_type"] = entity_type
-
         cleaned_transactions, cleaned_details = ArizonaCleaner.clean(
-            transactions, details
+            [transactions, details]
         )
-        # not sure the calling syntax is right here
 
-        cleaned_details = ArizonaCleaner.standardize(cleaned_details)
+        standardized_transactions, standardized_details = ArizonaCleaner.standardize(
+            [cleaned_transactions, cleaned_details]
+        )
 
         (
             az_transactions,
             az_individuals,
             az_organizations,
-        ) = ArizonaCleaner.create_tables(cleaned_transactions, cleaned_details)
+        ) = ArizonaCleaner.create_tables(
+            [standardized_transactions, standardized_details]
+        )
 
-        return az_transactions, az_individuals, az_organizations
+        return (az_transactions, az_individuals, az_organizations)
 
     def create_tables(
-        cs_transactions: pd.DataFrame, cs_details: pd.DataFrame
-    ) -> (pd.DataFrame):
+        data: list[pd.DataFrame],
+    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """split up cleaned and standardized tables to undergo final formatting
 
         We split up the details tables into individuals (individual contributors
@@ -219,35 +204,40 @@ class ArizonaCleaner(StateCleaner):
 
         """
 
-        merged_df = pd.merge(
-            cs_transactions["CommitteeId"],
-            cs_details[["master_committee_id", "office_name"]],
-            how="left",
-            left_on="CommitteeId",
-            right_on="master_committee_id",
-        )
+        transactions, details = data[0], data[1]
 
-        office_sought = merged_df.where(pd.notnull(merged_df), None)["office_name"]
-
-        cs_transactions["office_sought"] = office_sought
-
-        individual_details = cs_details[
-            cs_details["entity_type"] == ("Individual Contributions" or "Candidates")
+        individual_details = details[
+            (details["entity_type"] == "Individual")
+            | (details["entity_type"] == "Candidate")
+        ]
+        organization_details = details[
+            (details["entity_type"] != "Individual")
+            & (details["entity_type"] != "Candidate")
         ]
 
-        organization_details = cs_details[
-            cs_details["entity_type"] != ("Individual Contributions" or "Candidates")
-        ]
+        # individual_details = cs_details[
+        #     cs_details["entity_type"] == ("Individual Contributors" or "Candidate")
+        # ]
 
-        az_transactions = az_transactions_convert(cs_transactions)
+        # organization_details = cs_details[
+        #     cs_details["entity_type"] != ("Individual Contributors" or "Candidate")
+        # ]
 
-        az_individuals = az_individuals_convert(individual_details)
+        az_transactions = az_transactions_convert(transactions)
 
-        az_organizations = az_organizations_convert(organization_details)
+        if len(individual_details) > 0:
+            az_individuals = az_individuals_convert(transactions, individual_details)
+        else:
+            az_individuals = None
 
-        return az_transactions, az_individuals, az_organizations
+        if len(organization_details) > 0:
+            az_organizations = az_organizations_convert(organization_details)
+        else:
+            az_organizations = None
 
-    def standardize(details_df: pd.DataFrame) -> pd.DataFrame:
+        return (az_transactions, az_individuals, az_organizations)
+
+    def standardize(details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """standardize names of entities
 
         takes in details dataframe and replaces the names of
@@ -259,18 +249,24 @@ class ArizonaCleaner(StateCleaner):
         names replaced by those for the regular schema
         """
 
-        # entity_name_dictionary = {
-        #     'Organizations': 'Company',
-        #     'PACs': 'Committee',
-        #     'Parties': 'Party',
-        #     'Vendors': 'Vendor',
-        # }
-        details_df.replace({"entity_type": entity_name_dictionary}, inplace=True)
+        transactions_df, details_df = details_df_list[0], details_df_list[1]
 
-        return details_df
+        az_entity_name_dictionary = {
+            "Organizations": "Company",
+            "PACs": "Committee",
+            "Parties": "Party",
+            "Vendors": "Vendor",
+            "Individual Contributors": "Individual",
+            "Candidates": "Candidate",
+        }
+        details_df.replace({"entity_type": az_entity_name_dictionary}, inplace=True)
 
-    def clean(transactions: pd.DataFrame, details: pd.DataFrame) -> pd.DataFrame:
+        return transactions_df, details_df
+
+    def clean(data: list[pd.DataFrame]) -> pd.DataFrame:
         """clean the contents of the columns
+
+        INCOMPLETE
 
         transactions and details dataframes undergo cleaning of
         transaction dates, names are imputed to the right column,
@@ -280,14 +276,12 @@ class ArizonaCleaner(StateCleaner):
 
         returns: cleaned transactions and details dataframes
 
-        INCOMPLETE
-        and make them the right dtypes
-
-        also make everything lowercase
+        NOTE: TO DO: coerce correct dtypes and make text lowercase
 
         """
 
-        # cleans transactions dates
+        transactions, details = data[0], data[1]
+
         try:
             transactions["TransactionDate"] = transactions["TransactionDate"].apply(
                 convert_date
@@ -297,19 +291,28 @@ class ArizonaCleaner(StateCleaner):
 
         details = az_name_clean(details)
 
-        employer = (
-            transactions.groupby("CommitteeId")["TransactionEmployer"]
-            .apply(lambda x: max(x, key=lambda y: y if y is not None else ""))
-            .values
-        )
+        # stand-in while bugs with the employers feature is ironed out
+        employer = "not functioning"
+
+        # employer = (
+        #     transactions.groupby("CommitteeId")["TransactionEmployer"]
+        #     .apply(lambda x: max(x, key=lambda y: y if y is not None else ""))
+        #     .values
+        # )
         # is only going to select one emplyer
 
         details["company"] = employer
 
-        entity_type = (
-            transactions.groupby("CommitteeId")["CommitteeGroupName"].apply(min).values
+        merged_df = pd.merge(
+            transactions["CommitteeId"],
+            details[["master_committee_id", "office_name"]],
+            how="left",
+            left_on="CommitteeId",
+            right_on="master_committee_id",
         )
 
-        details["entity_type"] = entity_type
+        office_sought = merged_df.where(pd.notnull(merged_df), None)["office_name"]
 
-        return transactions, details
+        transactions["office_sought"] = office_sought
+
+        return [transactions, details]

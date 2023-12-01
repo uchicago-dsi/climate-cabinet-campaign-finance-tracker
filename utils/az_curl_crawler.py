@@ -83,6 +83,10 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     return df
 
 
+def get_keys_from_value(d, val):
+    return [k for k, v in d.items() if v == val][0]
+
+
 def detailed_scrape_wrapper(
     entities: pd.core.series.Series, page: int, start_year: int, end_year: int
 ) -> pd.DataFrame:
@@ -133,6 +137,12 @@ def detailed_scrape_wrapper(
 
     info_complete["retrieved_name"] = entity_names
 
+    entity_type_code = int(str(page)[0]) - 1
+
+    entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
+
+    info_complete["entity_type"] = entity_type
+
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
         # entity_names,
@@ -155,6 +165,8 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
     attached Pages dictionary for details.
     headers: necessary for calling the response, provided above
     data: necessary for calling the response, provided above
+
+    returns: request response containing aggregate information
     """
 
     return requests.post(
@@ -182,6 +194,8 @@ def detailed_scrape(detailed_params: dict) -> requests.models.Response:
     AZ_pages_dict dictionary for details.
     headers: necessary for calling the response, provided above
     data: necessary for calling the response, provided above
+
+    returns: request response containing entity details
     """
 
     return requests.post(
@@ -226,13 +240,12 @@ def parametrize(
         # or individual expenditures
         "startYear": str(start_year),
         "endYear": str(end_year),
-        "JurisdictionId": "0|Page",  # we keep this in here,
-        # but don't use it, don't need to be fine-toothed
+        "JurisdictionId": "0|Page",
         "TablePage": str(table_page),
         "TableLength": str(table_length),
         "ChartName": str(page),
-        "IsLessActive": "false",  # have yet to experiment with these
-        "ShowOfficeHolder": "false",  # have yet to experiment with these
+        "IsLessActive": "false",
+        "ShowOfficeHolder": "false",
     }
 
 
@@ -274,21 +287,30 @@ def detailed_parametrize(
         # or individual expenditures
         "startYear": str(start_year),
         "endYear": str(end_year),
-        "JurisdictionId": "0|Page",  # we keep this in here,
-        # but don't use it, don't need to be fine-toothed
+        "JurisdictionId": "0|Page",
         "TablePage": str(table_page),
         "TableLength": str(table_length),
         "Name": "1~" + str(entity_id),  # these two get used
-        # when scraping detailed data
-        "entityId": str(entity_id),
+        "entityId": str(entity_id),  # when scraping detailed data
         "ChartName": str(page),
-        "IsLessActive": "false",  # have yet to experiment with these
+        "IsLessActive": "false",
         "ShowOfficeHolder": "false",  # have yet to experiment with these
     }
 
 
 def info_scrape(detailed_params: dict) -> requests.models.Response:
-    """Scrape the name and filer information of individuals and organizations"""
+    """Scrape the name and filer information of individuals and organizations
+
+    This function takes in detailed scrape parameters created by
+    detailed_parametrize(), scrapes entity names and their
+    detailed information, and returns both the list of entity
+    names and the dataframe of entity details.
+
+    args: detailed parameters dictionary
+
+    returns: two request responses
+
+    """
 
     entity_name_response = requests.get(
         "https://seethemoney.az.gov/Reporting/GetEntityName/",
@@ -321,8 +343,19 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     # return entity_name_response, committee_name_response, info_response
 
 
-def info_process(info_df):
-    """ """
+def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
+    """processes detailed entity information
+
+    This function takes in the concatenated dataframes
+    of detailed entity information, processes them, and
+    returns them in a more readable and searchable form
+
+    args: concatenation of info dataframes created from
+    the info_scrape() response
+
+    returns: reprocessed info dataframe
+
+    """
 
     l2 = []
     for i in range(int(len(info_df) / 20)):

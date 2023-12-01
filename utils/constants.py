@@ -449,11 +449,3 @@ state_abbreviations = [
     " WV ",
     " WY ",
 ]
-
-
-entity_name_dictionary = {
-    "Organizations": "Company",
-    "PACs": "Committee",
-    "Parties": "Party",
-    "Vendors": "Vendor",
-}
