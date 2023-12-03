@@ -3,11 +3,18 @@ Constants to be used in various parts of the project
 """
 from pathlib import Path
 
-MI_FILEPATH = "../data/Contributions/"
+BASE_FILEPATH = Path("constants.py").resolve().parent
+# returns the base_path to the directory
 
-MI_VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
+AZ_TRANSACTIONS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_transactions_demo.csv"
+)
 
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
+AZ_INDIVIDUALS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
+)
+
+AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""

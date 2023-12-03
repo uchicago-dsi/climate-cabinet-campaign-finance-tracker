@@ -9,6 +9,11 @@ from cleaner_utils import (
     convert_date,
     transactor_sorter,
 )
+from constants import (
+    AZ_INDIVIDUALS_FILEPATH,
+    AZ_ORGANIZATIONS_FILEPATH,
+    AZ_TRANSACTIONS_FILEPATH,
+)
 
 
 class ArizonaCleaner(StateCleaner):
@@ -54,7 +59,9 @@ class ArizonaCleaner(StateCleaner):
 
         """
 
-        transactions, details = ArizonaCleaner.preprocess(filepaths)
+        transactions, individuals, organizations = ArizonaCleaner.preprocess(filepaths)
+
+        details = pd.concat([individuals, organizations])
 
         cleaned_transactions, cleaned_details = ArizonaCleaner.clean(
             [transactions, details]
@@ -192,3 +199,9 @@ class ArizonaCleaner(StateCleaner):
         transactions["office_sought"] = office_sought
 
         return [transactions, details]
+
+
+if __name__ == "__main__":
+    ArizonaCleaner.clean_state(
+        [AZ_TRANSACTIONS_FILEPATH, AZ_INDIVIDUALS_FILEPATH, AZ_ORGANIZATIONS_FILEPATH]
+    )
