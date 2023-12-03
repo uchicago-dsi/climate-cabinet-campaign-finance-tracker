@@ -295,7 +295,7 @@ AZ_pages_dict = {
     "Candidate": 1,
     "PAC": 2,
     "Political Party": 3,
-    "Organzations": 4,
+    "Organizations": 4,
     "Independent Expenditures": 5,
     "Ballot Measures": 6,
     "Individual Contributors": 7,

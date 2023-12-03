@@ -61,20 +61,27 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     d = {
-        "transaction_id": df["PublicTransactionId"],
-        "donor_id": df["TransactionNameId"],
-        "year": df["TransactionDateYear"],
-        "amount": df["Amount"],
-        "recipient_id": df["CommitteeId"],
+        "transaction_id": df["PublicTransactionId"].astype(int),
+        "donor_id": df["retrieved_id"].astype(int),
+        "year": df["TransactionDateYear"].astype(int),
+        "amount": df["Amount"].abs(),
+        "recipient_id": df["other_transactor_id"].astype(int),
         "office_sought": df["office_sought"],
         "purpose": df["Memo"],
         "transaction_type": df["TransactionType"],
+        "TransactionTypeDispositionId": df["TransactionTypeDispositionId"],
     }
 
-    return pd.DataFrame(data=d)
+    trans_df = pd.DataFrame(data=d)
+
+    trans_df = trans_df.apply(az_donor_recipient_director, axis=1)
+
+    trans_df = trans_df.drop(columns=["TransactionTypeDispositionId"])
+
+    return trans_df
 
 
-def az_individuals_convert(transactions_df, details_df: pd.DataFrame) -> pd.DataFrame:
+def az_individuals_convert(details_df: pd.DataFrame) -> pd.DataFrame:
     """Make individuals detail table schema compliant
 
     INCOMPLETE
@@ -97,10 +104,8 @@ def az_individuals_convert(transactions_df, details_df: pd.DataFrame) -> pd.Data
 
     """
 
-    #     employers = transactions.groupby("CommitteeId")[
-    #         "TransactionEmployer"].apply(set).apply(list).values
-
-    full_name = details_df["retrieved_name"]
+    details_df = details_df.apply(az_individual_name_checker, axis=1)
+    details_df["full_name"] = details_df["full_name"].str.replace("\t", "")
 
     employer = details_df["company"]
 
@@ -109,7 +114,7 @@ def az_individuals_convert(transactions_df, details_df: pd.DataFrame) -> pd.Data
     states_list = []
 
     for i in details_df["committee_address"].str.split(" "):
-        if i is not None:  # != None:
+        if i is not None:
             try:
                 abb = i[-2]
                 if " " + abb.upper() + " " not in state_abbreviations:
@@ -122,12 +127,10 @@ def az_individuals_convert(transactions_df, details_df: pd.DataFrame) -> pd.Data
             states_list.append(None)
 
     d = {
-        "id": transactions_df[
-            "TransactionNameGroupId"
-        ].unique(),  # details_df["master_committee_id"],
+        "id": details_df["retrieved_id"].astype(int),
         "first_name": None,
         "last_name": None,
-        "full_name": full_name,
+        "full_name": details_df["full_name"],
         "entity_type": entity_type,
         "state": states_list,
         "party": details_df["party_name"],
@@ -157,7 +160,7 @@ def az_organizations_convert(df: pd.DataFrame):
     states_list = []
 
     for i in df["committee_address"].str.split(" "):
-        if i is not None:  # != None:
+        if i is not None:
             try:
                 abb = i[-2]
                 if " " + abb.upper() + " " not in state_abbreviations:
@@ -170,11 +173,10 @@ def az_organizations_convert(df: pd.DataFrame):
             states_list.append(None)
 
     d = {
-        "id": df["master_committee_id"],
+        "id": df["retrieved_id"].astype(int),
         "name": df["committee_name"],
-        # "name": df["candidate"],
         "state": states_list,
-        "entity_type": entity_type,  # df["committee_type_name"]
+        "entity_type": entity_type,
     }
 
     return pd.DataFrame(data=d)
@@ -202,3 +204,39 @@ def remove_nonstandard(col):
     # turns oversized whitespace to single space
 
     return col
+
+
+def transactor_sorter(row):
+    if row["entity_type"] in ["Vendor", "Individual"]:
+        row["base_transactor_id"] = row["TransactionNameGroupId"]
+        row["other_transactor_id"] = row["CommitteeId"]
+    else:
+        row["base_transactor_id"] = row["CommitteeId"]
+        row["other_transactor_id"] = row["TransactionNameGroupId"]
+
+    return row
+
+
+def az_donor_recipient_director(row):
+    if row["TransactionTypeDispositionId"] == 2:
+        row["donor_id"], row["recipient_id"] = row["recipient_id"], row["donor_id"]
+    return row
+
+
+def az_employment_checker(row, transactions):
+    if row["entity_type"] == "Candidate":
+        row["company"] = "None (Is a Candidate)"
+    else:
+        row["company"] = transactions[
+            transactions["retrieved_id"] == row["retrieved_id"]
+        ].iloc[0]["TransactionEmployer"]
+
+    return row
+
+
+def az_individual_name_checker(row):
+    if row["entity_type"] == "Candidate":
+        row["full_name"] = row["candidate"]
+    else:
+        row["full_name"] = row["retrieved_name"]
+    return row

@@ -120,10 +120,19 @@ def detailed_scrape_wrapper(
     entity_names = []
     info_dfs = []
 
-    for d_param in d_params:
+    entity_type_code = int(str(page)[0]) - 1
+
+    entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
+
+    for d_param, entity in zip(d_params, entities):
         res = detailed_scrape(d_param)
         results = res.json()
-        detail_dfs.append(pd.DataFrame(data=results["data"]))
+
+        detail_df = pd.DataFrame(data=results["data"])
+        detail_df["retrieved_id"] = entity
+        detail_df["entity_type"] = entity_type
+
+        detail_dfs.append(detail_df)
 
     for info_param in info_params:
         entity_name, info = info_scrape(info_param)
@@ -137,15 +146,12 @@ def detailed_scrape_wrapper(
 
     info_complete["retrieved_name"] = entity_names
 
-    entity_type_code = int(str(page)[0]) - 1
-
-    entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
+    info_complete["retrieved_id"] = entities
 
     info_complete["entity_type"] = entity_type
 
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
-        # entity_names,
         info_complete,
     )
 
@@ -324,15 +330,6 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     else:
         entity_name_response = entity_name_response.strip()
 
-    #     committee_name_response = requests.get(
-    #         "https://seethemoney.az.gov/Reporting/GetCommitteeName/",
-    #         params=detailed_params,
-    #         headers=AZ_head,
-    #     )
-
-    #     if str(committee_name_response) == "<Response [500]>":
-    #         committee_name_response = None
-
     info_response = requests.post(
         "https://seethemoney.az.gov/Reporting/GetDetailedInformation",
         params=detailed_params,
@@ -340,7 +337,6 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     )
 
     return entity_name_response, info_response
-    # return entity_name_response, committee_name_response, info_response
 
 
 def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
