@@ -61,7 +61,7 @@ class ArizonaCleaner(StateCleaner):
 
         """
 
-        transactions, individuals, organizations = ArizonaCleaner.preprocess(filepaths)
+        individuals, organizations, transactions = ArizonaCleaner.preprocess(filepaths)
 
         details = pd.concat([individuals, organizations])
 
@@ -207,5 +207,9 @@ class ArizonaCleaner(StateCleaner):
 
 if __name__ == "__main__":
     ArizonaCleaner.clean_state(
-        [AZ_TRANSACTIONS_FILEPATH, AZ_INDIVIDUALS_FILEPATH, AZ_ORGANIZATIONS_FILEPATH]
+        [
+            AZ_INDIVIDUALS_FILEPATH,
+            AZ_ORGANIZATIONS_FILEPATH,
+            AZ_TRANSACTIONS_FILEPATH,
+        ]
     )
