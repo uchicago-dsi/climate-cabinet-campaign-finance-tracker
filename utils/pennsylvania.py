@@ -25,8 +25,8 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Args:
             filepath: the path in which the data is stored/located.
 
-            year: to make parsing through the data more manageable, the year from
-            which the data originates is also taken.
+            year: to make parsing through the data more manageable, the year
+            from which the data originates is also taken.
 
         Returns:
             a list of the appropriate column names for the dataset
