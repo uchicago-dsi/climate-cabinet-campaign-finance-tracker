@@ -1,6 +1,5 @@
-import uuid
-
 import os
+import uuid
 
 import numpy as np
 import pandas as pd
@@ -15,7 +14,6 @@ from utils.constants import (
     MICHIGAN_CONTRIBUTION_COLS_RENAME,
     MICHIGAN_CONTRIBUTION_COLS_REORDER,
 )
-
 from utils.preprocess_mi_campaign_data import (
     read_contribution_data,
     read_expenditure_data,
@@ -33,9 +31,10 @@ class MichiganCleaner(StateCleaner):
         "contribtype": "transaction_type",
         "schedule_desc": "transaction_type",
     }
-    individuals_column_order = []
-    organizations_column_order = []
-    transactions_column_order = []
+    # individuals_column_order = []
+    # organizations_column_order = []
+    # transactions_column_order = []
+    # NOTE: could these be added as constants?
     id_mapping_column_order = [
         "state",
         "year",
@@ -44,10 +43,6 @@ class MichiganCleaner(StateCleaner):
         "database_id",
     ]
     # map to entity types listed in the schema
-
-    # columns to be added {full_name, entity_type, state, party, company,
-    # transaction_id,
-    #  "donor_id", ""}
 
     # def read_expenditure_data(self, filepath: str, columns: list) -> pd.DataFrame:
     #     """Reads in the MI expenditure data
@@ -471,7 +466,8 @@ class MichiganCleaner(StateCleaner):
 
     # NOTE: The helper functions for ID_mapping output are below
 
-    def output_id_mapping(self,
+    def output_id_mapping(
+        self,
         individuals_map: pd.DataFrame,
         organizations_map: pd.DataFrame,
         transactions_map: pd.DataFrame,
@@ -479,13 +475,16 @@ class MichiganCleaner(StateCleaner):
         """Creates MichiganIDMAp.csv
 
         Inputs:
-            individuals_map: dataframe of individuals mapped to database and provided uuid
-            organizations_map: dataframe of organizations mapped to database and provided uuid
-            transactions_map: database of transactions mapped to database and provided uuid
+            individuals_map: dataframe of individuals mapped to database
+            and provided uuid
+            organizations_map: dataframe of organizations mapped to database
+            and provided uuid
+            transactions_map: database of transactions mapped to databasee
+            and provided uuid
 
         Returns: None, Creates data/output/MichiganIDMAp.csv
         """
-        output_path = BASE_FILEPATH / "data" / "output" / "MichiganIDMap.csv"
+        output_path = BASE_FILEPATH / "output" / "MichiganIDMap.csv"
 
         michigan_id_map = pd.concat(
             [individuals_map, organizations_map, transactions_map], ignore_index=True
@@ -494,9 +493,7 @@ class MichiganCleaner(StateCleaner):
         if not os.path.exists(output_path.parent):
             os.makedirs(output_path.parent)
 
-        #michigan_id_map.to_csv(output_path, index=False)
-        # TODO: FIND BUT IN THE TRANSACTIONS DATA
-        return None
+        michigan_id_map.to_csv(output_path, index=False)
 
     def create_individuals_id_mapping(
         self, individuals: pd.DataFrame, candidates: pd.DataFrame
@@ -588,7 +585,7 @@ class MichiganCleaner(StateCleaner):
         com_vend = com_vend.rename(columns={"transaction_id": "database_id"})
 
         id_mapping = pd.concat([org_com, ind_com, com_vend], ignore_index=True)
-        id_mapping['provided_id'] = np.nan
+        id_mapping["provided_id"] = np.nan
         id_mapping["state"] = "MI"
         id_mapping["entity_type"] = "Transaction"
 
@@ -724,7 +721,7 @@ class MichiganCleaner(StateCleaner):
                 "full_name",
                 "state",
                 "company",
-            ]
+            ],
         )
         candidates_df = self.filter_irrelevant_columns(
             candidates_df,
@@ -733,7 +730,7 @@ class MichiganCleaner(StateCleaner):
                 "can_first_name",
                 "can_last_name",
                 "candidate_full_name",
-            ]
+            ],
         )
 
         individuals_df = self.standardize_and_concatenate_individuals(
@@ -882,9 +879,7 @@ class MichiganCleaner(StateCleaner):
             }
         )
         transactions = pd.concat(
-            [org_com, ind_com, com_vend],
-            ignore_index=True,
-            sort=False
+            [org_com, ind_com, com_vend], axis=0, ignore_index=True, sort=False
         )
 
         transactions["office_sought"] = np.nan
@@ -928,8 +923,8 @@ class MichiganCleaner(StateCleaner):
                 "amount",
                 "com_legal_name_uuid",
                 "purpose",
-                "transaction_type"
-            ]
+                "transaction_type",
+            ],
         )
         ind_to_com = self.filter_irrelevant_columns(
             ind_to_com,
@@ -940,8 +935,8 @@ class MichiganCleaner(StateCleaner):
                 "amount",
                 "com_legal_name_uuid",
                 "purpose",
-                "transaction_type"
-            ]
+                "transaction_type",
+            ],
         )
         com_to_vend = self.filter_irrelevant_columns(
             com_to_vend,
@@ -952,34 +947,26 @@ class MichiganCleaner(StateCleaner):
                 "amount",
                 "vend_name_uuid",
                 "purpose",
-                "transaction_type"
-            ]
+                "transaction_type",
+            ],
         )
 
         transactions_df = self.standardize_and_concatenate_transactions(
             org_to_com, ind_to_com, com_to_vend
         )
 
-        # reorder columns
-        # transactions_df = self.reorder_columns(
-        #     transactions_df,
-        #     [
-        #         "donor_id",
-        #         "year",
-        #         "amount",
-        #         "recipient_id",
-        #         "office_sought",
-        #         "purpose",
-        #         "transaction_type"
-        #     ]
-        # )
-        transactions_df = transactions_df[["donor_id",
+        transactions_df = self.reorder_columns(
+            transactions_df,
+            [
+                "donor_id",
                 "year",
                 "amount",
                 "recipient_id",
                 "office_sought",
                 "purpose",
-                "transaction_type"]].copy()
+                "transaction_type",
+            ],
+        )
 
         return [transactions_df, id_mapping]
 
