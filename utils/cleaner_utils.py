@@ -62,7 +62,7 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
 
     d = {
         "transaction_id": df["PublicTransactionId"].astype(int),
-        "donor_id": df["retrieved_id"].astype(int),
+        "donor_id": df["base_transactor_id"].astype(int),
         "year": df["TransactionDateYear"].astype(int),
         "amount": df["Amount"].abs(),
         "recipient_id": df["other_transactor_id"].astype(int),
@@ -206,7 +206,23 @@ def remove_nonstandard(col):
     return col
 
 
-def transactor_sorter(row):
+def az_transactor_sorter(row):
+    """Sorts ids into base and other transactor
+
+    Because the arizona transactions dataset records the ids
+    of transactors differently depending on the entity type,
+    it is necessary to sort through it and clarify the ids.
+    The base transactor is the entity in the transaction from
+    whom the transaction was collected, and the other transactor
+    is the other entity involved in the transaction
+
+    args: row of the transactions dataframe
+
+    returns: adjusted row of the transactions dataframe,
+    with new columns 'base_transactor_id' and
+    'other_transactor_id'
+
+    """
     if row["entity_type"] in ["Vendor", "Individual"]:
         row["base_transactor_id"] = row["TransactionNameGroupId"]
         row["other_transactor_id"] = row["CommitteeId"]
@@ -218,12 +234,38 @@ def transactor_sorter(row):
 
 
 def az_donor_recipient_director(row):
+    """Sorts ids into donor and recipient columns
+
+    We switch the elements of a row in the transactions table if the
+    'TransactionTypeDispositionId' column indicates that the transaction
+    involves the other transactor receiving money and the base transactor
+    giving money. This is coded as a '2' in the dataset.
+
+    args: row of the transactions dataframe
+
+    returns: adjusted row of the transactions dataframe
+
+    """
     if row["TransactionTypeDispositionId"] == 2:
         row["donor_id"], row["recipient_id"] = row["recipient_id"], row["donor_id"]
     return row
 
 
 def az_employment_checker(row, transactions):
+    """Retrieves employment data
+
+    We attempt to collect employment data for the
+    individuals dataframe. Because of how candidates vs
+    individual contributors are coded, it is necessary to
+    code the candidate employment separately, otherwise
+    the column shapes become different
+
+    args: row of the individuals dataframe,
+    transactions dataframe
+
+    returns: adjusted row of the individuals dataframe
+
+    """
     if row["entity_type"] == "Candidate":
         row["company"] = "None (Is a Candidate)"
     else:
@@ -235,6 +277,19 @@ def az_employment_checker(row, transactions):
 
 
 def az_individual_name_checker(row):
+    """Collect names for individuals
+
+    Since names are coded differently for candidates vs
+    individual contributors, we go row by row and collect the
+    right element in each case
+
+    args: row of the individuals dataframe
+
+    returns: adjusted row of the individual dataframe
+    with the correct names of individual contributors and
+    candidates in the 'full name' column
+
+    """
     if row["entity_type"] == "Candidate":
         row["full_name"] = row["candidate"]
     else:

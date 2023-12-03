@@ -6,8 +6,8 @@ from cleaner_utils import (
     az_name_clean,
     az_organizations_convert,
     az_transactions_convert,
+    az_transactor_sorter,
     convert_date,
-    transactor_sorter,
 )
 from constants import (
     AZ_INDIVIDUALS_FILEPATH,
@@ -72,33 +72,30 @@ class ArizonaCleaner(StateCleaner):
         )
 
         (
-            az_transactions,
             az_individuals,
             az_organizations,
+            az_transactions,
         ) = ArizonaCleaner.create_tables(
             [standardized_transactions, standardized_details]
         )
 
-        return (az_transactions, az_individuals, az_organizations)
+        return (az_individuals, az_organizations, az_transactions)
 
     def create_tables(
         data: list[pd.DataFrame],
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """split up cleaned and standardized tables to undergo final formatting
+        """
+        Creates the Individuals, Organizations, and Transactions tables from
+        the dataframe list outputted from standardize
 
-        We split up the details tables into individuals (individual contributors
-        and donors) and organizations (everything else), which then undergo
-        conversion into fully schema-compatible transactions, individual details
-        and organization details tables.
+        Inputs:
+            data: a list of 1 or 3 dataframes as outputted from standardize method.
 
-        args: cleaned and standardized transactions and details tables
-
-        returns: three tables for transactions,
-        individual details, and organization details
-
+        Returns: (individuals_table, organizations_table, transactions_table)
+                    tuple containing the tables as defined in database schema
         """
 
-        transactions, details = data[0], data[1]
+        transactions, details = data
 
         individual_details = details[
             (details["entity_type"] == "Individual")
@@ -109,7 +106,12 @@ class ArizonaCleaner(StateCleaner):
             & (details["entity_type"] != "Candidate")
         ]
 
+        # gathers relevant columns, puts them in schema order,
+        # and enforces datatype
         az_transactions = az_transactions_convert(transactions)
+
+        # does the same for individuals and organizations,
+        # so long as there is some amount of data in each
 
         if len(individual_details) > 0:
             az_individuals = az_individuals_convert(individual_details)
@@ -121,7 +123,7 @@ class ArizonaCleaner(StateCleaner):
         else:
             az_organizations = None
 
-        return (az_transactions, az_individuals, az_organizations)
+        return (az_individuals, az_organizations, az_transactions)
 
     def standardize(details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """standardize names of entities
@@ -166,7 +168,7 @@ class ArizonaCleaner(StateCleaner):
 
         """
 
-        transactions, details = data[0], data[1]
+        transactions, details = data
 
         merged_df = pd.merge(details, transactions, on="retrieved_id", how="inner")
 
@@ -184,7 +186,7 @@ class ArizonaCleaner(StateCleaner):
 
         details = details.apply(az_employment_checker, args=(transactions,), axis=1)
 
-        transactions = transactions.apply(transactor_sorter, axis=1)
+        transactions = transactions.apply(az_transactor_sorter, axis=1)
 
         merged_df = pd.merge(
             transactions["base_transactor_id"],
