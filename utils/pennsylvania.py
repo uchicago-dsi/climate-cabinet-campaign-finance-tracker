@@ -1,28 +1,25 @@
-from abc import ABC, abstractmethod
+import uuid
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
-from utils import pennsylvania_helper_functions as helper
+import pandas as pd
+
 from utils import clean
-import uuid
-# sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
 
 class PennsylvaniaCleaner(clean.StateCleaner):
 
-    curr_python_file = Path(__file__).resolve()
+    Base_Filepath = Path(__file__).resolve().parent.parent
     # resolve to the path of the current python file
     # repo_root will be the absolute path to the root of the repository,
     # no matter where the repository is.
-    # For pathlib Path objects, `.parent` gets the parent path_splitectory and `/`
-    # can be used like `/` in unix style paths.
-    repo_root = curr_python_file.parent.parent
-    filepaths_list = pd.read_csv(repo_root / "data" / "results.csv")
+    # For pathlib Path objects, `.parent` gets the parent path_splitectory and
+    #  `/` can be used like `/` in unix style paths.
+    filepaths_list = Base_Filepath / "data" / "raw" / "PA"
 
-    # helper functions: 
-    def assign_col_names(self,filepath: str, year: int) -> list:
+    # helper functions:
+    def assign_col_names(self, filepath: str, year: int) -> list:
         """Assigns the right column names to the right datasets.
 
         Args:
@@ -53,11 +50,12 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             else:
                 return const.PA_EXPENSE_COLS_NAMES_POST2022
 
-
-    def replace_id_with_uuid(self,df:pd.DataFrame, col1:str, col2:str)-> tuple[dict, pd.DataFrame]:
+    def replace_id_with_uuid(
+        self, df: pd.DataFrame, col1: str, col2: str
+    ) -> tuple[dict, pd.DataFrame]:
         """Creates a dictionary whose keys are generated UUIDs that map to values
         corresponding to unique IDs from the donor and recipient IDs columns in df
-        
+
         Args:
             A pandas dataframe with at least two columns (col1, col1)
             col1, col2: columns of df that should have IDs
@@ -70,12 +68,12 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # appear in the recipient column due to concatenation, and I want to keep
         # the IDs unique throughout
         ids_1 = set(df[col1])
-        ids_2= set(df[col2])
+        ids_2 = set(df[col2])
         unique_ids = list(ids_1.union(ids_2))
 
         with_uuid = []
         for id in unique_ids:
-            with_uuid.append([id,str(uuid.uuid4())])
+            with_uuid.append([id, str(uuid.uuid4())])
 
         mapped_dict = {lst[0]: (lst[1]) for lst in with_uuid}
         df[col1] = df[col1].map(mapped_dict)
@@ -83,17 +81,16 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         mapped_dict = {value: key for key, value in mapped_dict.items()}
         return mapped_dict, df
 
-
-    def classify_contributor(self,donor: str) -> str:
-        """Takes a string input and compares it against a list of identifiers most
-        commonly associated with organizations/corporations/PACs, and classifies the
-        string input as belong to an individual or organization
+    def classify_contributor(self, donor: str) -> str:
+        """Takes a string input and compares it against a list of identifiers
+        most commonly associated with organizations/corporations/PACs, and
+        classifies the string input as belong to an individual or organization
 
         Args:
             contributor: a string
         Returns:
-            string "ORGANIZATION" or "INDIVIDUAL" depending on the classification of
-            the parameter
+            string "ORGANIZATION" or "INDIVIDUAL" depending on the
+            classification of the parameter
         """
         split = donor.split()
         loc = 0
@@ -103,8 +100,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             loc += 1
         return "Individual"
 
-
-    def pre_process_contributor_dataset(self,df: pd.DataFrame):
+    def pre_process_contributor_dataset(self, df: pd.DataFrame):
         """pre-processes a contributor dataset by sifting through the columns and
         keeping the relevant columns for EDA and AbstractStateCleaner purposes
 
@@ -118,8 +114,8 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         df["RECIPIENT_ID"] = df["RECIPIENT_ID"].astype("str")
         df["DONOR"] = df["DONOR"].astype("str")
         df["DONOR"] = df["DONOR"].str.title()
-        df["DONOR_TYPE"] = df["DONOR"].apply(classify_contributor)
-        df.drop(
+        df["DONOR_TYPE"] = df["DONOR"].apply(self.classify_contributor)
+        df = df.drop(
             columns={
                 "ADDRESS_1",
                 "ADDRESS_2",
@@ -135,25 +131,22 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "E_ZIPCODE",
                 "SECTION",
                 "CYCLE",
-                "CONT_DESCRIP",
                 "CONT_DATE_1",
                 "CONT_AMT_1",
                 "CONT_DATE_2",
                 "CONT_AMT_2",
                 "CONT_DATE_3",
                 "CONT_AMT_3",
-            },
-            inplace=True,
+            }
         )
 
         if "TIMESTAMP" in df.columns:
-            df.drop(columns={"TIMESTAMP", "REPORTER_ID"}, inplace=True)
+            df = df.drop(columns={"TIMESTAMP", "REPORTER_ID"})
             df["DONOR"] = df["DONOR"].apply(lambda x: str(x).title())
 
         return df
 
-
-    def pre_process_filer_dataset(self,df: pd.DataFrame):
+    def pre_process_filer_dataset(self, df: pd.DataFrame):
         """pre-processes a filer dataset by sifting through the columns and
         keeping the relevant columns for EDA and AbstractStateCleaner purposes
 
@@ -164,7 +157,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             a pandas dataframe whose columns are appropriately formatted.
         """
         df["RECIPIENT_ID"] = df["RECIPIENT_ID"].astype("str")
-        df.drop(
+        df = df.drop(
             columns={
                 "YEAR",
                 "CYCLE",
@@ -181,19 +174,17 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "BEGINNING",
                 "MONETARY",
                 "INKIND",
-            },
-            inplace=True,
+            }
         )
         if "TIMESTAMP" in df.columns:
-            df.drop(columns={"TIMESTAMP", "REPORTER_ID"}, inplace=True)
+            df = df.drop(columns={"TIMESTAMP", "REPORTER_ID"})
 
-        df.drop_duplicates(subset=["RECIPIENT_ID"], inplace=True)
+        df = df.drop_duplicates(subset=["RECIPIENT_ID"])
         df["RECIPIENT_TYPE"] = df.RECIPIENT_TYPE.map(const.PA_FILER_ABBREV_DICT)
         df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).title())
         return df
 
-
-    def pre_process_expense_dataset(self,df: pd.DataFrame):
+    def pre_process_expense_dataset(self, df: pd.DataFrame):
         """pre-processes an expenditure dataset by sifting through the columns and
         keeping the relevant columns for EDA and AbstractStateCleaner purposes
 
@@ -204,7 +195,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             a pandas dataframe whose columns are appropriately formatted.
         """
         df["DONOR_ID"] = df["DONOR_ID"].astype("str")
-        df.drop(
+        df = df.drop(
             columns={
                 "EXPENSE_CYCLE",
                 "EXPENSE_ADDRESS_1",
@@ -213,17 +204,15 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "EXPENSE_STATE",
                 "EXPENSE_ZIPCODE",
                 "EXPENSE_DATE",
-            },
-            inplace=True,
+            }
         )
         if "EXPENSE_REPORTER_ID" in df.columns:
-            df.drop(columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True)
+            df = df.drop(columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"})
         df["PURPOSE"] = df["PURPOSE"].apply(lambda x: str(x).title())
         df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).title())
         return df
 
-
-    def initialize_PA_dataset(self,data_filepath: str, year: int) -> pd.DataFrame:
+    def initialize_PA_dataset(self, data_filepath: str, year: int) -> pd.DataFrame:
         """initializes the PA data appropriately based on whether the data contains
         filer, contributor, or expense information
 
@@ -239,7 +228,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         df = pd.read_csv(
             data_filepath,
-            names=assign_col_names(data_filepath, year),
+            names=self.assign_col_names(data_filepath, year),
             sep=",",
             encoding="latin-1",
             on_bad_lines="warn",
@@ -250,13 +239,13 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         file_type = dir[len(dir) - 1]
 
         if "contrib" in file_type:
-            return pre_process_contributor_dataset(df)
+            return self.pre_process_contributor_dataset(df)
 
         elif "filer" in file_type:
-            return pre_process_filer_dataset(df)
+            return self.pre_process_filer_dataset(df)
 
         elif "expense" in file_type:
-            return pre_process_expense_dataset(df)
+            return self.pre_process_expense_dataset(df)
 
         else:
             raise ValueError(
@@ -264,7 +253,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 expense, and contributor datasets. Make sure your data \
                 is from these sources."
             )
-
 
     def merge_contrib_filer_datasets(
         self, cont_file: pd.DataFrame, filer_file: pd.DataFrame
@@ -279,10 +267,8 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Returns
             The merged pandas dataframe
         """
-        merged_df = pd.merge(
-            cont_file, filer_file, how="left", on="RECIPIENT_ID")
+        merged_df = pd.merge(cont_file, filer_file, how="left", on="RECIPIENT_ID")
         return merged_df
-
 
     def merge_expend_filer_datasets(
         self, expend_file: pd.DataFrame, filer_file: pd.DataFrame
@@ -297,25 +283,12 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             The merged pandas dataframe
         """
         merged_df = pd.merge(
-            expend_file, filer_file, 
-            left_on="DONOR_ID", 
-            right_on="RECIPIENT_ID").drop("RECIPIENT_ID",axis=1)
+            expend_file, filer_file, left_on="DONOR_ID", right_on="RECIPIENT_ID"
+        ).drop("RECIPIENT_ID", axis=1)
         return merged_df
 
-
-    def merge_all_datasets(self,datasets: list) -> pd.DataFrame:
-        """concatenates datasets from different years into one super dataset
-        Args:
-            datasets: a list of datasets
-
-        Returns:
-            The merged pandas dataframe
-        """
-        return pd.concat(datasets)
-
-
     def format_contrib_data_for_concat(self, df: pd.DataFrame) -> pd.DataFrame:
-        """ Reformartes the merged contributor-filer dataset such that it has the 
+        """Reformartes the merged contributor-filer dataset such that it has the
         same columns as the merged expenditure-filer dataset so that concatenation
         can occur
 
@@ -328,15 +301,13 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         df["DONOR_ID"] = np.nan
         df["DONOR_PARTY"] = np.nan
         df["DONOR_OFFICE"] = np.nan
-        df["PURPOSE"] = "Donation"
         columns = df.columns.to_list()
         columns.sort()
-        df = df.loc[:,columns]
+        df = df.loc[:, columns]
         return df
 
-
-    def format_expend_data_for_concat(self, df: pd.DataFrame)-> pd.DataFrame:
-        """ Reformartes the merged expenditure-filer dataset such that it has the 
+    def format_expend_data_for_concat(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Reformartes the merged expenditure-filer dataset such that it has the
         same columns as the merged contributor-filer dataset so that concatenation
         can occur
 
@@ -347,33 +318,38 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             A new dataframe with the appropriate column formatting for concatenation
         """
         df["RECIPIENT_ID"] = np.nan
-        df.rename(columns = {"RECIPIENT_x":"RECIPIENT",
-                            "RECIPIENT_y":"DONOR",
-                            "RECIPIENT_TYPE": "DONOR_TYPE",
-                            "RECIPIENT_PARTY":"DONOR_PARTY",
-                            "RECIPIENT_OFFICE":"DONOR_OFFICE"}, inplace=True)
+        df = df.rename(
+            columns={
+                "RECIPIENT_x": "RECIPIENT",
+                "RECIPIENT_y": "DONOR",
+                "RECIPIENT_TYPE": "DONOR_TYPE",
+                "RECIPIENT_PARTY": "DONOR_PARTY",
+                "RECIPIENT_OFFICE": "DONOR_OFFICE",
+            }
+        )
         df["RECIPIENT_TYPE"] = np.nan
         df["RECIPIENT_OFFICE"] = np.nan
         df["RECIPIENT_PARTY"] = np.nan
         columns = df.columns.to_list()
         columns.sort()
-        df = df.loc[:,columns]
+        df = df.loc[:, columns]
         return df
 
-
     def combine_contributor_expenditure_datasets(
-            self, contrib_ds:list[pd.DataFrame], 
-            filer_ds:list[pd.DataFrame], 
-            expend_ds:list[pd.DataFrame])-> pd.DataFrame:
+        self,
+        contrib_ds: list[pd.DataFrame],
+        filer_ds: list[pd.DataFrame],
+        expend_ds: list[pd.DataFrame],
+    ) -> pd.DataFrame:
         """This function takes datasets with information from the contributor,
-        filer, and expenditure datasets in each given year, merges the contributor
-        and expenditure datasets with pertinent information from the filer dataset,
-        and concatenates the 3 datasets into 1 dataset with.
+        filer, and expenditure datasets in each given year, merges the
+        contributor and expenditure datasets with pertinent information from the
+        filer dataset,and concatenates the 3 datasets into 1 dataset with.
 
         Args:
-            3 datasets: contributor, filer, and expenditure datasets. Each of the
-            datasets is a list of dataframes, with each entry in the dataframes
-            being a given file from a select year
+            3 datasets: contributor, filer, and expenditure datasets. Each of
+            the datasets is a list of dataframes, with each entry in the
+            dataframes being a given file from a select year
 
         Returns:
             A concatenated dataframe with transaction information, contributor
@@ -381,24 +357,135 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         """
         merged_cont_datasets_per_yr = []
         merged_exp_dataset_per_yr = []
-        
+
         for i in range(len(contrib_ds)):
-            cont_merged = merge_contrib_filer_datasets(contrib_ds[i],filer_ds[i])
-            expend_merged = merge_expend_filer_datasets(expend_ds[i],filer_ds[i])
+            cont_merged = self.merge_contrib_filer_datasets(contrib_ds[i], filer_ds[i])
+            expend_merged = self.merge_expend_filer_datasets(expend_ds[i], filer_ds[i])
             merged_cont_datasets_per_yr.append(cont_merged)
             merged_exp_dataset_per_yr.append(expend_merged)
-        
-        contrib_filer_info = format_contrib_data_for_concat(merge_all_datasets(merged_cont_datasets_per_yr))
-        expend_filer_info = format_expend_data_for_concat(merge_all_datasets(merged_exp_dataset_per_yr))
-        return merge_all_datasets([contrib_filer_info,expend_filer_info])
 
-    def output_ID_mapping(self, dictionary:dict, df:pd.DataFrame):
+        merged_cont_datasets_per_yr = pd.concat(merged_cont_datasets_per_yr)
+        merged_exp_dataset_per_yr = pd.concat(merged_exp_dataset_per_yr)
+        contrib_filer_info = self.format_contrib_data_for_concat(
+            merged_cont_datasets_per_yr
+        )
+        expend_filer_info = self.format_expend_data_for_concat(
+            merged_exp_dataset_per_yr
+        )
+        return pd.concat([contrib_filer_info, expend_filer_info])
+
+    def output_ID_mapping(self, dictionary: dict, df: pd.DataFrame):
         pass
 
-    @abstractmethod
+    def make_individuals_table(df: pd.Dataframe) -> pd.DataFrame:
+        """This function isolates donors and recipients who are classified as
+        individuals and returns a dataframe with strictly individual information
+        pertinent to the StateCleaner schema.
+
+        Args:
+            df: a pandas dataframe with donor and recipient information
+        Returns:
+            a pandas dataframe strictly with information regarding individuals
+            from the inputted dataframe
+        """
+        donor_individuals = df.loc[
+            (
+                (df.DONOR_TYPE == "Individuals")
+                | (df.DONOR_TYPE == "Candidate")
+                | (df.DONOR_TYPE == "Lobbyist")
+            )
+        ]
+        donor_individuals = donor_individuals[
+            ["DONOR", "DONOR_ID", "DONOR_PARTY", "DONOR_TYPE"]
+        ]
+        donor_individuals = donor_individuals.rename(
+            columns={
+                "DONOR": "full_name",
+                "DONOR_ID": "id",
+                "DONOR_PARTY": "party",
+                "DONOR_TYPE": "entity_type",
+            }
+        )
+
+        recipient_individuals = df.loc[
+            (
+                (df.RECIPIENT_TYPE == "Individuals")
+                | (df.RECIPIENT_TYPE == "Candidate")
+                | (df.RECIPIENT_TYPE == "Lobbyist")
+            )
+        ]
+        recipient_individuals = recipient_individuals[
+            ["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]
+        ]
+        recipient_individuals = recipient_individuals.rename(
+            columns={
+                "RECIPIENT": "full_name",
+                "RECIPIENT_ID": "id",
+                "RECIPIENT_PARTY": "party",
+                "RECIPIENT_TYPE": "entity_type",
+            }
+        )
+
+        all_individuals = pd.concat([donor_individuals, recipient_individuals])
+        all_individuals = all_individuals.drop_duplicates()
+        all_individuals["first_name"] = np.nan
+        all_individuals["last_name"] = np.nan
+        all_individuals["state"] = "PA"
+        all_individuals["company"] = np.nan
+        return all_individuals
+
+    def make_organizations_table(organizations_df: pd.DataFrame) -> pd.DataFrame:
+        """This function isolates donors and recipients who are classified as
+        committees or organizations and returns a dataframe with strictly
+        committee/organization information pertinent to the StateCleaner schema.
+
+        Args:
+            df: a pandas dataframe with donor and recipient information
+        Returns:
+            a pandas dataframe strictly with information regarding committess or
+            organizations from the inputted dataframe.
+        """
+        donor_organizations = organizations_df.loc[
+            (
+                (organizations_df.DONOR_TYPE == "Committee")
+                | (organizations_df.DONOR_TYPE == "Organization")
+            )
+        ]
+        donor_organizations = donor_organizations[["DONOR_ID", "DONOR", "DONOR_TYPE"]]
+        donor_organizations = donor_organizations.rename(
+            columns={"DONOR_ID": "id", "DONOR": "name", "DONOR_TYPE": "entity_type"}
+        )
+        recipient_organizations = organizations_df.loc[
+            (
+                (organizations_df.RECIPIENT_TYPE == "Committee")
+                | (organizations_df.RECIPIENT_TYPE == "Organization")
+            )
+        ]
+        recipient_organizations = recipient_organizations[
+            ["RECIPIENT_ID", "RECIPIENT", "RECIPIENT_TYPE"]
+        ]
+        recipient_organizations = recipient_organizations.rename(
+            columns={
+                "RECIPIENT_ID": "id",
+                "RECIPIENT": "name",
+                "RECIPIENT_TYPE": "entity_type",
+            }
+        )
+        all_organizations = pd.concat([donor_organizations, recipient_organizations])
+        all_organizations = all_organizations.drop_duplicates()
+        all_organizations["state"] = "PA"
+
+        return all_organizations
+
+    def make_transactions_table(organizations_df: pd.DataFrame) -> pd.DataFrame:
+        pass
+
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
 
         contributor_datasets, filer_datasets, expense_datasets = [], [], []
+        # incase the provided filepath was not in increasing order, this just
+        # makes sure the filepaths numerically line up
+        filepaths_list.sort()
         for path in filepaths_list:
             # because of the different formatting for data in different years
             # obstained from the PA website years, I had my webscraper append
@@ -407,7 +494,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             year = path_split[len(path_split) - 1].replace(".txt", "")
             year = int(year)
 
-            df = helper.initialize_PA_dataset(path, year)
+            df = self.initialize_PA_dataset(path, year)
             if "contrib" in path:
                 contributor_datasets.append(df)
             elif "filer" in path:
@@ -416,31 +503,66 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 expense_datasets.append(df)
             else:
                 pass  # do nothing
-        
-        # incase the provided filepath was not in increasing order, this just
-        # makes sure the filepaths numerically line up
-        contributor_datasets.sort()
-        filer_datasets.sort()
-        expense_datasets.sort()
 
-        merged_dataset = helper.combine_contributor_expenditure_datasets(contributor_datasets, filer_datasets,expense_datasets)
-        dictionary, merged_dataset = helper.replace_id_with_uuid(merged_dataset,"DONOR_ID","RECIPIENT_ID")
-        helper.output_ID_mapping(dictionary, merged_dataset)         # return dictionary
+        merged_dataset = self.combine_contributor_expenditure_datasets(
+            contributor_datasets, filer_datasets, expense_datasets
+        )
+        dictionary, merged_dataset = self.replace_id_with_uuid(
+            merged_dataset, "DONOR_ID", "RECIPIENT_ID"
+        )
+        self.output_ID_mapping(dictionary, merged_dataset)  # return dictionary
 
+        # assign transaction_id
+        merged_dataset["TRANSACTION_ID"] = str(uuid.uuid4())
         return merged_dataset
-    
-    @abstractmethod
+
     def create_tables(
         self, standardized_df: pd.Dataframe
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """
-        Creates the Individuals, ORganizations, and Transactions tables from
-        the standardized Pandas DataFrame
 
-        Inputs: df standardized dataframe
+        # separate the standardized_df information into the relevant columns for
+        # individuals, organizations, and transactions tables
 
-        Returns: (invividuals_table, organizations_table, transactions_table)
-                    tuple containing the tables for the database schema
-        """
-        individuals_table, organizations_table, transactions_table = helper.split_dataframe_into_tables(standardized_df)
-        pass
+        # Individuals Table:
+        individuals_df = standardized_df[
+            [
+                "DONOR",
+                "DONOR_ID",
+                "DONOR_PARTY",
+                "DONOR_TYPE",
+                "RECIPIENT",
+                "RECIPIENT_ID",
+                "RECIPIENT_PARTY",
+                "RECIPIENT_TYPE",
+            ]
+        ]
+        individuals_table = self.make_individuals_table(individuals_df)
+
+        # Organizations Table
+        organizations_df = standardized_df[
+            [
+                "DONOR",
+                "DONOR_ID",
+                "DONOR_TYPE",
+                "RECIPIENT",
+                "RECIPIENT_ID",
+                "RECIPIENT_TYPE",
+            ]
+        ]
+        organizations_table = self.make_organizations_table(organizations_df)
+        # Transactions Table
+        transactions_df = standardized_df[
+            [
+                "AMOUNT",
+                "DONOR_ID",
+                "DONOR_OFFICE",
+                "PURPOSE",
+                "RECIPIENT_ID",
+                "RECIPIENT_OFFICE",
+                "YEAR",
+                "TRANSACTION_ID",
+            ]
+        ]
+        transactions_table = self.make_transactions_table(transactions_df)
+
+        return individuals_table, organizations_table, transactions_table
