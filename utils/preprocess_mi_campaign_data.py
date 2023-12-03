@@ -15,7 +15,7 @@ def fix_mi_dataframes(filepath, columns):
     pass
 
 
-def read_expenditure_data(filepath: str, columns: list) -> pd.DataFrame:
+def read_expenditure_data(filepath: str, columns: list[str]) -> pd.DataFrame:
     """Reads in the MI expenditure data
 
     Inputs:
@@ -37,7 +37,7 @@ def read_expenditure_data(filepath: str, columns: list) -> pd.DataFrame:
     return df
 
 
-def read_contribution_data(filepath: str, columns: list) -> pd.DataFrame:
+def read_contribution_data(filepath: str, columns: list[str]) -> pd.DataFrame:
     """Reads in the MI campaign data and skips the errors
 
     Inputs: filepath (str): filepath to the MI Campaign Data txt file
@@ -96,10 +96,10 @@ def plot_year_contribution_types(all_year_contribution_dataframe: pd.DataFrame) 
         barmode="stack",
         labels={
             "doc_stmnt_year": "Year",
-            "count": "Count",
+            "count": "Number of Contrbution Types",
             "contribtype": "Contribution Type",
         },
-        title="Stacked Bar Chart for Contribution Types by Year",
+        title="Michigan Campaign Contribution Types by Year",
     )
     fig.show()
 
@@ -113,24 +113,37 @@ def plot_committee_types_by_year(all_year_contribution_dataframe: pd.DataFrame) 
 
     Return: None
     """
+    committee_names = {
+        "DIS": "District Party Committee",
+        "STA": "State Party Committee",
+        "BAL": "Ballot Question Committee",
+        "COU": "County Party Committee",
+        "POL": "Political Action Committee",
+        "GUB": "Gubernatorial Committee",
+        "CAN": "Candidate Committee",
+        "IND": "Independent Political Action Committee",
+    }
     contribution_committee_type_by_year = (
         all_year_contribution_dataframe.groupby("doc_stmnt_year")["com_type"]
         .value_counts()
         .reset_index()
     )
+    contribution_committee_type_by_year[
+        "com_type_full"
+    ] = contribution_committee_type_by_year["com_type"].map(committee_names)
 
     fig = px.bar(
         contribution_committee_type_by_year,
         x="doc_stmnt_year",
         y="count",
-        color="com_type",
+        color="com_type_full",
         barmode="stack",
         labels={
             "doc_stmnt_year": "Year",
-            "count": "Count",
-            "com_type": "Committee Tyoe",
+            "count": "Number of Contributions",
+            "com_type_full": "Committee Type",
         },
-        title="Stacked Bar Chart for Contributions Committee Types by Year",
+        title="Michigan Campaign Contributions Committee Types by Year",
     )
     fig.show()
 
@@ -146,25 +159,39 @@ def plot_expenditure_committee_types_by_year(
 
     Return: None
     """
+    committee_names = {
+        "DIS": "District Party Committee",
+        "STA": "State Party Committee",
+        "BAL": "Ballot Question Committee",
+        "COU": "County Party Committee",
+        "POL": "Political Action Committee",
+        "GUB": "Gubernatorial Committee",
+        "CAN": "Candidate Committee",
+        "IND": "Independent Political Action Committee",
+    }
     expenditure_committee_type_by_year = (
         all_year_expenditure_dataframe.groupby("doc_stmnt_year")["com_type"]
         .value_counts()
         .reset_index()
     )
+    expenditure_committee_type_by_year[
+        "com_type_full"
+    ] = expenditure_committee_type_by_year["com_type"].map(committee_names)
 
     fig = px.bar(
         expenditure_committee_type_by_year,
         x="doc_stmnt_year",
         y="count",
-        color="com_type",
+        color="com_type_full",
         barmode="stack",
         labels={
             "doc_stmnt_year": "Year",
-            "count": "Count",
-            "com_type": "Committee Tyoe",
+            "count": "Number of Expenditures",
+            "com_type_full": "Committee Type",
         },
-        title="Stacked Bar Chart for Expenditure Committee Types by Year",
+        title="Michigan Campaign Expenditure Committee Types by Year",
     )
+
     fig.show()
 
 
@@ -191,10 +218,10 @@ def plot_year_schedule_types(all_year_expenditure_dataframe: pd.DataFrame) -> No
         barmode="stack",
         labels={
             "doc_stmnt_year": "Year",
-            "count": "Count",
+            "count": "Number of Expenditures",
             "schedule_desc": "Schedule Description",
         },
-        title="Stacked Bar Chart for Expenditure Schedule Types by Year",
+        title="Michigan Campaign Expenditure Schedule Types by Year",
     )
     fig.show()
 

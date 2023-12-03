@@ -3,18 +3,22 @@ Constants to be used in various parts of the project
 """
 from pathlib import Path
 
-BASE_FILEPATH = Path.cwd()
+BASE_FILEPATH = Path("constants.py").resolve().parent
+# returns the base_path to the directory
 
-# BASE_FILEPATH = Path.cwd().parent
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
+
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contribution"
+
+# FINAL_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
+# FINAL_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
+# These filepaths will replace the ones above and match the path of the data
+# folder in the Drive
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
 
 HEADERS = {"User-Agent": USER_AGENT}
-
-MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
-
-MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contribution"
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
