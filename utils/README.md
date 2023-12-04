@@ -28,7 +28,14 @@ az_orgs_demo.csv contains information on the organizations (those being the PACs
 
 **Running the State Cleaner**
 
-The arizona.py file has an if __name__ == "__main__" clause at the bottom which will run the cleaner on the demo data. The data must be available via the specified filepaths (laid out in utils/constants). This process should take under four minutes. 
+The arizona.py file has an if __name__ == "__main__" clause at the bottom which will run the cleaner on the demo data. The data must be available via the specified filepaths in the google drive (laid out in utils/constants). Simply use:
+
+from utils.arizona import ArizonaCleaner
+clean = ArizonaCleaner()
+
+clean_tables = clean.clean_state()
+
+This process should take under four minutes. 
 
 Otherwise, one may call ArizonaCleaner.clean_state([]) with the relevant filepaths inside the list as the only argument. Note that the files must go in this order: individuals, organizations, transactions. 
 
