@@ -1,8 +1,9 @@
 # see also the README in this branch's utils folder
 
 import pandas as pd
-from clean import StateCleaner
-from cleaner_utils import (
+
+from utils.clean import StateCleaner
+from utils.cleaner_utils import (
     az_employment_checker,
     az_individuals_convert,
     az_name_clean,
@@ -11,7 +12,7 @@ from cleaner_utils import (
     az_transactor_sorter,
     convert_date,
 )
-from constants import (
+from utils.constants import (
     AZ_INDIVIDUALS_FILEPATH,
     AZ_ORGANIZATIONS_FILEPATH,
     AZ_TRANSACTIONS_FILEPATH,
@@ -22,7 +23,14 @@ class ArizonaCleaner(StateCleaner):
     """This class is based on the StateCleaner abstract class,
     and cleans Arizona data"""
 
-    def preprocess(filepaths_list: list[str]) -> list[pd.DataFrame]:
+    def get_filepaths(self):
+        return [
+            "notebooks/all_inds_details.csv",
+            "notebooks/all_orgs_details.csv",
+            "notebooks/all_transactions.csv",
+        ]
+
+    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
         """Turns filepaths into dataframes
 
         The input must be a list of valid filepaths which lead
@@ -46,7 +54,7 @@ class ArizonaCleaner(StateCleaner):
 
         return df_list
 
-    def clean_state(filepaths: list[str]) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """Calls the other methods in order
 
         This is the master function of the ArizonaCleaner
@@ -61,15 +69,15 @@ class ArizonaCleaner(StateCleaner):
 
         """
 
-        individuals, organizations, transactions = ArizonaCleaner.preprocess(filepaths)
+        filepaths = self.get_filepaths()
+
+        individuals, organizations, transactions = self.preprocess(filepaths)
 
         details = pd.concat([individuals, organizations])
 
-        cleaned_transactions, cleaned_details = ArizonaCleaner.clean(
-            [transactions, details]
-        )
+        cleaned_transactions, cleaned_details = self.clean([transactions, details])
 
-        standardized_transactions, standardized_details = ArizonaCleaner.standardize(
+        standardized_transactions, standardized_details = self.standardize(
             [cleaned_transactions, cleaned_details]
         )
 
@@ -77,13 +85,12 @@ class ArizonaCleaner(StateCleaner):
             az_individuals,
             az_organizations,
             az_transactions,
-        ) = ArizonaCleaner.create_tables(
-            [standardized_transactions, standardized_details]
-        )
+        ) = self.create_tables([standardized_transactions, standardized_details])
 
         return (az_individuals, az_organizations, az_transactions)
 
     def create_tables(
+        self,
         data: list[pd.DataFrame],
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         """
@@ -127,7 +134,7 @@ class ArizonaCleaner(StateCleaner):
 
         return (az_individuals, az_organizations, az_transactions)
 
-    def standardize(details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
+    def standardize(self, details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """standardize names of entities
 
         takes in details dataframe and replaces the names of
@@ -149,11 +156,13 @@ class ArizonaCleaner(StateCleaner):
             "Individual Contributors": "Individual",
             "Candidates": "Candidate",
         }
-        details_df.replace({"entity_type": az_entity_name_dictionary}, inplace=True)
+        standardized_details = details_df.replace(
+            {"entity_type": az_entity_name_dictionary}
+        )
 
-        return transactions_df, details_df
+        return [transactions_df, standardized_details]
 
-    def clean(data: list[pd.DataFrame]) -> pd.DataFrame:
+    def clean(self, data: list[pd.DataFrame]) -> pd.DataFrame:
         """clean the contents of the columns
 
         INCOMPLETE
@@ -211,5 +220,8 @@ if __name__ == "__main__":
             AZ_INDIVIDUALS_FILEPATH,
             AZ_ORGANIZATIONS_FILEPATH,
             AZ_TRANSACTIONS_FILEPATH,
+            # "notebooks/all_inds_details.csv",
+            # "notebooks/all_orgs_details.csv",
+            # "notebooks/all_transactions.csv",
         ]
     )

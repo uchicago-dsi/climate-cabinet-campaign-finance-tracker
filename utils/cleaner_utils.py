@@ -1,8 +1,10 @@
 import re
+import uuid
 from datetime import datetime
 
 import pandas as pd
-from constants import state_abbreviations
+
+from utils.constants import state_abbreviations
 
 
 def convert_date(date_str: str) -> datetime.utcfromtimestamp:
@@ -140,7 +142,7 @@ def az_individuals_convert(details_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(data=d)
 
 
-def az_organizations_convert(df: pd.DataFrame):
+def az_organizations_convert(df: pd.DataFrame) -> pd.DataFrame:
     """Make organizations detail table schema compliant
 
     INCOMPLETE
@@ -182,7 +184,7 @@ def az_organizations_convert(df: pd.DataFrame):
     return pd.DataFrame(data=d)
 
 
-def remove_nonstandard(col):
+def remove_nonstandard(col: pd.Series) -> pd.Series:
     """Remove nonstandard characters from columns
 
     Using regex, we remove html tags and turn inconsistent
@@ -295,3 +297,42 @@ def az_individual_name_checker(row):
     else:
         row["full_name"] = row["retrieved_name"]
     return row
+
+
+def az_id_table(
+    individuals_df, organizations_df, transactions_df, *args: int
+) -> pd.DataFrame:
+    """Create a table of old ids and new uuids"""
+
+    ind_ids = individuals_df["id"]
+
+    org_ids = organizations_df["id"]
+
+    trans_ids = transactions_df["transaction_id"]
+
+    years = pd.concat[
+        individuals_df["year"], organizations_df["year"], transactions_df["year"]
+    ]
+
+    all_ids = pd.concat([ind_ids, org_ids, trans_ids])
+
+    id_types = (
+        ["Individual"] * len(ind_ids)
+        + ["Organization"] * len(org_ids)
+        + ["Transaction"] * len(trans_ids)
+    )
+
+    d = {
+        "state": "AZ",
+        "year": years,
+        "entity_type": id_types,
+        "provided_id": all_ids,
+    }
+
+    id_map_df = pd.DataFrame(data=d)
+    id_map_df["database_id"] = [uuid.uuid4() for _ in range(len(id_map_df.index))]
+
+    return id_map_df
+    # new_uuids = []
+    # for i in len(all_ids):
+    #     new_uuids.append(uid.uuid4())
