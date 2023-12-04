@@ -6,14 +6,10 @@ from pathlib import Path
 BASE_FILEPATH = Path("constants.py").resolve().parent
 # returns the base_path to the directory
 
-MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "Expenditure"
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
-MI_CON_FILEPATH = BASE_FILEPATH / "data" / "Contribution"
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
 
-# FINAL_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
-# FINAL_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
-# These filepaths will replace the ones above and match the path of the data
-# folder in the Drive
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
@@ -48,6 +44,47 @@ MI_CONTRIBUTION_COLUMNS = [
     "amount",
     "aggregate",
     "extra_desc",
+]
+
+
+MI_CONT_DROP_COLS = [
+    "doc_seq_no",
+    "page_no",
+    "cont_detail_id",
+    "doc_type_desc",
+    "address",
+    "city",
+    "zip",
+    "occupation",
+    "received_date",
+    "aggregate",
+    "extra_desc",
+]
+
+MI_EXP_DROP_COLS = [
+    "doc_seq_no",
+    "expenditure_type",
+    "gub_account_type",
+    "gub_elec_type",
+    "page_no",
+    "detail_id",
+    "doc_type_desc",
+    "extra_desc",
+    "address",
+    "city",
+    "zip",
+    "exp_date",
+    "state_loc",
+    "supp_opp",
+    "can_or_ballot",
+    "county",
+    "debt_payment",
+    "vend_addr",
+    "vend_city",
+    "vend_state",
+    "vend_zip",
+    "gotv_ink_ind",
+    "fundraiser",
 ]
 
 PA_MAIN_URL = "https://www.dos.pa.gov"

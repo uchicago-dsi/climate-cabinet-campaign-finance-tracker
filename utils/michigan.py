@@ -8,7 +8,9 @@ from utils.clean import StateCleaner
 from utils.constants import (
     BASE_FILEPATH,
     MI_CON_FILEPATH,
+    MI_CONT_DROP_COLS,
     MI_CONTRIBUTION_COLUMNS,
+    MI_EXP_DROP_COLS,
     MI_EXP_FILEPATH,
     MI_EXPENDITURE_COLUMNS,
     MICHIGAN_CONTRIBUTION_COLS_RENAME,
@@ -44,108 +46,53 @@ class MichiganCleaner(StateCleaner):
     ]
     # map to entity types listed in the schema
 
-    # def read_expenditure_data(self, filepath: str, columns: list) -> pd.DataFrame:
-    #     """Reads in the MI expenditure data
-
-    #     Inputs:
-    #             filepath (str): filepath to the MI Expenditure Data txt file
-    #             columns (lst): list of string names of the campaign data columns
-
-    #     Returns: df (Pandas DataFrame): dataframe of the MI Expenditure data
-    #     """
-    #     if filepath.endswith("txt"):
-    #         df = pd.read_csv(
-    #             filepath,
-    #             delimiter="\t",
-    #             index_col=False,
-    #             usecols=columns,
-    #             encoding="mac_roman",
-    #             low_memory=False,
-    #         )
-
-    #     return df
-
-    # def read_contribution_data(self, filepath: str, columns: list) -> pd.DataFrame:
-    #     """Reads in the MI campaign data and skips the errors
-
-    #     Inputs: filepath (str): filepath to the MI Campaign Data txt file
-    #             columns (lst): list of string names of the campaign data columns
-
-    #     Returns: df (Pandas DataFrame): dataframe of the MI campaign data
-    #     """
-    #     if filepath.endswith("00.txt"):
-    #         # MI files that contain 00 or between 1998 and 2003 contain headers
-    #         # VALUES_TO_CHECK contains the years between 1998 and 2003
-    #         df = pd.read_csv(
-    #             filepath,
-    #             delimiter="\t",
-    #             index_col=False,
-    #             encoding="mac_roman",
-    #             usecols=columns,
-    #             low_memory=False,
-    #             on_bad_lines="skip",
-    #         )
-    #     else:
-    #         df = pd.read_csv(
-    #             filepath,
-    #             delimiter="\t",
-    #             index_col=False,
-    #             encoding="mac_roman",
-    #             header=None,
-    #             names=columns,
-    #             low_memory=False,
-    #             on_bad_lines="skip",
-    #         )
-
-    #     return df
-
-    def is_contribution_dataframe(self, dataframe: pd.DataFrame) -> bool:
-        """Checks if the DataFrame inputted is the contribution dataframe
-
-        Inputs: dataframe: DataFrame with contribution or expenditure data
-
-        Returns: False if the DataFrame contains a column specific
-        "schedule_desc" to the MI expenditure data, and True if it does not.
-        """
-        if "schedule_desc" in dataframe.columns:
-            # if schedule_desc is in the dataframe it is the Expenditure data
-            return False
-        return True
-
-    def create_filepaths_list(self) -> [str]:
+    def create_filepaths_list(self) -> list[list[str], list[str]]:
         """Creates a list of Michigan Contribution and Expenditure filepaths by
         first iterating through the expenditure filepaths then the contribution
         filepaths
 
         Inputs: None
 
-        Returns: filepath_lst: list of filepaths to the MI expenditure
-            and contribution data
+        Returns: List of lists of strings
+            exp_filepath_lst: list of expenditure filepaths
+            con_filepath_lst: list of contribution filepaths
         """
-        filepath_lst = []
+        exp_filepath_lst = []
+        con_filepath_lst = []
 
         for file in MI_EXP_FILEPATH.iterdir():
-            filepath_lst.append(str(file))
+            exp_filepath_lst.append(str(file))
         for file in MI_CON_FILEPATH.iterdir():
-            filepath_lst.append(str(file))
+            con_filepath_lst.append(str(file))
 
-        return filepath_lst
+        return [exp_filepath_lst, con_filepath_lst]
 
     # NOTE: Helper methods above are called throughout the class
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
+        """
+        Preprocesses the state data and returns a dataframe
+
+        Reads in the state's data, makes any necessary bug fixes, and
+        combines the data into a list of DataFrames, discards data not schema
+
+        Inputs:
+            filepaths_list: list of lists of absolute filepaths to relevant state data.
+                required naming conventions, order, and extensions
+                defined per state.
+
+        Returns: a list of dataframes containing campaign contribution and
+            expenditure data
+        """
+        expenditures_lst, contributions_lst = filepaths_list
+
         temp_exp_list = []
         temp_cont_list = []
 
-        for file in filepaths_list:
-            if "expenditures" in file.lower():
-                temp_exp_list.append(
-                    read_expenditure_data(file, MI_EXPENDITURE_COLUMNS)
-                )
-            elif "contributions" in file.lower():
-                temp_cont_list.append(
-                    read_contribution_data(file, MI_CONTRIBUTION_COLUMNS)
-                )
+        for file in expenditures_lst:
+            temp_exp_list.append(read_expenditure_data(file, MI_EXPENDITURE_COLUMNS))
+        for file in contributions_lst:
+            temp_cont_list.append(read_contribution_data(file, MI_CONTRIBUTION_COLUMNS))
 
         contribution_dataframe = self.merge_dataframes(temp_cont_list)
         expenditure_dataframe = self.merge_dataframes(temp_exp_list)
@@ -159,14 +106,14 @@ class MichiganCleaner(StateCleaner):
 
         Inputs:
                 temp_list: list of contribution of expenditure dataframes
-                            from 2018 to 2023
 
         Returns:
                 merged_dataframe: Pandas DataFrame of merged contribution
                                     or expenditure data
         """
         merged_dataframe = pd.concat(temp_list)
-        if self.is_contribution_dataframe(merged_dataframe):
+        if "schedule_desc" not in merged_dataframe.columns:
+            # "schedule_desc" is only in the expenditure dataframe
             merged_dataframe = self.fix_menominee_county_bug_contribution(
                 merged_dataframe
             )
@@ -274,19 +221,7 @@ class MichiganCleaner(StateCleaner):
         ].apply(pd.to_numeric, errors="coerce")
         # convert committee IDs to integer, amount and aggregate cols to float
         merged_contribution_dataframe = merged_contribution_dataframe.drop(
-            columns=[
-                "doc_seq_no",
-                "page_no",
-                "cont_detail_id",
-                "doc_type_desc",
-                "address",
-                "city",
-                "zip",
-                "occupation",
-                "received_date",
-                "aggregate",
-                "extra_desc",
-            ]
+            columns=MI_CONT_DROP_COLS
         )
         merged_contribution_dataframe["full_name"] = (
             merged_contribution_dataframe["f_name"].fillna("")
@@ -335,31 +270,7 @@ class MichiganCleaner(StateCleaner):
         # convert committee IDs to integer, amount col to float
         # rename last_name column for consistency in standardize
         merged_expenditure_dataframe = merged_expenditure_dataframe.drop(
-            columns=[
-                "doc_seq_no",
-                "expenditure_type",
-                "gub_account_type",
-                "gub_elec_type",
-                "page_no",
-                "detail_id",
-                "doc_type_desc",
-                "extra_desc",
-                "address",
-                "city",
-                "zip",
-                "exp_date",
-                "state_loc",
-                "supp_opp",
-                "can_or_ballot",
-                "county",
-                "debt_payment",
-                "vend_addr",
-                "vend_city",
-                "vend_state",
-                "vend_zip",
-                "gotv_ink_ind",
-                "fundraiser",
-            ]
+            columns=MI_EXP_DROP_COLS
         )
         merged_expenditure_dataframe["full_name"] = (
             merged_expenditure_dataframe["f_name"].fillna("")
@@ -570,9 +481,14 @@ class MichiganCleaner(StateCleaner):
         """Creates the ID mapping dataframe for transactions
 
         Inputs:
-            org_com: dataframe with organizations to committee transactions
-            ind_com: dataframe with individual to committee transactions
-            com_vend: dataframe with  committee  to vendor transactions
+            org_com: dataframe with organizations to organization (committee)
+            transactions
+
+            ind_com: dataframe with individual to organization (committee)
+            transactions
+
+            com_vend: dataframe with  committee (organization) to vendor
+            (organization) transactions
 
         Returns: id_mapping: dataframe in the ID mapping format
         """
@@ -615,39 +531,6 @@ class MichiganCleaner(StateCleaner):
         # that are not null
 
         return filtered_df
-
-    def filter_irrelevant_columns(
-        self, filtered_dataframe: pd.DataFrame, column_lst: list[str]
-    ) -> pd.DataFrame:
-        """Filters the dataframe by only keeping the columns listed
-
-        Inputs:
-            filtered_dataframe: dataframe of filtered campaign finance data
-            column_lst: list of strings of column names
-
-        Returns:
-            filtered_dataframe: filtered dataframe with only the columns
-            listed above
-        """
-        filtered_dataframe = filtered_dataframe[column_lst].copy()
-
-        return filtered_dataframe
-
-    def reorder_columns(
-        self, dataframe: pd.DataFrame, column_lst: list[str]
-    ) -> pd.DataFrame:
-        """Reorders the columns of the inputted dataframe to column order attached
-
-        Inputs:
-            dataframe: dataframe to be sorted
-            column_lst: list of column names for the sort order
-
-        Returns:
-            sorted_dataframe: dataframe in the sorted order
-        """
-        dataframe = dataframe[column_lst].copy()
-
-        return dataframe
 
     # NOTE: Helper functions for creating the individuals table are below
 
@@ -712,8 +595,7 @@ class MichiganCleaner(StateCleaner):
             merged_dataframe, "candidate_full_name_uuid"
         )
         id_mapping = self.create_individuals_id_mapping(individuals_df, candidates_df)
-        individuals_df = self.filter_irrelevant_columns(
-            individuals_df,
+        individuals_df = individuals_df[
             [
                 "full_name_uuid",
                 "first_name",
@@ -721,23 +603,22 @@ class MichiganCleaner(StateCleaner):
                 "full_name",
                 "state",
                 "company",
-            ],
-        )
-        candidates_df = self.filter_irrelevant_columns(
-            candidates_df,
+            ]
+        ].copy()
+
+        candidates_df = candidates_df[
             [
                 "candidate_full_name_uuid",
                 "can_first_name",
                 "can_last_name",
                 "candidate_full_name",
-            ],
-        )
+            ]
+        ]
 
         individuals_df = self.standardize_and_concatenate_individuals(
             individuals_df, candidates_df
         )
-        individuals_df = self.reorder_columns(
-            individuals_df,
+        individuals_df = individuals_df[
             [
                 "id",
                 "first_name",
@@ -747,8 +628,8 @@ class MichiganCleaner(StateCleaner):
                 "state",
                 "party",
                 "company",
-            ],
-        )
+            ]
+        ]
 
         return [individuals_df, id_mapping]
 
@@ -819,23 +700,17 @@ class MichiganCleaner(StateCleaner):
             corporations_df, committees_df, vendors_df
         )
 
-        corporations_df = self.filter_irrelevant_columns(
-            corporations_df, ["full_name_uuid", "full_name"]
-        )
-        committees_df = self.filter_irrelevant_columns(
-            committees_df, ["com_legal_name_uuid", "com_legal_name"]
-        )
-        vendors_df = self.filter_irrelevant_columns(
-            vendors_df, ["vend_name_uuid", "vend_name"]
-        )
+        corporations_df = corporations_df[["full_name_uuid", "full_name"]]
+
+        committees_df = committees_df[["com_legal_name_uuid", "com_legal_name"]]
+
+        vendors_df = vendors_df[["vend_name_uuid", "vend_name"]]
 
         organizations_df = self.standardize_and_concatenate_organizations(
             corporations_df, committees_df, vendors_df
         )
 
-        organizations_df = self.reorder_columns(
-            organizations_df, ["id", "name", "state", "entity_type"]
-        )
+        organizations_df = organizations_df[["id", "name", "state", "entity_type"]]
 
         return [organizations_df, id_mapping]
 
@@ -914,8 +789,7 @@ class MichiganCleaner(StateCleaner):
         id_mapping = self.create_transactions_id_mapping(
             org_to_com, ind_to_com, com_to_vend
         )
-        org_to_com = self.filter_irrelevant_columns(
-            org_to_com,
+        org_to_com = org_to_com[
             [
                 "transaction_id",
                 "full_name_uuid",
@@ -924,10 +798,10 @@ class MichiganCleaner(StateCleaner):
                 "com_legal_name_uuid",
                 "purpose",
                 "transaction_type",
-            ],
-        )
-        ind_to_com = self.filter_irrelevant_columns(
-            ind_to_com,
+            ]
+        ]
+
+        ind_to_com = ind_to_com[
             [
                 "transaction_id",
                 "full_name_uuid",
@@ -936,10 +810,10 @@ class MichiganCleaner(StateCleaner):
                 "com_legal_name_uuid",
                 "purpose",
                 "transaction_type",
-            ],
-        )
-        com_to_vend = self.filter_irrelevant_columns(
-            com_to_vend,
+            ]
+        ]
+
+        com_to_vend = com_to_vend[
             [
                 "transaction_id",
                 "com_legal_name_uuid",
@@ -948,15 +822,14 @@ class MichiganCleaner(StateCleaner):
                 "vend_name_uuid",
                 "purpose",
                 "transaction_type",
-            ],
-        )
+            ]
+        ]
 
         transactions_df = self.standardize_and_concatenate_transactions(
             org_to_com, ind_to_com, com_to_vend
         )
 
-        transactions_df = self.reorder_columns(
-            transactions_df,
+        transactions_df = transactions_df[
             [
                 "donor_id",
                 "year",
@@ -965,8 +838,8 @@ class MichiganCleaner(StateCleaner):
                 "office_sought",
                 "purpose",
                 "transaction_type",
-            ],
-        )
+            ]
+        ]
 
         return [transactions_df, id_mapping]
 
@@ -1043,8 +916,8 @@ class MichiganCleaner(StateCleaner):
         to output (individuals_table, organizations_table, transactions_table)
         as defined in database schema
         """
-        filepath_lst = self.create_filepaths_list()
-        preprocessed_dataframe_lst = self.preprocess(filepath_lst)
+        filepaths_lst = self.create_filepaths_list()
+        preprocessed_dataframe_lst = self.preprocess(filepaths_lst)
         cleaned_dataframe_lst = self.clean(preprocessed_dataframe_lst)
         standardized_dataframe_lst = self.standardize(cleaned_dataframe_lst)
         tables = self.create_tables(standardized_dataframe_lst)
