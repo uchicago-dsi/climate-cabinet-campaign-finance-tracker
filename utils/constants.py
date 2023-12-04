@@ -189,11 +189,11 @@ PA_ZIPPED_URL = (
 # PA EDA constants:
 
 PA_CONT_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "YEAR",
     "CYCLE",
     "SECTION",
-    "CONTRIBUTOR",
+    "DONOR",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -216,13 +216,13 @@ PA_CONT_COLS_NAMES_PRE2022: list = [
 ]
 
 PA_CONT_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "REPORTER_ID",
     "TIMESTAMP",
     "YEAR",
     "CYCLE",
     "SECTION",
-    "CONTRIBUTOR",
+    "DONOR",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -245,16 +245,16 @@ PA_CONT_COLS_NAMES_POST2022: list = [
 ]
 
 PA_FILER_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "YEAR",
     "CYCLE",
     "AMEND",
     "TERMINATE",
-    "FILER_TYPE",
-    "FILER_NAME",
-    "OFFICE",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
     "DISTRICT",
-    "PARTY",
+    "RECIPIENT_PARTY",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -268,18 +268,18 @@ PA_FILER_COLS_NAMES_PRE2022: list = [
 ]
 
 PA_FILER_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "REPORTER_ID",
     "TIMESTAMP",
     "YEAR",
     "CYCLE",
     "AMEND",
     "TERMINATE",
-    "FILER_TYPE",
-    "FILER_NAME",
-    "OFFICE",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
     "DISTRICT",
-    "PARTY",
+    "RECIPIENT_PARTY",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -293,35 +293,35 @@ PA_FILER_COLS_NAMES_POST2022: list = [
 ]
 
 PA_EXPENSE_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "DONOR_ID",
     "YEAR",
     "EXPENSE_CYCLE",
-    "EXPENSE_NAME",
+    "RECIPIENT",
     "EXPENSE_ADDRESS_1",
     "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
     "EXPENSE_DATE",
-    "EXPENSE_AMT",
-    "EXPENSE_DESC",
+    "AMOUNT",
+    "PURPOSE",
 ]
 
 PA_EXPENSE_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "DONOR_ID",
     "EXPENSE_REPORTER_ID",
     "EXPENSE_TIMESTAMP",
     "YEAR",
     "EXPENSE_CYCLE",
-    "EXPENSE_NAME",
+    "RECIPIENT",
     "EXPENSE_ADDRESS_1",
     "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
     "EXPENSE_DATE",
-    "EXPENSE_AMT",
-    "EXPENSE_DESC",
+    "AMOUNT",
+    "PURPOSE",
 ]
 
 PA_OFFICE_ABBREV_DICT: dict = {
@@ -382,6 +382,7 @@ PA_ORGANIZATION_IDENTIFIERS: list = [
     "INC",
     "INCORPORATED",
     "LLC",
+    "FUND",
 ]
 
 MI_EXPENDITURE_COLUMNS = [
