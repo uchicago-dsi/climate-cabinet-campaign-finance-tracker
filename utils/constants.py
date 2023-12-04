@@ -48,6 +48,100 @@ MI_CONTRIBUTION_COLUMNS = [
     "extra_desc",
 ]
 
+# MN State Cleaner Constants:
+
+MN_CANDIDATE_CONTRIBUTION_COL = [
+    "OfficeSought",
+    "CandRegNumb",
+    "CandFirstName",
+    "CandLastName",
+    "DonationDate",
+    "DonorType",
+    "DonorName",
+    "DonationAmount",
+    "InKindDonAmount",
+    "InKindDescriptionText",
+]
+
+MN_CANDIDATE_CONTRIBUTION_MAP = {
+    "OfficeSought": "office_sought",
+    "CandRegNumb": "recipient_id",
+    "CandFirstName": "recipient_first_name",
+    "CandLastName": "recipient_last_name",
+    "DonationDate": "date",
+    "DonorType": "donor_type",
+    "DonorName": "donor_full_name",
+    "DonationAmount": "amount",
+    "InKindDonAmount": "inkind_amount",
+    "InKindDescriptionText": "purpose",
+}
+
+MN_NONCANDIDATE_CONTRIBUTION_COL = [
+    "PCFRegNumb",
+    "Committee",
+    "ETType",
+    "DonationDate",
+    "DonorType",
+    "DonorRegNumb",
+    "DonorName",
+    "DonationAmount",
+    "InKindDonAmount",
+    "InKindDescriptionText",
+]
+
+MN_NONCANDIDATE_CONTRIBUTION_MAP = {
+    "PCFRegNumb": "recipient_id",
+    "Committee": "recipient_full_name",
+    "ETType": "recipient_type",
+    "DonationDate": "date",
+    "DonorType": "donor_type",
+    "DonorRegNumb": "donor_id",
+    "DonorName": "donor_full_name",
+    "DonationAmount": "amount",
+    "InKindDonAmount": "inkind_amount",
+    "InKindDescriptionText": "purpose",
+}
+
+MN_INDEPENDENT_EXPENDITURE_COL = [
+    "Spender",
+    "Spender Reg Num",
+    "Spender type",
+    "Affected Comte Name",
+    "Affected Cmte Reg Num",
+    "For /Against",
+    "Date",
+    "Type",
+    "Amount",
+    "Purpose",
+    "Vendor State",
+]
+
+MN_INDEPENDENT_EXPENDITURE_MAP = {
+    "Spender": "donor_full_name",
+    "Spender Reg Num": "donor_id",
+    "Spender type": "donor_type",
+    "Affected Comte Name": "recipient_full_name",
+    "Affected Cmte Reg Num": "recipient_id",
+    "Date": "date",
+    "Amount": "amount",
+    "Purpose": "purpose",
+    "Type": "transaction_type",
+    "Vendor State": "state",
+}
+
+MN_RACE_MAP = {
+    "GC": "Governor",
+    "AG": "Attorney General",
+    "SS": "Secretary of State",
+    "SA": "State Auditor",
+    "ST": "State Treasurer",
+    "Senate": "State Senator",
+    "House": "State Representative",
+    "SC": "State Supreme Court Justice",
+    "AP": "State Appeals Court Judge",
+    "DC": "State District Court Judge",
+}
+
 PA_MAIN_URL = "https://www.dos.pa.gov"
 PA_ZIPPED_URL = (
     "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
@@ -214,6 +308,7 @@ PA_OFFICE_ABBREV_DICT: dict = {
     "OTH": "Other(local offices)",
 }
 PA_FILER_ABBREV_DICT: dict = {1.0: "Candidate", 2.0: "Committee", 3.0: "Lobbyist"}
+
 PA_ORGANIZATION_IDENTIFIERS: list = [
     "FRIENDS",
     "CITIZENS",
