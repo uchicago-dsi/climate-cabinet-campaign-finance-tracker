@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from clean import StateCleaner
-from constants import (
+from utils.clean import StateCleaner
+from utils.constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
     MN_CANDIDATE_CONTRIBUTION_MAP,
     MN_INDEPENDENT_EXPENDITURE_COL,
@@ -242,19 +242,22 @@ class MinnesotaCleaner(StateCleaner):
         Returns: A list of 1 standarized DataFrame matching database schema
         """
 
-        df = data[0]
+        df = data[0].copy()  # Create a copy to avoid modifying the original DataFrame
         df["company"] = None  # MN dataset has no company information
         df["party"] = None  # MN dataset has no party information
         df["transaction_id"] = None
         df["office_sought"] = df["office_sought"].replace(MN_RACE_MAP)
-        # Standardize entity names to match othe states in database schema
-        df["recipient_type"] = df["recipient_type"].replace(self.entity_name_dictionary)
-        df["donor_type"] = df["donor_type"].replace(self.entity_name_dictionary)
+        # Standardize entity names to match other states in the database schema
+        entity_map = self.entity_name_dictionary()
+        df["recipient_type"] = df["recipient_type"].map(entity_map)
+        df["donor_type"] = df["donor_type"].map(entity_map)
         id_mapping = {}
+
         for index, row in df.iterrows():
             recipient_uuid = str(uuid.uuid4())
             donor_uuid = str(uuid.uuid4())
             transaction_uuid = str(uuid.uuid4())
+
             # MN has partial recipient id, generate uuid, map them to original id
             if row["recipient_id"]:
                 if (
@@ -271,7 +274,8 @@ class MinnesotaCleaner(StateCleaner):
                     row["recipient_id"],
                     recipient_uuid,
                 )
-            df["recipient_id"].iloc[index] = recipient_uuid
+                df.at[index, "recipient_id"] = recipient_uuid
+
             # MN has partial donor id, generate uuid, map them to original id
             if row["donor_id"]:
                 if row["donor_type"] == "Individual" or row["donor_type"] == "Lobbyist":
@@ -285,8 +289,9 @@ class MinnesotaCleaner(StateCleaner):
                     row["donor_id"],
                     donor_uuid,
                 )
-            df["donor_id"].iloc[index] = donor_uuid
-            df["transaction_id"].iloc[index] = transaction_uuid
+                df.at[index, "donor_id"] = donor_uuid
+
+            df.at[index, "transaction_id"] = transaction_uuid
 
         # Convert id_mapping to DataFrame and save to CSV
         id_mapping_df = pd.DataFrame.from_dict(
