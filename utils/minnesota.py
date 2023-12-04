@@ -66,18 +66,18 @@ class MinnesotaCleaner(StateCleaner):
         df1 = df1[MN_CANDIDATE_CONTRIBUTION_COL]
         df1 = df1.rename(columns=MN_CANDIDATE_CONTRIBUTION_MAP)
         df1["recipient_type"] = "I"
-        df1["recipient_full_name"] = np.nan
+        df1["recipient_full_name"] = None
         df1["donor_type"] = df1["donor_type"].str.upper()
-        df1["donor_first_name"] = np.nan
-        df1["donor_last_name"] = np.nan
-        df1["donor_id"] = np.nan
+        df1["donor_first_name"] = None
+        df1["donor_last_name"] = None
+        df1["donor_id"] = None
         df1["state"] = "MN"
         df1["amount"] = pd.to_numeric(df1["amount"], errors="coerce")
         df1["inkind_amount"] = pd.to_numeric(df1["inkind_amount"], errors="coerce")
         df1["transaction_type"] = np.where(
             (df1["inkind_amount"].notna()) & (df1["inkind_amount"] != 0),
             "in-kind",
-            np.nan,
+            None,
         )
 
         return df1
@@ -95,20 +95,20 @@ class MinnesotaCleaner(StateCleaner):
         df1 = df.copy(deep=True)
         df1 = df1[MN_NONCANDIDATE_CONTRIBUTION_COL]
         df1 = df1.rename(columns=MN_NONCANDIDATE_CONTRIBUTION_MAP)
-        df1["recipient_first_name"] = np.nan
-        df1["recipient_last_name"] = np.nan
+        df1["recipient_first_name"] = None
+        df1["recipient_last_name"] = None
         df1["donor_type"] = df1["donor_type"].str.upper()
-        df1["donor_first_name"] = np.nan
-        df1["donor_last_name"] = np.nan
+        df1["donor_first_name"] = None
+        df1["donor_last_name"] = None
         df1["state"] = "MN"
-        df1["office_sought"] = np.nan
+        df1["office_sought"] = None
         df1["amount"] = pd.to_numeric(df1["amount"], errors="coerce")
         df1["donor_id"] = df1["donor_id"].fillna(0).astype("int64")
         df1["inkind_amount"] = pd.to_numeric(df1["inkind_amount"], errors="coerce")
         df1["transaction_type"] = np.where(
             (df1["inkind_amount"].notna()) & (df1["inkind_amount"] != 0),
             "in-kind",
-            np.nan,
+            None,
         )
 
         return df1
@@ -127,17 +127,17 @@ class MinnesotaCleaner(StateCleaner):
         df1 = df1[MN_INDEPENDENT_EXPENDITURE_COL]
         df1 = df1.rename(columns=MN_INDEPENDENT_EXPENDITURE_MAP)
         # Donors and recipients are both organization, only have full name
-        df1["recipient_first_name"] = np.nan
-        df1["recipient_last_name"] = np.nan
-        df1["donor_first_name"] = np.nan
-        df1["donor_last_name"] = np.nan
+        df1["recipient_first_name"] = None
+        df1["recipient_last_name"] = None
+        df1["donor_first_name"] = None
+        df1["donor_last_name"] = None
         df1["recipient_id"] = df1["donor_id"].fillna(0).astype("int64")
         # Negate the contribution amount if it's against the recipient
         df1.loc[df1["For /Against"] == "Against", "amount"] = -df1["amount"]
-        df1["inkind_amount"] = np.nan
+        df1["inkind_amount"] = None
         df1 = df1.drop(columns=["For /Against"])
         df1["recipient_type"] = "PCF"  # recipient: affected political committee
-        df1["office_sought"] = np.nan
+        df1["office_sought"] = None
 
         return df1
 
@@ -243,9 +243,9 @@ class MinnesotaCleaner(StateCleaner):
         """
 
         df = data[0]
-        df["company"] = np.nan  # MN dataset has no company information
-        df["party"] = np.nan  # MN dataset has no party information
-        df["transaction_id"] = np.nan
+        df["company"] = None  # MN dataset has no company information
+        df["party"] = None  # MN dataset has no party information
+        df["transaction_id"] = None
         df["office_sought"] = df["office_sought"].replace(MN_RACE_MAP)
         df["recipient_type"] = df["recipient_type"].replace(self.entity_name_dictionary)
         df["donor_type"] = df["donor_type"].replace(self.entity_name_dictionary)
@@ -311,9 +311,9 @@ class MinnesotaCleaner(StateCleaner):
         df = data[0]
         # Create individual table from both recipient and donor entries
         ind_recipient_df = pd.DataFrame(
-            data=df[df["recipient_type"].isin(["I", "L"])].drop_duplicates(
-                subset="recipient_id"
-            ),
+            data=df[
+                df["recipient_type"].isin(["Individual", "Lobbyist"])
+            ].drop_duplicates(subset="recipient_id"),
             columns=[
                 "recipient_id",
                 "recipient_first_name",
@@ -335,7 +335,7 @@ class MinnesotaCleaner(StateCleaner):
             }
         )
         ind_donor_df = pd.DataFrame(
-            data=df[df["donor_type"].isin(["I", "L"])].drop_duplicates(
+            data=df[df["donor_type"].isin(["Individual", "Lobbyist"])].drop_duplicates(
                 subset="donor_id"
             ),
             columns=[
@@ -362,9 +362,9 @@ class MinnesotaCleaner(StateCleaner):
 
         # Create organization table from both recipient and donor entries
         org_recipient_df = pd.DataFrame(
-            data=df[~df["recipient_type"].isin(["I", "L"])].drop_duplicates(
-                subset="recipient_id"
-            ),
+            data=df[
+                ~df["recipient_type"].isin(["Individual", "Lobbyist"])
+            ].drop_duplicates(subset="recipient_id"),
             columns=["recipient_id", "recipient_full_name", "state", "recipient_type"],
         )
         org_recipient_df = org_recipient_df.rename(
@@ -375,7 +375,7 @@ class MinnesotaCleaner(StateCleaner):
             }
         )
         org_donor_df = pd.DataFrame(
-            data=df[~df["donor_type"].isin(["I", "L"])].drop_duplicates(
+            data=df[~df["donor_type"].isin(["Individual", "Lobbyist"])].drop_duplicates(
                 subset="donor_id"
             ),
             columns=["donor_id", "donor_full_name", "state", "donor_type"],
