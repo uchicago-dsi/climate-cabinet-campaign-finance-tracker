@@ -33,7 +33,7 @@ def az_wrapper(
     else:
         det = detailed_wrapper_director(page)
         agg_df = scrape_wrapper(det, start_year, end_year)
-        entities = entities = agg_df["EntityID"]
+        entities = agg_df["EntityID"]
 
         return detailed_scrape_wrapper(entities, page, start_year, end_year)
 
@@ -83,6 +83,10 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     return df
 
 
+def get_keys_from_value(d, val):
+    return [k for k, v in d.items() if v == val][0]
+
+
 def detailed_scrape_wrapper(
     entities: pd.core.series.Series, page: int, start_year: int, end_year: int
 ) -> pd.DataFrame:
@@ -114,26 +118,41 @@ def detailed_scrape_wrapper(
 
     detail_dfs = []
     entity_names = []
-    committee_names = []
     info_dfs = []
 
-    for d_param in d_params:
+    entity_type_code = int(str(page)[0]) - 1
+
+    entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
+
+    for d_param, entity in zip(d_params, entities):
         res = detailed_scrape(d_param)
         results = res.json()
-        detail_dfs.append(pd.DataFrame(data=results["data"]))
+
+        detail_df = pd.DataFrame(data=results["data"])
+        detail_df["retrieved_id"] = entity
+        detail_df["entity_type"] = entity_type
+
+        detail_dfs.append(detail_df)
 
     for info_param in info_params:
-        entity_name, committee_name, info = info_scrape(info_param)
+        entity_name, info = info_scrape(info_param)
         info_table = info.json()
-        entity_names.append(entity_name)
-        committee_names.append(committee_name)
-        info_dfs.append(pd.DataFrame(data=info_table[["ReportFilerInfo"]]))
+        entity_names.append(entity_name)  #
+        info_dfs.append(pd.DataFrame(data=info_table)[["ReportFilerInfo"]])
+
+    info_complete = info_process(
+        pd.concat(info_dfs).reset_index().drop(columns={"index"})
+    )
+
+    info_complete["retrieved_name"] = entity_names
+
+    info_complete["retrieved_id"] = entities
+
+    info_complete["entity_type"] = entity_type
 
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
-        entity_names,
-        committee_names,
-        pd.concat(info_dfs).reset_index().drop(columns={"index"}),
+        info_complete,
     )
 
 
@@ -152,6 +171,8 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
     attached Pages dictionary for details.
     headers: necessary for calling the response, provided above
     data: necessary for calling the response, provided above
+
+    returns: request response containing aggregate information
     """
 
     return requests.post(
@@ -179,6 +200,8 @@ def detailed_scrape(detailed_params: dict) -> requests.models.Response:
     AZ_pages_dict dictionary for details.
     headers: necessary for calling the response, provided above
     data: necessary for calling the response, provided above
+
+    returns: request response containing entity details
     """
 
     return requests.post(
@@ -223,13 +246,12 @@ def parametrize(
         # or individual expenditures
         "startYear": str(start_year),
         "endYear": str(end_year),
-        "JurisdictionId": "0|Page",  # we keep this in here,
-        # but don't use it, don't need to be fine-toothed
+        "JurisdictionId": "0|Page",
         "TablePage": str(table_page),
         "TableLength": str(table_length),
         "ChartName": str(page),
-        "IsLessActive": "false",  # have yet to experiment with these
-        "ShowOfficeHolder": "false",  # have yet to experiment with these
+        "IsLessActive": "false",
+        "ShowOfficeHolder": "false",
     }
 
 
@@ -271,39 +293,42 @@ def detailed_parametrize(
         # or individual expenditures
         "startYear": str(start_year),
         "endYear": str(end_year),
-        "JurisdictionId": "0|Page",  # we keep this in here,
-        # but don't use it, don't need to be fine-toothed
+        "JurisdictionId": "0|Page",
         "TablePage": str(table_page),
         "TableLength": str(table_length),
         "Name": "1~" + str(entity_id),  # these two get used
-        # when scraping detailed data
-        "entityId": str(entity_id),
+        "entityId": str(entity_id),  # when scraping detailed data
         "ChartName": str(page),
-        "IsLessActive": "false",  # have yet to experiment with these
+        "IsLessActive": "false",
         "ShowOfficeHolder": "false",  # have yet to experiment with these
     }
 
 
 def info_scrape(detailed_params: dict) -> requests.models.Response:
-    """Scrape the name and filer information of individuals and organizations"""
+    """Scrape the name and filer information of individuals and organizations
+
+    This function takes in detailed scrape parameters created by
+    detailed_parametrize(), scrapes entity names and their
+    detailed information, and returns both the list of entity
+    names and the dataframe of entity details.
+
+    args: detailed parameters dictionary
+
+    returns: two request responses
+
+    """
 
     entity_name_response = requests.get(
         "https://seethemoney.az.gov/Reporting/GetEntityName/",
         params=detailed_params,
         headers=AZ_head,
-    )
+    ).json()
 
-    if str(entity_name_response.json()) == "  ":
+    if str(entity_name_response) == "  ":
         entity_name_response = None
 
-    committee_name_response = requests.get(
-        "https://seethemoney.az.gov/Reporting/GetCommitteeName/",
-        params=detailed_params,
-        headers=AZ_head,
-    )
-
-    if str(committee_name_response) == "<Response [500]>":
-        committee_name_response = None
+    else:
+        entity_name_response = entity_name_response.strip()
 
     info_response = requests.post(
         "https://seethemoney.az.gov/Reporting/GetDetailedInformation",
@@ -311,4 +336,54 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
         headers=AZ_head,
     )
 
-    return entity_name_response, committee_name_response, info_response
+    return entity_name_response, info_response
+
+
+def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
+    """processes detailed entity information
+
+    This function takes in the concatenated dataframes
+    of detailed entity information, processes them, and
+    returns them in a more readable and searchable form
+
+    args: concatenation of info dataframes created from
+    the info_scrape() response
+
+    returns: reprocessed info dataframe
+
+    """
+
+    l2 = []
+    for i in range(int(len(info_df) / 20)):
+        it = 20 * i
+        lst = []
+
+        for i in range(20):
+            lst.append(info_df[it : it + 20].values[i][0])
+        l2.append(lst)
+
+    dat = pd.DataFrame(l2)
+    dat.columns = [
+        "candidate",
+        "candidate_email",
+        "candidate_phone",
+        "chairman",
+        "committee_address",
+        "committee_name",
+        "committee_type_name",
+        "county_name",
+        "designee",
+        "email",
+        "last_amended_date",
+        "last_filed_date",
+        "mailing_address",
+        "master_committee_id",
+        "office_name",
+        "party_name",
+        "phone_number",
+        "registration_date",
+        "status",
+        "treasurer",
+    ]
+
+    return dat

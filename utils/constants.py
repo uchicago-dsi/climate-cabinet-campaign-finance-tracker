@@ -10,6 +10,15 @@ MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
 MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
 
+AZ_TRANSACTIONS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_transactions_demo.csv"
+)
+
+AZ_INDIVIDUALS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
+)
+
+AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
@@ -484,7 +493,7 @@ AZ_pages_dict = {
     "Candidate": 1,
     "PAC": 2,
     "Political Party": 3,
-    "Organzations": 4,
+    "Organizations": 4,
     "Independent Expenditures": 5,
     "Ballot Measures": 6,
     "Individual Contributors": 7,
@@ -581,3 +590,60 @@ AZ_base_data = {
     "search[value]": "",
     "search[regex]": "false",
 }
+
+state_abbreviations = [
+    " AK ",
+    " AL ",
+    " AR ",
+    " AZ ",
+    " CA ",
+    " CO ",
+    " CT ",
+    " DC ",
+    " DE ",
+    " FL ",
+    " GA ",
+    " GU ",
+    " HI ",
+    " IA ",
+    " ID ",
+    " IL ",
+    " IN ",
+    " KS ",
+    " KY ",
+    " LA ",
+    " MA ",
+    " MD ",
+    " ME ",
+    " MI ",
+    " MN ",
+    " MO ",
+    " MS ",
+    " MT ",
+    " NC ",
+    " ND ",
+    " NE ",
+    " NH ",
+    " NJ ",
+    " NM ",
+    " NV ",
+    " NY ",
+    " OH ",
+    " OK ",
+    " OR ",
+    " PA ",
+    " PR ",
+    " RI ",
+    " SC ",
+    " SD ",
+    " TN ",
+    " TX ",
+    " UT ",
+    " VA ",
+    " VI ",
+    " VT ",
+    " WA ",
+    " WI ",
+    " WV ",
+    " WY ",
+]

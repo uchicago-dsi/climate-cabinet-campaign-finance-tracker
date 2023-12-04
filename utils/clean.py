@@ -112,5 +112,14 @@ class StateCleaner(ABC):
         Returns: use preprocess, clean, standardize, and create_tables methods
         to output (individuals_table, organizations_table, transactions_table)
         as defined in database schema
+
+        Inputs:
+            filepaths_list: list of absolute filepaths to relevant state data.
+                required naming conventions, order, and extensions
+                defined per state.
+
+        Returns: cleans the state and returns the standardized Inidividuals,
+        Organizations, and Transactions tables in a tuple
         """
+
         pass

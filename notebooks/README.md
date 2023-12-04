@@ -8,10 +8,14 @@
 
 * `az_webcrawler_3.ipynb` : This is a notebook of test code, including the final code used in `az_curl_crawler.py`
 
-* `arizona_scraper_proof_of_concept` is a notebook containing proof of cocenpt for a curl-based webcrawler, which was later expanded on in `az_webcrawler_3.ipynb` and finally used to make `az_curl_crawler.py`
+* `arizona_scraper_proof_of_concept` is a notebook containing proof of concept for a curl-based webcrawler, which was later expanded on in `az_webcrawler_3.ipynb` and finally used to make `az_curl_crawler.py`
+
+* `mi_campaign_eda.ipynb`: This notebook contains the exploratory data analysis of the Michigan campaign contribution datasets, with a dropdown that allows the user to select different years to view.
 
 * `MI_EDA.ipynb`: This notebook contains the exploratory data analysis of the Michigan campaign contribution datasets, with a dropdown that allows the user to select different years to view.
 
 * `AZ_EDA` : A notebook containing the EDA and plots for Arizona. 
 
 * `PA_EDA.ipynb` : This notebook contains the EDA for Pennsylvania datasets on contributions, filer information, and expenditure data from 2018-2023.
+
+* `az_cleaner_scratch.ipynb` and `az_cleaner_scratch_thanksgiving.ipynb` are notebooks which were used to test parallel versions of the code which concluded in `clean.py` and `cleaner_utils.py`
