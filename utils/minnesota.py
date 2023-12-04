@@ -247,6 +247,7 @@ class MinnesotaCleaner(StateCleaner):
         df["party"] = None  # MN dataset has no party information
         df["transaction_id"] = None
         df["office_sought"] = df["office_sought"].replace(MN_RACE_MAP)
+        # Standardize entity names to match othe states in database schema
         df["recipient_type"] = df["recipient_type"].replace(self.entity_name_dictionary)
         df["donor_type"] = df["donor_type"].replace(self.entity_name_dictionary)
         id_mapping = {}
@@ -256,7 +257,10 @@ class MinnesotaCleaner(StateCleaner):
             transaction_uuid = str(uuid.uuid4())
             # MN has partial recipient id, generate uuid, map them to original id
             if row["recipient_id"]:
-                if row["recipient_type"] == "I" or row["recipient_type"] == "L":
+                if (
+                    row["recipient_type"] == "Individual"
+                    or row["recipient_type"] == "Lobbyist"
+                ):
                     entity_type = "Individual"
                 else:
                     entity_type = "Organization"
@@ -270,7 +274,7 @@ class MinnesotaCleaner(StateCleaner):
             df["recipient_id"].iloc[index] = recipient_uuid
             # MN has partial donor id, generate uuid, map them to original id
             if row["donor_id"]:
-                if row["donor_type"] == "I" or row["donor_type"] == "L":
+                if row["donor_type"] == "Individual" or row["donor_type"] == "Lobbyist":
                     entity_type = "Individual"
                 else:
                     entity_type = "Organization"
