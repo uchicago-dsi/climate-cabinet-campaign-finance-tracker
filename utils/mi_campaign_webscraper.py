@@ -132,7 +132,7 @@ def create_directory() -> None:
 
     for path in FILEPATHS:
         if os.path.exists(path):
-            # remove existing MI contribution data
+            # remove existing MI campaign data
             shutil.rmtree(path)
             print(f"Deleted existing directory: {path}")
 
@@ -141,3 +141,14 @@ def create_directory() -> None:
         else:
             os.makedirs(path)
             print(f"Created directory: {path}")
+
+
+def main() -> None:
+    """
+    Runs the main function and scrapes and downloads the MI campaign data
+    """
+    scrape_and_download_mi_data()
+
+
+if __name__ == "__main__":
+    main()
