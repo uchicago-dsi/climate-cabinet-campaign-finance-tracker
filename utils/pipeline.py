@@ -1,10 +1,11 @@
 import pandas as pd
 
 # import state cleaners here
+from utils.arizona import ArizonaCleaner
 
 # uncomment your state once it is added
 state_cleaners = [
-    # ArizonaCleaner(),
+    ArizonaCleaner(),
     # MichiganCleaner(),
     # MinnesotaCleaner(),
     # PennsylvaniaCleaner(),
