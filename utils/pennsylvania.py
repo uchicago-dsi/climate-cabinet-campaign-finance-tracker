@@ -1,7 +1,6 @@
 import uuid
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from utils import clean
@@ -10,16 +9,8 @@ from utils import constants as const
 
 class PennsylvaniaCleaner(clean.StateCleaner):
 
-    Base_Filepath = Path(__file__).resolve().parent.parent
-    # resolve to the path of the current python file
-    # repo_root will be the absolute path to the root of the repository,
-    # no matter where the repository is.
-    # For pathlib Path objects, `.parent` gets the parent path_splitectory and
-    #  `/` can be used like `/` in unix style paths.
-    filepaths_list = Base_Filepath / "data" / "raw" / "PA"
-
     # helper functions:
-    def assign_col_names(self, filepath: str, year: int) -> list:
+    def assign_col_names(self, file_name: str, year: int) -> list:
         """Assigns the right column names to the right datasets.
 
         Args:
@@ -31,20 +22,18 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Returns:
             a list of the appropriate column names for the dataset
         """
-        dir = filepath.split("/")
-        file_type = dir[len(dir) - 1]
 
-        if "contrib" in file_type:
+        if "contrib" in file_name:
             if year < 2022:
                 return const.PA_CONT_COLS_NAMES_PRE2022
             else:
                 return const.PA_CONT_COLS_NAMES_POST2022
-        elif "filer" in file_type:
+        elif "filer" in file_name:
             if year < 2022:
                 return const.PA_FILER_COLS_NAMES_PRE2022
             else:
                 return const.PA_FILER_COLS_NAMES_POST2022
-        elif "expense" in file_type:
+        elif "expense" in file_name:
             if year < 2022:
                 return const.PA_EXPENSE_COLS_NAMES_PRE2022
             else:
@@ -212,48 +201,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).title())
         return df
 
-    def initialize_PA_dataset(self, data_filepath: str, year: int) -> pd.DataFrame:
-        """initializes the PA data appropriately based on whether the data contains
-        filer, contributor, or expense information
-
-        Args:
-            data_filepath: the path in which the data is stored/located.
-
-            year: the year from which the data originates
-
-        Returns:
-            a pandas dataframe whose columns are appropriately formatted, and
-            any dirty rows with inconsistent columns names dropped.
-        """
-
-        df = pd.read_csv(
-            data_filepath,
-            names=self.assign_col_names(data_filepath, year),
-            sep=",",
-            encoding="latin-1",
-            on_bad_lines="warn",
-        )
-
-        df["YEAR"] = year
-        dir = data_filepath.split("/")
-        file_type = dir[len(dir) - 1]
-
-        if "contrib" in file_type:
-            return self.pre_process_contributor_dataset(df)
-
-        elif "filer" in file_type:
-            return self.pre_process_filer_dataset(df)
-
-        elif "expense" in file_type:
-            return self.pre_process_expense_dataset(df)
-
-        else:
-            raise ValueError(
-                "This function is currently formatted for filer, \
-                expense, and contributor datasets. Make sure your data \
-                is from these sources."
-            )
-
     def merge_contrib_filer_datasets(
         self, cont_file: pd.DataFrame, filer_file: pd.DataFrame
     ) -> pd.DataFrame:
@@ -298,9 +245,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Returns:
             A new dataframe with the appropriate column formatting for concatenation
         """
-        df["DONOR_ID"] = np.nan
-        df["DONOR_PARTY"] = np.nan
-        df["DONOR_OFFICE"] = np.nan
+        df["DONOR_ID"] = None
+        df["DONOR_PARTY"] = None
+        df["DONOR_OFFICE"] = None
         columns = df.columns.to_list()
         columns.sort()
         df = df.loc[:, columns]
@@ -317,7 +264,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Returns:
             A new dataframe with the appropriate column formatting for concatenation
         """
-        df["RECIPIENT_ID"] = np.nan
+        df["RECIPIENT_ID"] = None
         df = df.rename(
             columns={
                 "RECIPIENT_x": "RECIPIENT",
@@ -327,9 +274,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "RECIPIENT_OFFICE": "DONOR_OFFICE",
             }
         )
-        df["RECIPIENT_TYPE"] = np.nan
-        df["RECIPIENT_OFFICE"] = np.nan
-        df["RECIPIENT_PARTY"] = np.nan
+        df["RECIPIENT_TYPE"] = None
+        df["RECIPIENT_OFFICE"] = None
+        df["RECIPIENT_PARTY"] = None
         columns = df.columns.to_list()
         columns.sort()
         df = df.loc[:, columns]
@@ -377,7 +324,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
     def output_ID_mapping(self, dictionary: dict, df: pd.DataFrame):
         pass
 
-    def make_individuals_table(df: pd.Dataframe) -> pd.DataFrame:
+    def make_individuals_table(df: pd.DataFrame) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
         individuals and returns a dataframe with strictly individual information
         pertinent to the StateCleaner schema.
@@ -428,10 +375,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         all_individuals = pd.concat([donor_individuals, recipient_individuals])
         all_individuals = all_individuals.drop_duplicates()
-        all_individuals["first_name"] = np.nan
-        all_individuals["last_name"] = np.nan
+        all_individuals["first_name"] = None
+        all_individuals["last_name"] = None
         all_individuals["state"] = "PA"
-        all_individuals["company"] = np.nan
+        all_individuals["company"] = None
         return all_individuals
 
     def make_organizations_table(organizations_df: pd.DataFrame) -> pd.DataFrame:
@@ -478,7 +425,32 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         return all_organizations
 
     def make_transactions_table(organizations_df: pd.DataFrame) -> pd.DataFrame:
-        pass
+        """This function creates a transaction_type column describing the
+        type of contribution from a donor to a recipient, and assigns the
+        appropriate office for which the contribution was made for.
+        Args:
+            df: a pandas dataframe with donor and recipient information that
+            details relevant information about a singular transactions,
+            including a transaction ID, donor and recipient IDs, and the
+            donation amount
+        Returns:
+            a pandas dataframe strictly with information regarding transactions
+            between donors and recipients.
+        """
+
+        df = organizations_df.copy()
+        column_names = list(organizations_df.columns.str.lower())
+        df.columns = column_names
+        df["transaction_type"] = None
+        df["office_sought"] = df.apply(
+            lambda x: x["donor_office"]
+            if x["recipient_office"] is None
+            else x["recipient_office"],
+            axis=1,
+        )
+        df = df.drop(columns={"donor_office", "recipient_office"})
+
+        return df
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
 
@@ -490,22 +462,54 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             # because of the different formatting for data in different years
             # obstained from the PA website years, I had my webscraper append
             # the year to the filename
-            path_split = path.split("_")
-            year = path_split[len(path_split) - 1].replace(".txt", "")
+            dir = path.split("/")
+            file_name = dir[len(dir) - 1]
+            file_name_split = file_name.split("_")
+
+            year = file_name_split[len(file_name_split) - 1].replace(".txt", "")
             year = int(year)
 
-            df = self.initialize_PA_dataset(path, year)
-            if "contrib" in path:
+            df = pd.read_csv(
+                path,
+                names=self.assign_col_names(file_name, year),
+                sep=",",
+                encoding="latin-1",
+                on_bad_lines="warn",
+            )
+            df["YEAR"] = year
+
+            if "contrib" in file_name:
                 contributor_datasets.append(df)
-            elif "filer" in path:
+            elif "filer" in file_name:
                 filer_datasets.append(df)
-            elif "expense" in path:
+            elif "expense" in file_name:
                 expense_datasets.append(df)
             else:
-                pass  # do nothing
+                raise ValueError(
+                    "This function is currently formatted for filer, \
+                    expense, and contributor datasets. Make sure your data \
+                    is from these sources."
+                )
+        return contributor_datasets, filer_datasets, expense_datasets
 
+    def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+        contributor_datasets, filer_datasets, expense_datasets = [], [], []
+        cont_ds, filer_ds, exp_ds = data
+
+        for contrib_df, filer_df, exp_df in zip(cont_ds, filer_ds, exp_ds):
+            contributor_datasets.append(
+                self.pre_process_contributor_dataset(contrib_df)
+            )
+            filer_datasets.append(self.pre_process_filer_dataset(filer_df))
+            expense_datasets.append(self.pre_process_expense_dataset(exp_df))
+
+        return contributor_datasets, filer_datasets, expense_datasets
+
+    def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+
+        contributor_ds, filer_ds, expense_ds = data
         merged_dataset = self.combine_contributor_expenditure_datasets(
-            contributor_datasets, filer_datasets, expense_datasets
+            contributor_ds, filer_ds, expense_ds
         )
         dictionary, merged_dataset = self.replace_id_with_uuid(
             merged_dataset, "DONOR_ID", "RECIPIENT_ID"
@@ -517,7 +521,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         return merged_dataset
 
     def create_tables(
-        self, standardized_df: pd.Dataframe
+        self, standardized_df: pd.DataFrame
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
 
         # separate the standardized_df information into the relevant columns for
@@ -566,3 +570,15 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         transactions_table = self.make_transactions_table(transactions_df)
 
         return individuals_table, organizations_table, transactions_table
+
+    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+        Base_Filepath = Path(__file__).resolve().parent.parent
+        PA_Filepath = Base_Filepath / "data" / "raw" / "PA"
+        filepath_list = []
+        for file in PA_Filepath.iterdir():
+            filepath_list.append(str(file))
+
+        pre_processed_df = self.preprocess(filepath_list)
+        clean_df = self.clean(pre_processed_df)
+        standardized_df = self.standardize(clean_df)
+        return self.create_tables(standardized_df)
