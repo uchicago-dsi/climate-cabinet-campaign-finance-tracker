@@ -239,7 +239,6 @@ class MinnesotaCleaner(StateCleaner):
         Returns: A list of 1 standarized DataFrame matching database schema
         """
 
-
         df = data[0].copy()  # Create a copy to avoid modifying the original DataFrame
         df["company"] = None  # MN dataset has no company information
         df["party"] = None  # MN dataset has no party information
@@ -297,7 +296,6 @@ class MinnesotaCleaner(StateCleaner):
                 df.at[index, "donor_id"] = donor_uuid
 
             df.at[index, "transaction_id"] = transaction_uuid
-
 
         # Convert id_mapping to DataFrame and save to CSV
         id_mapping_df = pd.DataFrame.from_dict(
