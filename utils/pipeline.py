@@ -1,13 +1,15 @@
 import pandas as pd
 
-# import state cleaners here
+from utils.arizona import ArizonaCleaner
+from utils.michigan import MichiganCleaner
+from utils.minnesota import MinnesotaCleaner
+from utils.pennsylvania import PennsylvaniaCleaner
 
-# uncomment your state once it is added
 state_cleaners = [
-    # ArizonaCleaner(),
-    # MichiganCleaner(),
-    # MinnesotaCleaner(),
-    # PennsylvaniaCleaner(),
+    ArizonaCleaner(),
+    MichiganCleaner(),
+    MinnesotaCleaner(),
+    PennsylvaniaCleaner(),
 ]
 
 if __name__ == "__main__":
@@ -26,4 +28,4 @@ if __name__ == "__main__":
 
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
-    complete_transactions_table = pd.concat(single_state_transactions_tables)
+    # complete_transactions_table = pd.concat(single_state_transactions_tables)

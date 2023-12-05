@@ -3,22 +3,8 @@ from io import BytesIO
 
 import numpy as np
 import requests
-from bs4 import BeautifulSoup as BS
 
 from utils import constants as const
-
-
-def make_request(website_url: str) -> object:
-    """makes a HTTML request to the specified url, whose data is pulled out into
-    a Beautiful Soup
-
-    Args:
-        website_url: the url link to the campaign finance reports on PA's
-        government website
-
-    Returns: A parsed BeautifulSoup document
-    """
-    return BS(requests.get(website_url).text, "html.parser")
 
 
 def download_PA_data(start_year: int, end_year: int):
@@ -34,8 +20,27 @@ def download_PA_data(start_year: int, end_year: int):
 
     years = np.arange(start_year, end_year + 1)
     for year in years:
-        link = const.PA_MAIN_URL + const.PA_ZIPPED_URL + str(year) + ".zip"
+        link = f"{const.PA_MAIN_URL}{const.PA_ZIPPED_URL}{year}.zip"
+
         req = requests.get(link)
 
         zippedfiles = zipfile.ZipFile(BytesIO(req.content))
-        zippedfiles.extractall("../data")
+        for zippedfile in zippedfiles.infolist():
+            zippedfile.filename = zippedfile.filename.replace(
+                ".txt", "_" + str(year) + ".txt"
+            )
+            zippedfiles.extract(zippedfile, "../data/Raw/PA")
+
+
+def main():
+    """"""
+    text = input(
+        "Provide a range of desired years to extract data. Format is \
+                 year1, year2. Ex: 2018, 2023"
+    )
+    years = text.split(",")
+    download_PA_data(years[0], years[1])
+
+
+if __name__ == "__main__":
+    main()

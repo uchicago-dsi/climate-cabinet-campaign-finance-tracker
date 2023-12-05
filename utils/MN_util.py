@@ -1,6 +1,29 @@
+import functools
+import warnings
+
 import pandas as pd
 
 
+def deprecated(func):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used."""
+
+    @functools.wraps(func)
+    def new_func(*args, **kwargs):
+        warnings.simplefilter("always", DeprecationWarning)  # turn off filter
+        warnings.warn(
+            "Call to deprecated function {}.".format(func.__name__),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        warnings.simplefilter("default", DeprecationWarning)  # reset filter
+        return func(*args, **kwargs)
+
+    return new_func
+
+
+@deprecated
 def datasets_col_consistent(df_lst: list):
     """
     Checks if a list of MN DataFrames have the same columns/features
@@ -23,6 +46,7 @@ def datasets_col_consistent(df_lst: list):
         print("All dfs have consistent columns")
 
 
+@deprecated
 def preprocess_candidate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Preprocesses all MN candidate-recipient contribution dfs.
@@ -34,20 +58,6 @@ def preprocess_candidate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     df_copy = df.copy(deep=True)
-    columns_to_keep = [
-        "OfficeSought",
-        "CandRegNumb",
-        "CandFirstName",
-        "CandLastName",
-        "CommitteeName",
-        "DonationDate",
-        "DonorType",
-        "DonorName",
-        "DonationAmount",
-        "InKindDonAmount",
-        "InKindDescriptionText",
-    ]
-    df_copy = df_copy[columns_to_keep]
     column_mapping = {
         "CandRegNumb": "RegNumb",
         "CommitteeName": "Committee",
@@ -56,12 +66,13 @@ def preprocess_candidate_df(df: pd.DataFrame) -> pd.DataFrame:
         "InKindDonAmount": "InKindAmount",
         "InKindDescriptionText": "InKindDescription",
     }
-    df_copy.rename(columns=column_mapping, inplace=True)
+    df_copy = df_copy.rename(columns=column_mapping)
     df_copy["RecipientType"] = "Candidate"
 
     return df_copy
 
 
+@deprecated
 def preprocess_noncandidate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Preprocesses the MN non-candidate-recipient contribution df.
@@ -93,11 +104,12 @@ def preprocess_noncandidate_df(df: pd.DataFrame) -> pd.DataFrame:
         "InKindDonAmount": "InKindAmount",
         "InKindDescriptionText": "InKindDescription",
     }
-    df_copy.rename(columns=column_mapping, inplace=True)
+    df_copy = df_copy.rename(columns=column_mapping)
 
     return df_copy
 
 
+@deprecated
 def preprocess_contribution_df(df_lst: list) -> pd.DataFrame:
     """
     Preprocesses separate dfs into a complete contribution df for MN
@@ -137,6 +149,7 @@ def preprocess_contribution_df(df_lst: list) -> pd.DataFrame:
     return contribution_df
 
 
+@deprecated
 def drop_nonclassifiable(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop contributions with zero transaction amount or no donor registration
@@ -155,51 +168,8 @@ def drop_nonclassifiable(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def preprocess_general_exp_df(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocesses MN general expenditure dataset into a DataFrame.
-
-    Args:
-        df (DataFrame): the MN general expenditure DataFrames to preprocess
-    Returns:
-        DataFrame: Preprocessed MN general expenditure DataFrames
-    """
-
-    df_copy = df.copy(deep=True)
-    columns_to_keep = [
-        "Committee reg num",
-        "Committee name",
-        "Entity type",
-        "Vendor name",
-        "Amount",
-        "Unpaid amount",
-        "Date",
-        "Year",
-        "Purpose",
-        "Type",
-        "In-kind?",
-        "In-kind descr",
-        "Affected committee name",
-        "Affected committee reg num",
-    ]
-    column_mapping = {
-        "Committee reg num": "SpenderRegNum",
-        "Committee name": "SpenderName",
-        "Entity type": "SpenderType",
-        "Vendor name": "VendorName",
-        "Unpaid amount": "UnpaidAmount",
-        "In-kind descr": "InKindDescription",
-        "Affected committee name": "AffectedCommitteeName",
-        "Affected committee reg num": "AffectedCommitteeRegNum",
-    }
-
-    df_copy = df_copy[columns_to_keep]
-    df_copy.rename(columns=column_mapping, inplace=True)
-
-    return df_copy
-
-
-def preprocess_independent_exp_df(df: pd.DataFrame) -> pd.DataFrame:
+@deprecated
+def preprocess_expenditure(df: pd.DataFrame) -> pd.DataFrame:
     """
     Preprocesses MN independent expenditure dataset into a DataFrame.
 
@@ -244,22 +214,8 @@ def preprocess_independent_exp_df(df: pd.DataFrame) -> pd.DataFrame:
     return df_copy
 
 
-def preprocess_expenditure_df(df_lst: list) -> pd.DataFrame:
-    """
-    Preprocesses general & individual dfs into a complete MN expenditure df
-
-    Args:
-        df_lst (list): a list of MN DataFrames to merge and adjust columns
-    Returns:
-        DataFrame: the merged and preprocessed expenditure df
-    """
-
-    expenditure_df = pd.concat(df_lst, ignore_index=True)
-
-    return expenditure_df
-
-
-def drop_nonclassifiable_exp(df: pd.DataFrame) -> pd.DataFrame:
+@deprecated
+def drop_nonclassifiable_expenditure(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop contributions with zero transaction amount or no spender registration
     number and name
