@@ -1,36 +1,19 @@
 import uuid
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
 from utils.clean import StateCleaner
 from utils.constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
     MN_CANDIDATE_CONTRIBUTION_MAP,
+    MN_FILEPATHS_LST,
     MN_INDEPENDENT_EXPENDITURE_COL,
     MN_INDEPENDENT_EXPENDITURE_MAP,
     MN_NONCANDIDATE_CONTRIBUTION_COL,
     MN_NONCANDIDATE_CONTRIBUTION_MAP,
     MN_RACE_MAP,
 )
-
-here = Path(__file__).resolve()
-repo_root = here.parent.parent
-
-FILEPATHS_LST = [
-    repo_root / "data" / "AG.csv",
-    repo_root / "data" / "AP.csv",
-    repo_root / "data" / "DC.csv",
-    repo_root / "data" / "GC.csv",
-    repo_root / "data" / "House.csv",
-    repo_root / "data" / "SA.csv",
-    repo_root / "data" / "SC.csv",
-    repo_root / "data" / "Senate.csv",
-    repo_root / "data" / "SS.csv",
-    repo_root / "data" / "ST.csv",
-    repo_root / "data" / "non_candidate_con.csv",
-    repo_root / "data" / "independent_exp.csv",
-]
 
 
 class MinnesotaCleaner(StateCleaner):
@@ -66,11 +49,16 @@ class MinnesotaCleaner(StateCleaner):
         df1 = df1[MN_CANDIDATE_CONTRIBUTION_COL]
         df1 = df1.rename(columns=MN_CANDIDATE_CONTRIBUTION_MAP)
         df1["recipient_type"] = "I"
-        df1["recipient_full_name"] = None
+
+        none_columns = [
+            "recipient_full_name",
+            "donor_first_name",
+            "donor_last_name",
+            "donor_id",
+        ]
+        df1 = df1.assign(**{col: None for col in none_columns})
+
         df1["donor_type"] = df1["donor_type"].str.upper()
-        df1["donor_first_name"] = None
-        df1["donor_last_name"] = None
-        df1["donor_id"] = None
         df1["state"] = "MN"
         df1["amount"] = pd.to_numeric(df1["amount"], errors="coerce")
         df1["inkind_amount"] = pd.to_numeric(df1["inkind_amount"], errors="coerce")
@@ -95,13 +83,17 @@ class MinnesotaCleaner(StateCleaner):
         df1 = df.copy(deep=True)
         df1 = df1[MN_NONCANDIDATE_CONTRIBUTION_COL]
         df1 = df1.rename(columns=MN_NONCANDIDATE_CONTRIBUTION_MAP)
-        df1["recipient_first_name"] = None
-        df1["recipient_last_name"] = None
+        none_columns = [
+            "recipient_first_name",
+            "recipient_last_name",
+            "donor_first_name",
+            "donor_last_name",
+            "office_sought",
+        ]
+        df1 = df1.assign(**{col: None for col in none_columns})
+
         df1["donor_type"] = df1["donor_type"].str.upper()
-        df1["donor_first_name"] = None
-        df1["donor_last_name"] = None
         df1["state"] = "MN"
-        df1["office_sought"] = None
         df1["amount"] = pd.to_numeric(df1["amount"], errors="coerce")
         df1["donor_id"] = df1["donor_id"].fillna(0).astype("int64")
         df1["inkind_amount"] = pd.to_numeric(df1["inkind_amount"], errors="coerce")
@@ -127,17 +119,21 @@ class MinnesotaCleaner(StateCleaner):
         df1 = df1[MN_INDEPENDENT_EXPENDITURE_COL]
         df1 = df1.rename(columns=MN_INDEPENDENT_EXPENDITURE_MAP)
         # Donors and recipients are both organization, only have full name
-        df1["recipient_first_name"] = None
-        df1["recipient_last_name"] = None
-        df1["donor_first_name"] = None
-        df1["donor_last_name"] = None
+        none_columns = [
+            "recipient_first_name",
+            "recipient_last_name",
+            "donor_first_name",
+            "donor_last_name",
+            "inkind_amount",
+            "office_sought",
+        ]
+        df1 = df1.assign(**{col: None for col in none_columns})
+
         df1["recipient_id"] = df1["donor_id"].fillna(0).astype("int64")
         # Negate the contribution amount if it's against the recipient
         df1.loc[df1["For /Against"] == "Against", "amount"] = -df1["amount"]
-        df1["inkind_amount"] = None
         df1 = df1.drop(columns=["For /Against"])
         df1["recipient_type"] = "PCF"  # recipient: affected political committee
-        df1["office_sought"] = None
 
         return df1
 
@@ -219,6 +215,7 @@ class MinnesotaCleaner(StateCleaner):
             "amount": "float64",
             "inkind_amount": "float64",
         }
+
         df = df.astype(type_mapping)
         # non-classfiable rows of no transaction amount, no donor/recipient info
         df = df[df["amount"] != 0]
@@ -412,21 +409,74 @@ class MinnesotaCleaner(StateCleaner):
             columns=[
                 "transaction_id",
                 "donor_id",
+                "donor_type",
                 "year",
                 "amount",
+                "recipient_type",
                 "recipient_id",
                 "office_sought",
                 "purpose",
                 "transaction_type",
             ],
         )
+        tran_org2org = tran_df[
+            (
+                tran_df["recipient_type"].isin(
+                    ["Company", "Committee", "Committee", "Party", "Other"]
+                )
+            )
+            & (
+                tran_df["donor_type"].isin(
+                    ["Company", "Committee", "Committee", "Party", "Other"]
+                )
+            )
+        ]
+        tran_org2org = tran_org2org.drop(["recipient_type", "donor_type"], axis=1)
 
-        return ind_df, org_df, tran_df
+        tran_ind2ind = tran_df[
+            (tran_df["recipient_type"].isin(["Individual", "Lobbyist"]))
+            & (tran_df["donor_type"].isin(["Individual", "Lobbyist"]))
+        ]
+        tran_ind2ind = tran_ind2ind.drop(["recipient_type", "donor_type"], axis=1)
+
+        tran_ind2org = tran_df[
+            (
+                tran_df["recipient_type"].isin(
+                    ["Company", "Committee", "Committee", "Party", "Other"]
+                )
+            )
+            & (tran_df["donor_type"].isin(["Individual", "Lobbyist"]))
+        ]
+        tran_ind2org = tran_ind2org.drop(["recipient_type", "donor_type"], axis=1)
+
+        tran_org2ind = tran_df[
+            (tran_df["recipient_type"].isin(["Individual", "Lobbyist"]))
+            & (
+                tran_df["donor_type"].isin(
+                    ["Company", "Committee", "Committee", "Party", "Other"]
+                )
+            )
+        ]
+        tran_org2ind = tran_org2ind.drop(["recipient_type", "donor_type"], axis=1)
+
+        return (
+            ind_df,
+            org_df,
+            [tran_ind2ind, tran_ind2org, tran_org2org, tran_org2ind],
+        )
 
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        preprocessed_df = self.preprocess(FILEPATHS_LST)
+        preprocessed_df = self.preprocess(MN_FILEPATHS_LST)
         cleaned_df = self.clean(preprocessed_df)
         standardized_df = self.standardize(cleaned_df)
-        ind_df, org_df, tran_df = self.create_tables(standardized_df)
+        (
+            ind_df,
+            org_df,
+            [tran_df_org2org, tran_df_ind2ind, tran_df_ind2org, tran_df_org2ind],
+        ) = self.create_tables(standardized_df)
 
-        return ind_df, org_df, tran_df
+        return (
+            ind_df,
+            org_df,
+            [tran_df_org2org, tran_df_ind2ind, tran_df_ind2org, tran_df_org2ind],
+        )

@@ -82,7 +82,7 @@ Creating a searchable, relational database of Arizona, Michigan, Minnesota, and 
 ### Project Pipeline
 
 1. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN)
-2. User can go to [the shared Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "file"
+2. User can go to [the shared Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / "file"
 3. Install all the necessary python packages listed in requirements.txt
 4. Use utils/pipeline.py to preprocess, clean, standardize, and create tables for each state and ultimately concatinate tables across 4 states into a comprehensive database
 5. The final result should be an individual DataFrame, an organization DataFrame, and a transaction DataFrame. They each contain all data in AZ, MI, MN, PA datasets
