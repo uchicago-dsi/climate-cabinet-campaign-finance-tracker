@@ -45,6 +45,7 @@ class StateCleaner(ABC):
 
         Inputs:
             data: a list of 1 or 3 dataframes as output from preprocess method.
+            data: a list of 1 or 3 dataframes as outputted from preprocess method.
 
         Returns: a list of dataframes. If state data is all in one format
             (i.e. there are not separate individual and transaction tables),

@@ -1,9 +1,6 @@
-# import sys
-
 import pandas as pd
 import plotly.express as px
 
-# sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 from utils import constants as const
 
 
@@ -93,7 +90,7 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
             "E_ZIPCODE",
             "SECTION",
             "CYCLE",
-            "CONT_DESCRIP",
+            "PURPOSE",
             "CONT_DATE_1",
             "CONT_AMT_1",
             "CONT_DATE_2",
@@ -328,17 +325,21 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
     Return:
         A table object"""
 
-    recep_per_office = merged_dataset.replace({"OFFICE": const.PA_OFFICE_ABBREV_DICT})
+    recep_per_office = merged_dataset.replace(
+        {"RECIPIENT_OFFICE": const.PA_OFFICE_ABBREV_DICT}
+    )
 
     recep_per_office = (
-        recep_per_office.groupby(["OFFICE"]).agg({"TOTAL_CONT_AMT": sum}).reset_index()
+        recep_per_office.groupby(["RECIPIENT_OFFICE"])
+        .agg({"TOTAL_CONT_AMT": sum})
+        .reset_index()
     )
 
     fig = px.bar(
         data_frame=recep_per_office,
-        x="OFFICE",
+        x="RECIPIENT_OFFICE",
         y="TOTAL_CONT_AMT",
-        title="PA Contributions Received by Office-Type From 2018-2023",
+        title="Pennsylvania Contributions Received by Office-Type From 2018-2023",
         labels={"TOTAL_CONT_AMT": "Total Contribution Amount"},
     )
     fig.show()
@@ -369,7 +370,7 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
         x="YEAR",
         y="TOTAL_CONT_AMT",
         color="RECIPIENT_TYPE",
-        title="PA Recipients of Annual Contributions (2018 - 2023)",
+        title="Pennsylvania Recipients of Annual Contributions (2018 - 2023)",
         labels={
             "TOTAL_CONT_AMT": "Total Contribution Amount",
             "RECIPIENT_TYPE": "Type of Filer",

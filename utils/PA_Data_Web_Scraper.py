@@ -29,7 +29,7 @@ def download_PA_data(start_year: int, end_year: int):
             zippedfile.filename = zippedfile.filename.replace(
                 ".txt", "_" + str(year) + ".txt"
             )
-            zippedfiles.extract(zippedfile, "../data/Raw/PA")
+            zippedfiles.extract(zippedfile, "../data/raw/PA")
 
 
 def main():
