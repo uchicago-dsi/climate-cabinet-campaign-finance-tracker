@@ -351,7 +351,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         Args:
             dictionary: A dictionary mapping generated UUIDs to the original IDs
-            df: a dataFrame with information on campaign finance
+            df: a dataFrame with information on campaign finance.
 
         Returns:
         None (outputs a csv file to the output folder in the repository)

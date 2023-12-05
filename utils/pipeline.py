@@ -6,7 +6,7 @@ from utils.pennsylvania import PennsylvaniaCleaner
 
 sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 
-# import state cleaners here
+# import state cleaners here.
 
 # uncomment your state once it is added
 state_cleaners = [
