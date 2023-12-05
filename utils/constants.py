@@ -190,6 +190,7 @@ MI_EXP_DROP_COLS = [
     "fundraiser",
 ]
 
+
 PA_MAIN_URL = "https://www.dos.pa.gov"
 PA_ZIPPED_URL = (
     "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
