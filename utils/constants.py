@@ -239,7 +239,7 @@ PA_CONT_COLS_NAMES_PRE2022: list = [
     "CONT_AMT_2",
     "CONT_DATE_3",
     "CONT_AMT_3",
-    "CONT_DESCRIP",
+    "PURPOSE",
 ]
 
 PA_CONT_COLS_NAMES_POST2022: list = [
@@ -268,7 +268,7 @@ PA_CONT_COLS_NAMES_POST2022: list = [
     "CONT_AMT_2",
     "CONT_DATE_3",
     "CONT_AMT_3",
-    "CONT_DESCRIP",
+    "PURPOSE",
 ]
 
 PA_FILER_COLS_NAMES_PRE2022: list = [
@@ -353,7 +353,7 @@ PA_EXPENSE_COLS_NAMES_POST2022: list = [
 
 PA_OFFICE_ABBREV_DICT: dict = {
     "GOV": "Governor",
-    "LTG": "Liutenant Gov",
+    "LTG": "Lieutenant Gov",
     "ATT": "Attorney General",
     "AUD": "Auditor General",
     "TRE": "State Treasurer",
