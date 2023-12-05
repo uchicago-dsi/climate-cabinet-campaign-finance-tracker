@@ -56,8 +56,12 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # a set is used because there could be IDs in the donor column that also
         # appear in the recipient column due to concatenation, and I want to keep
         # the IDs unique throughout
-        ids_1 = set(df[col1])
-        ids_2 = set(df[col2])
+        # separate into those with and without original IDs
+        donors_with_id = df[~df[col1].isnull()]
+        ids_1 = set(donors_with_id[col1])
+
+        recipients_with_id = df[~df[col2].isnull()]
+        ids_2 = set(recipients_with_id[col2])
         unique_ids = list(ids_1.union(ids_2))
 
         with_uuid = []
@@ -68,6 +72,19 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         df[col1] = df[col1].map(mapped_dict)
         df[col2] = df[col2].map(mapped_dict)
         mapped_dict = {value: key for key, value in mapped_dict.items()}
+
+        # now generate new IDs for entities that don't have any, and update
+        # mapped_dict:
+        df[["DONOR_ID", "RECIPIENT_ID"]] = df[["DONOR_ID", "RECIPIENT_ID"]].apply(
+            lambda x: str(uuid.uuid4()) if not isinstance(x, str) else x
+        )
+
+        for id in list(
+            set(df.DONOR_ID.to_list()).union(set(df.RECIPIENT_ID.to_list()))
+        ):
+            if id not in mapped_dict:
+                mapped_dict[id] = None
+
         return mapped_dict, df
 
     def classify_contributor(self, donor: str) -> str:
@@ -274,7 +291,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "RECIPIENT_OFFICE": "DONOR_OFFICE",
             }
         )
-        df["RECIPIENT_TYPE"] = None
+        # because recipient information in the expenditure dataset is not
+        # provided, for the sake of fitting the schema I code recipient_type as
+        # 'transaction'.
+        df["RECIPIENT_TYPE"] = "Transaction"
         df["RECIPIENT_OFFICE"] = None
         df["RECIPIENT_PARTY"] = None
         columns = df.columns.to_list()
@@ -319,10 +339,45 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         expend_filer_info = self.format_expend_data_for_concat(
             merged_exp_dataset_per_yr
         )
-        return pd.concat([contrib_filer_info, expend_filer_info])
+        concat_df = pd.concat([contrib_filer_info, expend_filer_info])
+        concat_df = concat_df.reset_index(drop=True)
+        return concat_df
 
-    def output_ID_mapping(self, dictionary: dict, df: pd.DataFrame):
-        pass
+    def output_ID_mapping(self, dictionary: dict, df: pd.DataFrame) -> None:
+        """Given a dictionary and a dataFrame, this function cross-references
+        the data in the dictionary with the dataframe to output a mapped
+        dictionary csv. This csv file can be used to map the IDs in the original
+        dataset to the generated UUIDs in the current dataset
+
+        Args:
+            dictionary: A dictionary mapping generated UUIDs to the original IDs
+            df: a dataFrame with information on campaign finance
+
+        Returns:
+        None (outputs a csv file to the output folder in the repository)
+        """
+        # first split the dataframe into donor and recipient information
+        donors = df[["DONOR_TYPE", "DONOR_ID", "YEAR"]]
+        donors = donors.drop_duplicates()
+        donors["provided_id"] = donors.DONOR_TYPE.map(dictionary)
+
+        recipients = df[["RECIPIENT_TYPE", "RECIPIENT_ID", "YEAR"]]
+        recipients = recipients.drop_duplicates()
+        recipients["provided_id"] = recipients.RECIPIENT_ID.map(dictionary)
+
+        # combine the two after renaming columns
+        donors = donors.rename(
+            columns={"DONOR_TYPE": "entity_type", "DONOR_ID": "database_id"}
+        )
+        recipients = recipients.rename(
+            columns={"RECIPIENT_TYPE": "entity_type", "RECIPIENT_ID": "database_id"}
+        )
+
+        entities = pd.concat([donors, recipients])
+        entities = entities.drop_duplicates()
+        entities["state"] = "Pennsylvania"
+
+        entities.to_csv("../output/PA_IDs.csv", index=False)
 
     def make_individuals_table(df: pd.DataFrame) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
@@ -464,32 +519,36 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             # the year to the filename
             dir = path.split("/")
             file_name = dir[len(dir) - 1]
-            file_name_split = file_name.split("_")
 
-            year = file_name_split[len(file_name_split) - 1].replace(".txt", "")
-            year = int(year)
+            # only want contributor, filer, and expenditure files:
+            if (
+                ("contrib" in file_name)
+                | ("filer" in file_name)
+                | ("expense" in file_name)
+            ):
+                file_name_split = file_name.split("_")
 
-            df = pd.read_csv(
-                path,
-                names=self.assign_col_names(file_name, year),
-                sep=",",
-                encoding="latin-1",
-                on_bad_lines="warn",
-            )
-            df["YEAR"] = year
+                year = file_name_split[len(file_name_split) - 1].replace(".txt", "")
+                year = int(year)
 
-            if "contrib" in file_name:
-                contributor_datasets.append(df)
-            elif "filer" in file_name:
-                filer_datasets.append(df)
-            elif "expense" in file_name:
-                expense_datasets.append(df)
-            else:
-                raise ValueError(
-                    "This function is currently formatted for filer, \
-                    expense, and contributor datasets. Make sure your data \
-                    is from these sources."
+                df = pd.read_csv(
+                    path,
+                    names=self.assign_col_names(file_name, year),
+                    sep=",",
+                    encoding="latin-1",
+                    on_bad_lines="warn",
                 )
+                df["YEAR"] = year
+
+                if "contrib" in file_name:
+                    contributor_datasets.append(df)
+                elif "filer" in file_name:
+                    filer_datasets.append(df)
+                else:
+                    expense_datasets.append(df)
+            else:
+                continue
+
         return contributor_datasets, filer_datasets, expense_datasets
 
     def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
@@ -573,7 +632,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         Base_Filepath = Path(__file__).resolve().parent.parent
-        PA_Filepath = Base_Filepath / "data" / "raw" / "PA"
+        PA_Filepath = Base_Filepath / "data"  # / "raw" / "PA"
         filepath_list = []
         for file in PA_Filepath.iterdir():
             filepath_list.append(str(file))

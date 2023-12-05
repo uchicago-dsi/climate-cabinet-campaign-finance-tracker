@@ -1,4 +1,10 @@
+import sys
+
 import pandas as pd
+
+from utils.pennsylvania import PennsylvaniaCleaner
+
+sys.path.append("/home/alankagiri/2023-fall-clinic-climate-cabinet")
 
 # import state cleaners here
 
@@ -7,7 +13,7 @@ state_cleaners = [
     # ArizonaCleaner(),
     # MichiganCleaner(),
     # MinnesotaCleaner(),
-    # PennsylvaniaCleaner(),
+    PennsylvaniaCleaner(),
 ]
 
 if __name__ == "__main__":
