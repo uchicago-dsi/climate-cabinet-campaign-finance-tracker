@@ -116,7 +116,7 @@ class StateCleaner(ABC):
                 defined per state.
 
         Returns: cleans the state and returns the standardized Inidividuals,
-        Organizations, and list of Transactions tables in the order: 
+        Organizations, and list of Transactions tables in the order:
         [ind->ind, ind->org, org->ind, org->org] tables in a tuple
         """
 
