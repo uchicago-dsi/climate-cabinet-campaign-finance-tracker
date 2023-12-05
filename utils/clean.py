@@ -32,10 +32,7 @@ class StateCleaner(ABC):
                 required naming conventions, order, and extensions
                 defined per state.
 
-        Returns: a list of dataframes. If state data is all in one format
-            (i.e. there are not separate individual and transaction tables),
-            a list containing a single dataframe. Otherwise a list of three
-            DataFrames that represent [transactions, individuals, organizations]
+        Returns: a list of dataframes based on the needs of each state.
         """
         pass
 
@@ -105,7 +102,7 @@ class StateCleaner(ABC):
         pass
 
     @abstractmethod
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, list[pd.DataFrame]):
         """
         Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
 
@@ -119,7 +116,8 @@ class StateCleaner(ABC):
                 defined per state.
 
         Returns: cleans the state and returns the standardized Inidividuals,
-        Organizations, and Transactions tables in a tuple
+        Organizations, and list of Transactions tables in the order: 
+        [ind->ind, ind->org, org->ind, org->org] tables in a tuple
         """
 
         pass
