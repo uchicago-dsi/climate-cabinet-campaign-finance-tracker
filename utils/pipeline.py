@@ -1,5 +1,3 @@
-import sys
-
 import pandas as pd
 
 from utils.arizona import ArizonaCleaner
