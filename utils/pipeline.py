@@ -8,9 +8,9 @@ from utils.minnesota import MinnesotaCleaner
 from utils.pennsylvania import PennsylvaniaCleaner
 
 state_cleaners = [
-    # ArizonaCleaner(),
-    # MichiganCleaner(),
-    # MinnesotaCleaner(),
+    ArizonaCleaner(),
+    MichiganCleaner(),
+    MinnesotaCleaner(),
     PennsylvaniaCleaner(),
 ]
 
