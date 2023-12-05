@@ -23,6 +23,10 @@ def assign_col_names(filepath: str, year: int) -> list:
     file_type = dir[len(dir) - 1]
 
     if "contrib" in file_type:
+        # in 2022 PA changed its data storage format by adding an extra variable
+        # making the number and names of columns different from preceding years.
+        # The following if statements account for this by referencing the
+        # appropriate column list in  constants.py
         if year < 2022:
             return const.PA_CONT_COLS_NAMES_PRE2022
         else:
@@ -70,8 +74,9 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
         a pandas dataframe whose columns are appropriately formatted.
     """
     df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
-    df["CONTRIBUTOR"] = df["CONTRIBUTOR"].astype("str")
-    df["CONTRIBUTOR_TYPE"] = df["CONTRIBUTOR"].apply(classify_contributor)
+    df["DONOR"] = df["DONOR"].astype("str")
+    df["DONOR"] = df["DONOR"].str.upper()
+    df["DONOR_TYPE"] = df["DONOR"].apply(classify_contributor)
     df.drop(
         columns={
             "ADDRESS_1",
@@ -88,16 +93,20 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
             "E_ZIPCODE",
             "SECTION",
             "CYCLE",
+            "CONT_DESCRIP",
             "CONT_DATE_1",
+            "CONT_AMT_1",
             "CONT_DATE_2",
+            "CONT_AMT_2",
             "CONT_DATE_3",
+            "CONT_AMT_3",
         },
         inplace=True,
     )
 
     if "TIMESTAMP" in df.columns:
         df.drop(columns={"TIMESTAMP", "REPORTER_ID"}, inplace=True)
-        df["CONTRIBUTOR"] = df["CONTRIBUTOR"].apply(lambda x: str(x).upper())
+        df["DONOR"] = df["DONOR"].apply(lambda x: str(x).upper())
 
     return df
 
@@ -135,9 +144,9 @@ def pre_process_filer_dataset(df: pd.DataFrame):
     if "TIMESTAMP" in df.columns:
         df.drop(columns={"TIMESTAMP", "REPORTER_ID"}, inplace=True)
 
-    df.drop_duplicates(subset=["FILER_ID"], inplace=True)
-    df["FILER_TYPE"] = df.FILER_TYPE.map(const.PA_FILER_ABBREV_DICT)
-    df["FILER_NAME"] = df["FILER_NAME"].apply(lambda x: str(x).upper())
+    df.drop_duplicates(subset=["RECIPIENT_ID"], inplace=True)
+    df["RECIPIENT_TYPE"] = df.RECIPIENT_TYPE.map(const.PA_FILER_ABBREV_DICT)
+    df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).upper())
     return df
 
 
@@ -165,8 +174,8 @@ def pre_process_expense_dataset(df: pd.DataFrame):
     )
     if "EXPENSE_REPORTER_ID" in df.columns:
         df.drop(columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True)
-    df["EXPENSE_DESC"] = df["EXPENSE_DESC"].apply(lambda x: str(x).upper())
-    df["EXPENSE_NAME"] = df["EXPENSE_NAME"].apply(lambda x: str(x).upper())
+    df["PURPOSE"] = df["PURPOSE"].apply(lambda x: str(x).upper())
+    df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).upper())
 
     return df
 
@@ -194,7 +203,10 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
     )
 
     df["YEAR"] = year
-    df["FILER_ID"] = df["FILER_ID"].astype("str")
+    if "RECIPIENT_ID" in df.columns:
+        df["RECIPIENT_ID"] = df["RECIPIENT_ID"].astype("str")
+    else:
+        df["DONOR_ID"] = df["DONOR_ID"].astype("str")
     dir = data_filepath.split("/")
     file_type = dir[len(dir) - 1]
 
@@ -227,7 +239,7 @@ def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
     Returns:
         A pandas table (object)"""
     recipients = (
-        df.groupby(["FILER_NAME"])
+        df.groupby(["RECIPIENT"])
         .agg({"TOTAL_CONT_AMT": sum})
         .sort_values(by="TOTAL_CONT_AMT", ascending=False)
     )
@@ -253,7 +265,7 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
         a pandas table (object)"""
 
     contributors = (
-        df.groupby(["CONTRIBUTOR"])
+        df.groupby(["DONOR"])
         .agg({"TOTAL_CONT_AMT": sum})
         .sort_values(by="TOTAL_CONT_AMT", ascending=False)
     )
@@ -276,7 +288,7 @@ def merge_same_year_datasets(
     Returns
         The merged pandas dataframe
     """
-    merged_df = pd.merge(cont_file, filer_file, how="left", on="FILER_ID")
+    merged_df = pd.merge(cont_file, filer_file, how="left", on="RECIPIENT_ID")
     return merged_df
 
 
@@ -302,7 +314,7 @@ def group_filerType_Party(dataset: pd.DataFrame) -> object:
 
     Returns:
         A table object"""
-    return dataset.groupby(["FILER_TYPE", "PARTY"]).agg({"TOTAL_CONT_AMT": sum})
+    return dataset.groupby(["RECIPIENT_TYPE", "PARTY"]).agg({"TOTAL_CONT_AMT": sum})
 
 
 def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
@@ -347,7 +359,7 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
     """
     pd.set_option("display.float_format", "{:.2f}".format)
     cont_by_donor = (
-        merged_dataset.groupby(["YEAR", "FILER_TYPE"])
+        merged_dataset.groupby(["YEAR", "RECIPIENT_TYPE"])
         .agg({"TOTAL_CONT_AMT": sum})
         .reset_index()
     )
@@ -356,11 +368,11 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
         data_frame=cont_by_donor,
         x="YEAR",
         y="TOTAL_CONT_AMT",
-        color="FILER_TYPE",
+        color="RECIPIENT_TYPE",
         title="PA Recipients of Annual Contributions (2018 - 2023)",
         labels={
             "TOTAL_CONT_AMT": "Total Contribution Amount",
-            "FILER_TYPE": "Type of Filer",
+            "RECIPIENT_TYPE": "Type of Filer",
         },
     )
     fig.show()

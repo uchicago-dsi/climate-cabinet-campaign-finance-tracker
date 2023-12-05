@@ -242,17 +242,23 @@ class MinnesotaCleaner(StateCleaner):
         Returns: A list of 1 standarized DataFrame matching database schema
         """
 
+
         df = data[0].copy()  # Create a copy to avoid modifying the original DataFrame
         df["company"] = None  # MN dataset has no company information
         df["party"] = None  # MN dataset has no party information
         df["transaction_id"] = None
         df["office_sought"] = df["office_sought"].replace(MN_RACE_MAP)
+
         # Standardize entity names to match other states in the database schema
         entity_map = self.entity_name_dictionary()
         df["recipient_type"] = df["recipient_type"].map(entity_map)
         df["donor_type"] = df["donor_type"].map(entity_map)
         id_mapping = {}
 
+        # Standardize entity names to match othe states in database schema
+        df["recipient_type"] = df["recipient_type"].replace(self.entity_name_dictionary)
+        df["donor_type"] = df["donor_type"].replace(self.entity_name_dictionary)
+        id_mapping = {}
         for index, row in df.iterrows():
             recipient_uuid = str(uuid.uuid4())
             donor_uuid = str(uuid.uuid4())
@@ -274,6 +280,7 @@ class MinnesotaCleaner(StateCleaner):
                     row["recipient_id"],
                     recipient_uuid,
                 )
+
                 df.at[index, "recipient_id"] = recipient_uuid
 
             # MN has partial donor id, generate uuid, map them to original id
@@ -289,9 +296,11 @@ class MinnesotaCleaner(StateCleaner):
                     row["donor_id"],
                     donor_uuid,
                 )
+
                 df.at[index, "donor_id"] = donor_uuid
 
             df.at[index, "transaction_id"] = transaction_uuid
+
 
         # Convert id_mapping to DataFrame and save to CSV
         id_mapping_df = pd.DataFrame.from_dict(

@@ -3,20 +3,27 @@ Constants to be used in various parts of the project
 """
 from pathlib import Path
 
-MI_FILEPATH = "../data/Contributions/"
+BASE_FILEPATH = Path("constants.py").resolve().parent
+# returns the base_path to the directory
 
-MI_VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
+
+AZ_TRANSACTIONS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_transactions_demo.csv"
+)
+
+AZ_INDIVIDUALS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
+)
+
+AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
 
 HEADERS = {"User-Agent": USER_AGENT}
-
-MI_EXP_FILEPATH = str(BASE_FILEPATH / "data" / "Expenditure")
-
-MI_CON_FILEPATH = str(BASE_FILEPATH / "data" / "Contribution")
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
@@ -142,6 +149,48 @@ MN_RACE_MAP = {
     "DC": "State District Court Judge",
 }
 
+
+MI_CONT_DROP_COLS = [
+    "doc_seq_no",
+    "page_no",
+    "cont_detail_id",
+    "doc_type_desc",
+    "address",
+    "city",
+    "zip",
+    "occupation",
+    "received_date",
+    "aggregate",
+    "extra_desc",
+]
+
+MI_EXP_DROP_COLS = [
+    "doc_seq_no",
+    "expenditure_type",
+    "gub_account_type",
+    "gub_elec_type",
+    "page_no",
+    "detail_id",
+    "doc_type_desc",
+    "extra_desc",
+    "address",
+    "city",
+    "zip",
+    "exp_date",
+    "state_loc",
+    "supp_opp",
+    "can_or_ballot",
+    "county",
+    "debt_payment",
+    "vend_addr",
+    "vend_city",
+    "vend_state",
+    "vend_zip",
+    "gotv_ink_ind",
+    "fundraiser",
+]
+
+
 PA_MAIN_URL = "https://www.dos.pa.gov"
 PA_ZIPPED_URL = (
     "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
@@ -150,11 +199,11 @@ PA_ZIPPED_URL = (
 # PA EDA constants:
 
 PA_CONT_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "YEAR",
     "CYCLE",
     "SECTION",
-    "CONTRIBUTOR",
+    "DONOR",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -177,13 +226,13 @@ PA_CONT_COLS_NAMES_PRE2022: list = [
 ]
 
 PA_CONT_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "REPORTER_ID",
     "TIMESTAMP",
     "YEAR",
     "CYCLE",
     "SECTION",
-    "CONTRIBUTOR",
+    "DONOR",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -206,16 +255,16 @@ PA_CONT_COLS_NAMES_POST2022: list = [
 ]
 
 PA_FILER_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "YEAR",
     "CYCLE",
     "AMEND",
     "TERMINATE",
-    "FILER_TYPE",
-    "FILER_NAME",
-    "OFFICE",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
     "DISTRICT",
-    "PARTY",
+    "RECIPIENT_PARTY",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -229,18 +278,18 @@ PA_FILER_COLS_NAMES_PRE2022: list = [
 ]
 
 PA_FILER_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "REPORTER_ID",
     "TIMESTAMP",
     "YEAR",
     "CYCLE",
     "AMEND",
     "TERMINATE",
-    "FILER_TYPE",
-    "FILER_NAME",
-    "OFFICE",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
     "DISTRICT",
-    "PARTY",
+    "RECIPIENT_PARTY",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -254,35 +303,35 @@ PA_FILER_COLS_NAMES_POST2022: list = [
 ]
 
 PA_EXPENSE_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "DONOR_ID",
     "YEAR",
     "EXPENSE_CYCLE",
-    "EXPENSE_NAME",
+    "RECIPIENT",
     "EXPENSE_ADDRESS_1",
     "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
     "EXPENSE_DATE",
-    "EXPENSE_AMT",
-    "EXPENSE_DESC",
+    "AMOUNT",
+    "PURPOSE",
 ]
 
 PA_EXPENSE_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "DONOR_ID",
     "EXPENSE_REPORTER_ID",
     "EXPENSE_TIMESTAMP",
     "YEAR",
     "EXPENSE_CYCLE",
-    "EXPENSE_NAME",
+    "RECIPIENT",
     "EXPENSE_ADDRESS_1",
     "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
     "EXPENSE_DATE",
-    "EXPENSE_AMT",
-    "EXPENSE_DESC",
+    "AMOUNT",
+    "PURPOSE",
 ]
 
 PA_OFFICE_ABBREV_DICT: dict = {
@@ -343,6 +392,7 @@ PA_ORGANIZATION_IDENTIFIERS: list = [
     "INC",
     "INCORPORATED",
     "LLC",
+    "FUND",
 ]
 
 MI_EXPENDITURE_COLUMNS = [
@@ -385,12 +435,66 @@ MI_EXPENDITURE_COLUMNS = [
     "fundraiser",
 ]
 
+MICHIGAN_CONTRIBUTION_COLS_REORDER = [
+    "doc_seq_no",
+    "page_no",
+    "contribution_id",
+    "cont_detail_id",
+    "doc_stmnt_year",
+    "doc_type_desc",
+    "common_name",
+    "com_type",
+    "can_first_name",
+    "can_last_name",
+    "contribtype",
+    "f_name",
+    "l_name_or_org",
+    "address",
+    "city",
+    "state",
+    "zip",
+    "occupation",
+    "employer",
+    "amount",
+    "received_date",
+    "aggregate",
+    "extra_desc",
+    "amount",
+]
+
+MICHIGAN_CONTRIBUTION_COLS_RENAME = [
+    "doc_seq_no",
+    "page_no",
+    "contribution_id",
+    "cont_detail_id",
+    "doc_stmnt_year",
+    "doc_type_desc",
+    "com_legal_name",
+    "common_name",
+    "cfr_com_id",
+    "com_type",
+    "can_first_name",
+    "can_last_name",
+    "contribtype",
+    "f_name",
+    "l_name_or_org",
+    "address",
+    "city",
+    "state",
+    "zip",
+    "occupation",
+    "employer",
+    "received_date",
+    "amount",
+    "aggregate",
+]
+
 
 AZ_pages_dict = {
     "Candidate": 1,
     "PAC": 2,
     "Political Party": 3,
-    "Organzations": 4,
+    "Organizations": 4,
     "Independent Expenditures": 5,
     "Ballot Measures": 6,
     "Individual Contributors": 7,
@@ -487,3 +591,60 @@ AZ_base_data = {
     "search[value]": "",
     "search[regex]": "false",
 }
+
+state_abbreviations = [
+    " AK ",
+    " AL ",
+    " AR ",
+    " AZ ",
+    " CA ",
+    " CO ",
+    " CT ",
+    " DC ",
+    " DE ",
+    " FL ",
+    " GA ",
+    " GU ",
+    " HI ",
+    " IA ",
+    " ID ",
+    " IL ",
+    " IN ",
+    " KS ",
+    " KY ",
+    " LA ",
+    " MA ",
+    " MD ",
+    " ME ",
+    " MI ",
+    " MN ",
+    " MO ",
+    " MS ",
+    " MT ",
+    " NC ",
+    " ND ",
+    " NE ",
+    " NH ",
+    " NJ ",
+    " NM ",
+    " NV ",
+    " NY ",
+    " OH ",
+    " OK ",
+    " OR ",
+    " PA ",
+    " PR ",
+    " RI ",
+    " SC ",
+    " SD ",
+    " TN ",
+    " TX ",
+    " UT ",
+    " VA ",
+    " VI ",
+    " VT ",
+    " WA ",
+    " WI ",
+    " WV ",
+    " WY ",
+]
