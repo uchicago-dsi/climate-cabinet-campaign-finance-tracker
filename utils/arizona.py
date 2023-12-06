@@ -25,9 +25,9 @@ class ArizonaCleaner(StateCleaner):
 
     def get_filepaths(self):
         return [
-            "notebooks/all_inds_details.csv",
-            "notebooks/all_orgs_details.csv",
-            "notebooks/all_transactions.csv",
+            AZ_INDIVIDUALS_FILEPATH,
+            AZ_ORGANIZATIONS_FILEPATH,
+            AZ_TRANSACTIONS_FILEPATH,
         ]
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
@@ -212,16 +212,3 @@ class ArizonaCleaner(StateCleaner):
         transactions["office_sought"] = office_sought
 
         return [transactions, details]
-
-
-if __name__ == "__main__":
-    ArizonaCleaner.clean_state(
-        [
-            AZ_INDIVIDUALS_FILEPATH,
-            AZ_ORGANIZATIONS_FILEPATH,
-            AZ_TRANSACTIONS_FILEPATH,
-            # "notebooks/all_inds_details.csv",
-            # "notebooks/all_orgs_details.csv",
-            # "notebooks/all_transactions.csv",
-        ]
-    )
