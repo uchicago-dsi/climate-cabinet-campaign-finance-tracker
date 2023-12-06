@@ -23,6 +23,11 @@ from utils.preprocess_mi_campaign_data import (
 
 
 class MichiganCleaner(StateCleaner):
+    """
+    This class is based on the StateCleaner abstract class,
+    and cleans Michigan campaign contribution and expenditure data
+    """
+    
     entity_name_dictionary = {
         "cfr_com_id": "original_com_id",
         "f_name": "first_name",
