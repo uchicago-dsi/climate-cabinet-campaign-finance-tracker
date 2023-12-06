@@ -326,7 +326,7 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
         data_frame=recep_per_office,
         x="OFFICE",
         y="TOTAL_CONT_AMT",
-        title="PA Contributions Received by Office-Type From 2018-2023",
+        title="Pennsylvania Contributions Received by Office-Type From 2018-2023",
         labels={"TOTAL_CONT_AMT": "Total Contribution Amount"},
     )
     fig.show()
@@ -357,7 +357,7 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
         x="YEAR",
         y="TOTAL_CONT_AMT",
         color="FILER_TYPE",
-        title="PA Recipients of Annual Contributions (2018 - 2023)",
+        title="Pennsylvania Recipients of Annual Contributions (2018 - 2023)",
         labels={
             "TOTAL_CONT_AMT": "Total Contribution Amount",
             "FILER_TYPE": "Type of Filer",

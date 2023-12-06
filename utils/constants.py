@@ -193,7 +193,7 @@ PA_EXPENSE_COLS_NAMES_POST2022: list = [
 
 PA_OFFICE_ABBREV_DICT: dict = {
     "GOV": "Governor",
-    "LTG": "Liutenant Gov",
+    "LTG": "Lieutenant Gov",
     "ATT": "Attorney General",
     "AUD": "Auditor General",
     "TRE": "State Treasurer",
