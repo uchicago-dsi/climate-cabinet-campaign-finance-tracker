@@ -33,10 +33,7 @@ class MichiganCleaner(StateCleaner):
         "contribtype": "transaction_type",
         "schedule_desc": "transaction_type",
     }
-    # individuals_column_order = []
-    # organizations_column_order = []
-    # transactions_column_order = []
-    # NOTE: could these be added as constants?
+
     id_mapping_column_order = [
         "state",
         "year",

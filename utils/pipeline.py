@@ -1,5 +1,6 @@
 import pandas as pd
 
+from utils.constants import BASE_FILEPATH
 from utils.arizona import ArizonaCleaner
 from utils.michigan import MichiganCleaner
 from utils.minnesota import MinnesotaCleaner
@@ -28,4 +29,16 @@ if __name__ == "__main__":
 
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
-    # complete_transactions_table = pd.concat(single_state_transactions_tables)
+    complete_transactions_table = pd.concat(single_state_transactions_tables)
+
+    individuals_output_path = (
+        BASE_FILEPATH / "output" / "complete_individuals_table.csv"
+    )
+    organizations_output_path = (
+        BASE_FILEPATH / "output" / "complete_organizations_table.csv"
+    )
+    transactions_output_path = BASE_FILEPATH / "output" / "complete_transactions_table"
+
+    complete_individuals_table.to_csv(individuals_output_path)
+    complete_organizations_table.to_csv(organizations_output_path)
+    complete_transactions_table.to_csv(transactions_output_path)
