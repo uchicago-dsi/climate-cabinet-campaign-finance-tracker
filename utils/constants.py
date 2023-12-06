@@ -1,5 +1,5 @@
 """
-Constants to be used in various parts of the project
+Constants to be used in various parts of the project.
 """
 from pathlib import Path
 

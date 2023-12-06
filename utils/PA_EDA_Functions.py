@@ -17,7 +17,7 @@ def assign_col_names(filepath: str, year: int) -> list:
         which the data originates is also taken.
 
     Returns:
-        a list of the appropriate column names for the dataset
+        a list of the appropriate column names for the dataset.
     """
     dir = filepath.split("/")
     file_type = dir[len(dir) - 1]
