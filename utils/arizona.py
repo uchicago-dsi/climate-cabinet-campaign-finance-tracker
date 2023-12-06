@@ -24,9 +24,10 @@ class ArizonaCleaner(StateCleaner):
     and cleans Arizona data"""
 
     def get_filepaths(self):
-        return [AZ_INDIVIDUALS_FILEPATH,
-                AZ_ORGANIZATIONS_FILEPATH,
-                AZ_TRANSACTIONS_FILEPATH,
+        return [
+            AZ_INDIVIDUALS_FILEPATH,
+            AZ_ORGANIZATIONS_FILEPATH,
+            AZ_TRANSACTIONS_FILEPATH,
         ]
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
