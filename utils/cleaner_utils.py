@@ -63,14 +63,14 @@ def az_transactions_convert(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     d = {
-        "transaction_id": df["PublicTransactionId"].astype(int),
-        "donor_id": df["base_transactor_id"].astype(int),
+        "transaction_id": df["PublicTransactionId"].astype(int).astype(str),
+        "donor_id": df["base_transactor_id"].astype(int).astype(str),
         "year": df["TransactionDateYear"].astype(int),
-        "amount": df["Amount"].abs(),
-        "recipient_id": df["other_transactor_id"].astype(int),
-        "office_sought": df["office_sought"],
-        "purpose": df["Memo"],
-        "transaction_type": df["TransactionType"],
+        "amount": df["Amount"].abs().astype(float),
+        "recipient_id": df["other_transactor_id"].astype(int).astype(int),
+        "office_sought": df["office_sought"].astype(str).str.lower(),
+        "purpose": df["Memo"].astype(str).str.lower(),
+        "transaction_type": df["TransactionType"].astype(str).str.lower(),
         "TransactionTypeDispositionId": df["TransactionTypeDispositionId"],
     }
 
@@ -129,14 +129,14 @@ def az_individuals_convert(details_df: pd.DataFrame) -> pd.DataFrame:
             states_list.append(None)
 
     d = {
-        "id": details_df["retrieved_id"].astype(int),
+        "id": details_df["retrieved_id"].astype(int).astype(str),
         "first_name": None,
         "last_name": None,
-        "full_name": details_df["full_name"],
-        "entity_type": entity_type,
+        "full_name": details_df["full_name"].astype(str).str.lower(),
+        "entity_type": entity_type.astype(str).str.lower(),
         "state": states_list,
-        "party": details_df["party_name"],
-        "company": employer,
+        "party": details_df["party_name"].astype(str).str.lower(),
+        "company": employer.astype(str).str.lower(),
     }
 
     return pd.DataFrame(data=d)
@@ -175,10 +175,10 @@ def az_organizations_convert(df: pd.DataFrame) -> pd.DataFrame:
             states_list.append(None)
 
     d = {
-        "id": df["retrieved_id"].astype(int),
-        "name": df["committee_name"],
+        "id": df["retrieved_id"].astype(int).astype(str),
+        "name": df["committee_name"].astype(str).str.lower(),
         "state": states_list,
-        "entity_type": entity_type,
+        "entity_type": entity_type.astype(str).str.lower(),
     }
 
     return pd.DataFrame(data=d)
@@ -333,6 +333,56 @@ def az_id_table(
     id_map_df["database_id"] = [uuid.uuid4() for _ in range(len(id_map_df.index))]
 
     return id_map_df
-    # new_uuids = []
-    # for i in len(all_ids):
-    #     new_uuids.append(uid.uuid4())
+
+
+def transactions_splitter(
+    individuals, organizations, transactions, *args: pd.DataFrame
+) -> pd.DataFrame:
+    """Split transactions into four groups
+
+    We split the transactions dataframe into four groups depending on donor
+    and recipient. If the donor and recipient are both individuals, the
+    transaction is classified in inividual->individual. If the donor
+    is an individual and the recipient an organization, the transaction
+    is classified in individual->organization, and so on.
+
+    NOTE: If running on a subset of the data, such as in the demo,
+    the resulting transactions dataframes will be very small
+    or entirely empty, as many of the ids will not be present and
+    cannot be classified. If this is undesirable, do not employ
+    this function and instead return the raw transactions dataframe.
+
+    args: the individuals, organizations, and transactions dataframes
+    created by ArizonaCleaner.create_tables().
+
+    returns: a tuple of four transactions dataframes split according
+    to the type of donor and recipient, ordered as follows:
+    individual->individual, individual->organization,
+    organization->individual, organization->organization
+    """
+
+    inds_ids = individuals["id"].astype(str)
+
+    org_ids = organizations["id"].astype(str)
+
+    ind_ind = transactions[
+        (transactions["donor_id"].isin(inds_ids))
+        & (transactions["recipient_id"].isin(inds_ids))
+    ]
+
+    ind_org = transactions[
+        (transactions["donor_id"].isin(inds_ids))
+        & (transactions["recipient_id"].isin(org_ids))
+    ]
+
+    org_ind = transactions[
+        (transactions["donor_id"].isin(org_ids))
+        & (transactions["recipient_id"].isin(inds_ids))
+    ]
+
+    org_org = transactions[
+        (transactions["donor_id"].isin(org_ids))
+        & (transactions["recipient_id"].isin(org_ids))
+    ]
+
+    return (ind_ind, ind_org, org_ind, org_org)
