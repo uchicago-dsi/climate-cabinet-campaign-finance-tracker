@@ -2,19 +2,6 @@ import pandas as pd
 import plotly.express as px
 
 
-def fix_mi_dataframes(filepath, columns):
-    """
-    Fixes the bug that corrupts some files by (insert how to fix when the error
-    is resolved)
-
-    Inputs: filepath (str): filepath to the MI Campaign Data txt file
-            columns (lst): list of string names of the campaign data columns
-
-    Returns: dataframe (Pandas DataFrame):
-    """
-    pass
-
-
 def read_expenditure_data(filepath: str, columns: list[str]) -> pd.DataFrame:
     """Reads in the MI expenditure data
 
@@ -72,6 +59,7 @@ def read_contribution_data(filepath: str, columns: list[str]) -> pd.DataFrame:
     return df
 
 
+# NOTE: DEPRECIATED
 def plot_year_contribution_types(all_year_contribution_dataframe: pd.DataFrame) -> None:
     """Plots contributions per year by type
 
@@ -104,6 +92,7 @@ def plot_year_contribution_types(all_year_contribution_dataframe: pd.DataFrame) 
     fig.show()
 
 
+# NOTE: DEPRECIATED
 def plot_committee_types_by_year(all_year_contribution_dataframe: pd.DataFrame) -> None:
     """Plots committees contributions per year by type
 
@@ -148,6 +137,7 @@ def plot_committee_types_by_year(all_year_contribution_dataframe: pd.DataFrame) 
     fig.show()
 
 
+# NOTE: DEPRECIATED
 def plot_expenditure_committee_types_by_year(
     all_year_expenditure_dataframe: pd.DataFrame,
 ) -> None:
@@ -195,6 +185,7 @@ def plot_expenditure_committee_types_by_year(
     fig.show()
 
 
+# NOTE: DEPRECIATED
 def plot_year_schedule_types(all_year_expenditure_dataframe: pd.DataFrame) -> None:
     """Plots committees contributions per year by type
 
@@ -226,6 +217,7 @@ def plot_year_schedule_types(all_year_expenditure_dataframe: pd.DataFrame) -> No
     fig.show()
 
 
+# NOTE: DEPRECIATED
 def create_all_plots(
     all_year_expenditure_dataframe: pd.DataFrame,
     all_year_contribution_dataframe: pd.DataFrame,
