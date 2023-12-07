@@ -36,10 +36,11 @@ If you prefer to develop inside a container with VS Code then do the following s
 
 ### Project Pipeline
 
-1. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN)
-2. User can  go to [this shared Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / <State Initial> / "file"
+1. Either:
+    1. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN), or
+    2. User can  go to [this shared Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / <State Initial> / "file"
 3. Open in development container which installs all necessary packages.
-4. Use utils/pipeline.py to preprocess, clean, standardize, and create tables for each state and ultimately concatinate tables across 4 states into a comprehensive database
+4. Run 'python utils/pipeline.py' to preprocess, clean, standardize, and create tables for each state and ultimately concatinate tables across 4 states into a comprehensive database
 5. The final result should be an individual DataFrame, an organization DataFrame, and a list of transaction DataFrames. The tables combine all data in AZ, MI, MN, PA datasets
 6. For future reference, the above pipeline also stores the information mapping given id to our database id (generated via uuid) in a csv file in the format of (state)IDMap.csv in the output folder
 

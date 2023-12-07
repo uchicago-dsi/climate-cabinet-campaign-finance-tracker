@@ -20,3 +20,17 @@ Util functions for MN EDA
 7. standardize
 8. create_tables
 9. clean_state
+
+#### pennsylvania.py
+- General Notes to clarify some coding decisions:
+    1. The Expenditure datasets do not provide explicit information about the
+    recipient that can help to classify the entity_type of said recipient. For
+    the sake of fitting this data within the schema, I code recipient_type as
+    'Organization'.
+    2. The Expenditure datasets, when merged with the filer information, have
+    some donors whose entity_type isn't specified. Thus I use the same
+    function used to classify contributors in the contributions dataset to
+    classify the donor entities in the expenditures.
+    3. The Contributors datasets have 4 kinds of recipient entities: lobbyists,
+    candidates, committees, and nan. In order to fit the entries within the
+    schema, I code nan entries as 'Organization'
