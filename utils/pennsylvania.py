@@ -73,9 +73,11 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # now generate new IDs for entities that don't have any, and update
         # mapped_dict:
         df[col1] = df[col1].apply(
-            (lambda x: str(uuid.uuid4()) if not type(x) is str else x))
+            (lambda x: str(uuid.uuid4()) if not type(x) is str else x)
+        )
         df[col2] = df[col2].apply(
-            (lambda x: str(uuid.uuid4()) if not type(x) is str else x))
+            (lambda x: str(uuid.uuid4()) if not type(x) is str else x)
+        )
 
         return mapped_dict, df
 
@@ -182,8 +184,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         return df
 
     def pre_process_expense_dataset(self, df: pd.DataFrame):
-        """pre-processes an expenditure dataset by sifting through the columns and
-        keeping the relevant columns for EDA and AbstractStateCleaner purposes
+        """pre-processes an expenditure dataset by sifting through the columns
+        and keeping the relevant columns for EDA and AbstractStateCleaner
+        purposes.
 
         Args:
             df: the expenditure dataset
@@ -212,8 +215,8 @@ class PennsylvaniaCleaner(clean.StateCleaner):
     def merge_contrib_filer_datasets(
         self, cont_file: pd.DataFrame, filer_file: pd.DataFrame
     ) -> pd.DataFrame:
-        """merges the contributor and filer datasets from the same year using the
-        unique filerID
+        """merges the contributor and filer datasets from the same year using
+        the unique filerID.
         Args:
             cont_file: The contributor dataset
 
@@ -228,12 +231,13 @@ class PennsylvaniaCleaner(clean.StateCleaner):
     def merge_expend_filer_datasets(
         self, expend_file: pd.DataFrame, filer_file: pd.DataFrame
     ) -> pd.DataFrame:
-        """merges the expenditure and filer datasets from the same year using the
-        unique filerID
+        """merges the expenditure and filer datasets from the same year using
+        the unique filerID.
         Args:
             expend_file: The expenditure dataset
 
-            filer_file: the filer dataset from the same year as the expenditure file
+            filer_file: the filer dataset from the same year as the expenditure
+            file
         Returns
             The merged pandas dataframe
         """
@@ -244,25 +248,26 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
     def format_contrib_data_for_concat(self, df: pd.DataFrame) -> pd.DataFrame:
         """Reformartes the merged contributor-filer dataset such that it has the
-        same columns as the merged expenditure-filer dataset so that concatenation
-        can occur
+        same columns as the merged expenditure-filer dataset so that
+        concatenation can occur.
 
         Args:
             The merged contributor-filer dataset
 
         Returns:
-            A new dataframe with the appropriate column formatting for concatenation
+            A new dataframe with the appropriate column formatting for
+            concatenation
         """
-        new_cols = ["DONOR_ID","DONOR_PARTY","DONOR_OFFICE"]
+        new_cols = ["DONOR_ID", "DONOR_PARTY", "DONOR_OFFICE"]
         df = df.assign(**{col: None for col in new_cols})
 
         # There are some recipients whose entity_types isn't specified, so I
-        # auto-fill the nan entries with 'Organization.' 
+        # auto-fill the nan entries with 'Organization.'
         na_free = df.dropna(subset="RECIPIENT_TYPE")
         only_na = df[~df.index.isin(na_free.index)]
-        only_na["RECIPIENT_TYPE"] = 'Organization'
+        only_na["RECIPIENT_TYPE"] = "Organization"
         df = pd.concat([na_free, only_na])
-        
+
         columns = df.columns.to_list()
         columns.sort()
         df = df.loc[:, columns]
@@ -270,14 +275,15 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
     def format_expend_data_for_concat(self, df: pd.DataFrame) -> pd.DataFrame:
         """Reformartes the merged expenditure-filer dataset such that it has the
-        same columns as the merged contributor-filer dataset so that concatenation
-        can occur
+        same columns as the merged contributor-filer dataset so that
+        concatenation can occur.
 
         Args:
             The merged expenditure-filer dataset
 
         Returns:
-            A new dataframe with the appropriate column formatting for concatenation
+            A new dataframe with the appropriate column formatting for
+            concatenation.
         """
         df["RECIPIENT_ID"] = None
         df = df.rename(
@@ -330,12 +336,14 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             information, and recipient information.
         """
         merged_cont_datasets_per_yr = [
-            self.merge_contrib_filer_datasets(cont, fil) 
-            for cont, fil in zip(contrib_ds, filer_ds)]
+            self.merge_contrib_filer_datasets(cont, fil)
+            for cont, fil in zip(contrib_ds, filer_ds)
+        ]
 
         merged_exp_dataset_per_yr = [
             self.merge_expend_filer_datasets(exp, fil)
-            for exp, fil in zip(expend_ds, filer_ds)]
+            for exp, fil in zip(expend_ds, filer_ds)
+        ]
 
         contrib_filer_info = self.format_contrib_data_for_concat(
             pd.concat(merged_cont_datasets_per_yr)
@@ -400,9 +408,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 | (df.DONOR_TYPE == "Candidate")
                 | (df.DONOR_TYPE == "Lobbyist")
             )
-        ][
-            ["DONOR", "DONOR_ID", "DONOR_PARTY", "DONOR_TYPE"]
-        ].rename(
+        ][["DONOR", "DONOR_ID", "DONOR_PARTY", "DONOR_TYPE"]].rename(
             columns={
                 "DONOR": "full_name",
                 "DONOR_ID": "id",
@@ -417,9 +423,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 | (df.RECIPIENT_TYPE == "Candidate")
                 | (df.RECIPIENT_TYPE == "Lobbyist")
             )
-        ][
-            ["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]
-        ].rename(
+        ][["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]].rename(
             columns={
                 "RECIPIENT": "full_name",
                 "RECIPIENT_ID": "id",
@@ -431,7 +435,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         all_individuals = pd.concat([donor_individuals, recipient_individuals])
         all_individuals = all_individuals.drop_duplicates()
 
-        new_cols = ["first_name","last_name","company"]
+        new_cols = ["first_name", "last_name", "company"]
         all_individuals = all_individuals.assign(**{col: None for col in new_cols})
         all_individuals["state"] = "PA"
 
@@ -453,12 +457,8 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 (organizations_df.DONOR_TYPE == "Committee")
                 | (organizations_df.DONOR_TYPE == "Organization")
             )
-        ][
-            ["DONOR_ID", "DONOR", "DONOR_TYPE"]
-        ].rename(
-            columns={
-                "DONOR_ID": "id", "DONOR": "name", "DONOR_TYPE": "entity_type"
-                }
+        ][["DONOR_ID", "DONOR", "DONOR_TYPE"]].rename(
+            columns={"DONOR_ID": "id", "DONOR": "name", "DONOR_TYPE": "entity_type"}
         )
         recipient_organizations = organizations_df.loc[
             (
@@ -487,7 +487,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         reformates it into 4 dataframe that indicate transactions flowing from:
         1. Individuals -> Individuals
         2. Individuals -> Organizations:
-        3. Organizations -> Individuals 
+        3. Organizations -> Individuals
         4. Organizations -> Organizations.
 
         Args:
@@ -514,46 +514,63 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         # now to separate the tables into 4:
         # individuals -> individuals:
-        ind_to_ind = df.loc[(
-             (
-                (df.donor_type == 'Individual') |
-                (df.donor_type == 'Candidate') |
-                (df.donor_type == 'Lobbyist'))
-            &(
-                (df.recipient_type == 'Candidate') |
-                (df.recipient_type == 'Individual')|
-                (df.recipient_type == 'Lobbyist')))]
-        
-        #individuals -> Organizations:
-        ind_to_org = df.loc[(
-        (
-            (df.donor_type == 'Individual') |
-            (df.donor_type == 'Candidate') |
-            (df.donor_type == 'Lobbyist'))
-        &(
-            (df.recipient_type == 'Committee') |
-            (df.recipient_type == 'Organization')))]
-        
+        ind_to_ind = df.loc[
+            (
+                (
+                    (df.donor_type == "Individual")
+                    | (df.donor_type == "Candidate")
+                    | (df.donor_type == "Lobbyist")
+                )
+                & (
+                    (df.recipient_type == "Candidate")
+                    | (df.recipient_type == "Individual")
+                    | (df.recipient_type == "Lobbyist")
+                )
+            )
+        ]
+
+        # individuals -> Organizations:
+        ind_to_org = df.loc[
+            (
+                (
+                    (df.donor_type == "Individual")
+                    | (df.donor_type == "Candidate")
+                    | (df.donor_type == "Lobbyist")
+                )
+                & (
+                    (df.recipient_type == "Committee")
+                    | (df.recipient_type == "Organization")
+                )
+            )
+        ]
+
         # Organizations -> Individuals
-        org_to_ind = df.loc[(
-        (
-            (df.donor_type == 'Committee') |
-            (df.donor_type == 'Organization'))
-        &(
-            (df.recipient_type == 'Candidate') |
-            (df.recipient_type == 'Lobbyist')))]
-        
+        org_to_ind = df.loc[
+            (
+                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
+                & (
+                    (df.recipient_type == "Candidate")
+                    | (df.recipient_type == "Lobbyist")
+                )
+            )
+        ]
+
         # Organizations -> Organizations:
-        org_to_org = df.loc[(
-        (
-            (df.donor_type == 'Committee') |
-            (df.donor_type == 'Organization'))
-        &(
-            (df.recipient_type == 'Committee') |
-            (df.recipient_type == 'Organization')))]
+        org_to_org = df.loc[
+            (
+                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
+                & (
+                    (df.recipient_type == "Committee")
+                    | (df.recipient_type == "Organization")
+                )
+            )
+        ]
 
-        return [ind_to_ind,ind_to_org,org_to_ind,org_to_org]
+        return [ind_to_ind, ind_to_org, org_to_ind, org_to_org]
 
+    # end of helper functions:
+
+    # functions inherited from StateCleaner:
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
 
         contributor_datasets, filer_datasets, expense_datasets = [], [], []
