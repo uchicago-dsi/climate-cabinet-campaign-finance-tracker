@@ -23,6 +23,11 @@ from utils.preprocess_mi_campaign_data import (
 
 
 class MichiganCleaner(StateCleaner):
+    """
+    This class is based on the StateCleaner abstract class,
+    and cleans Michigan campaign contribution and expenditure data
+    """
+
     entity_name_dictionary = {
         "cfr_com_id": "original_com_id",
         "f_name": "first_name",
@@ -33,10 +38,7 @@ class MichiganCleaner(StateCleaner):
         "contribtype": "transaction_type",
         "schedule_desc": "transaction_type",
     }
-    # individuals_column_order = []
-    # organizations_column_order = []
-    # transactions_column_order = []
-    # NOTE: could these be added as constants?
+
     id_mapping_column_order = [
         "state",
         "year",

@@ -1,5 +1,3 @@
-# see also the README in this branch's utils folder
-
 import pandas as pd
 
 from utils.clean import StateCleaner
@@ -11,6 +9,7 @@ from utils.cleaner_utils import (
     az_transactions_convert,
     az_transactor_sorter,
     convert_date,
+    transactions_splitter,
 )
 from utils.constants import (
     AZ_INDIVIDUALS_FILEPATH,
@@ -62,7 +61,7 @@ class ArizonaCleaner(StateCleaner):
         pipeline which takes in filenames and outputs cleaned,
         standardized, and schema-compliant tables
 
-        args: list of two filepaths which lead to dataframes
+        args: list of three filepaths which lead to dataframes
 
         returns: three schema-compliant tables for
         transactions, individuals, and organizations
@@ -97,11 +96,10 @@ class ArizonaCleaner(StateCleaner):
         Creates the Individuals, Organizations, and Transactions tables from
         the dataframe list outputted from standardize
 
-        Inputs:
-            data: a list of 1 or 3 dataframes as outputted from standardize method.
+        Inputs: data: a list of 3 dataframes as outputted from the standardize method.
 
-        Returns: (individuals_table, organizations_table, transactions_table)
-                    tuple containing the tables as defined in database schema
+        Returns: a nested tuple of dataframes, ordered as such: (individuals_table,
+        organizations_table, (transactions: ind->ind, ind->org, org->ind, org->org))
         """
 
         transactions, details = data
@@ -132,7 +130,12 @@ class ArizonaCleaner(StateCleaner):
         else:
             az_organizations = None
 
-        return (az_individuals, az_organizations, az_transactions)
+        # will result in small or empty dataframes if a subset of the data is used
+        transactions_tuple = transactions_splitter(
+            az_individuals, az_organizations, az_transactions
+        )
+
+        return (az_individuals, az_organizations, transactions_tuple)
 
     def standardize(self, details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """standardize names of entities
@@ -165,17 +168,13 @@ class ArizonaCleaner(StateCleaner):
     def clean(self, data: list[pd.DataFrame]) -> pd.DataFrame:
         """clean the contents of the columns
 
-        INCOMPLETE
-
         transactions and details dataframes undergo cleaning of
         transaction dates, names are imputed to the right column,
         and employer information is retrieved,
 
-        args: transactions and details dataframes
+        args: list of transactions and details dataframes
 
         returns: cleaned transactions and details dataframes
-
-        NOTE: TO DO: coerce correct dtypes and make text lowercase
 
         """
 

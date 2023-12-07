@@ -1,3 +1,40 @@
+# Utils README
+---
+
+## Michigan Utils:
+#### preprocess_mi_campaign_data.py
+1. read_expenditure_data
+2. read_contribution_data
+3. plot_year_contribution_types (depreciated)
+4. plot_committee_types_by_year (depreciated)
+5. plot_expenditure_committee_types_by_year (depreciated)
+6. plot_year_schedule_types (depreciated)
+7. create_all_plots (depreciated)
+
+#### michigan.py
+1. entity_name_dictionary
+2. create_filepaths_list
+3. filter_dataframe
+4. preprocess
+    a. merge_dataframes
+    b. fix_menominee_county_bug_contribution
+    c. drop_menominee_county
+5. clean
+    a. clean_contribution_dataframe
+    b. clean_expenditure_dataframe
+6. standardize
+    a. add_uuid_columns
+    b. generate_uuid
+7. create_tables
+    a. create_individuals_table
+    b. create_organizations_table
+    c. create_transactions_table
+    d. output_id_mapping
+        - create_individuals_id_mapping
+        - create_organizations_id_mapping
+        - create_transactions_id_mapping
+8. clean_state
+
 ## Minnesota Util:
 #### MN_util.py
 

@@ -8,7 +8,6 @@ from utils import constants as const
 
 
 class PennsylvaniaCleaner(clean.StateCleaner):
-
     # helper functions:
     def assign_col_names(self, file_name: str, year: int) -> list:
         """Assigns the right column names to the right datasets.
@@ -572,7 +571,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
     # functions inherited from StateCleaner:
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
-
         contributor_datasets, filer_datasets, expense_datasets = [], [], []
         # incase the provided filepath was not in increasing order, this just
         # makes sure the filepaths numerically line up
@@ -629,7 +627,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         return contributor_datasets, filer_datasets, expense_datasets
 
     def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
-
         contributor_ds, filer_ds, expense_ds = data
         merged_dataset = self.combine_contributor_expenditure_datasets(
             contributor_ds, filer_ds, expense_ds
@@ -646,7 +643,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
     def create_tables(
         self, standardized_df: pd.DataFrame
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-
         # separate the standardized_df information into the relevant columns for
         # individuals, organizations, and transactions tables
 
