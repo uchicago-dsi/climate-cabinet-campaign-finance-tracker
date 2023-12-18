@@ -1,10 +1,10 @@
-### Data
+# Data
 
 This directory contains information for use in this project. 
 
-#### Arizona Campaign Finance Data
+## Arizona Campaign Finance Data
 
-##### Summary
+### Summary
 - The Arizona Campaign Finance Data are publicly available at (https://seethemoney.az.gov/Reporting/) as a collection of tables which can be downloaded as aggregated CSVs. It has no overt webscraping defenses, but scraping the bulk transactions is non-trivial. This site is supported by the Arizona Secretary of State’s office. 
 
 
@@ -16,7 +16,7 @@ This directory contains information for use in this project.
       
     -  This project will focus on individual, corporate, and PAC spendin.
 
-##### Features
+### Features
  - This dataset includes comprehensive records on races for the office of Governor, Attorney General, Corporation Commissioner, Secretary of State, State Senator, State Mine Inspector, State Representative, State Treasurer, and Superintendent of Public Education. Other races, such as mayoral or federal Congressional races, appear incomprehensively within the dataset, and will not be studied.
    
  - The dataset covers the years 2002 - present
@@ -36,9 +36,9 @@ This directory contains information for use in this project.
 - Additional information:
     1. Negative expenditures in the dataset are enclosed within parentheses. These expenditures indicate refunds to donors, loans paid, and similar transaction. 
 
-#### Michigan Campaign Finance Data
+## Michigan Campaign Finance Data
 
-##### Summary
+### Summary
 The Michigan Campaign Finance data are publicly available on the 
 [Michigan Department of State Website](https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/)
 in txt format and has a captcha button functions as an anti-web scraping defense; however, the yearly campaign finance records are directly available at the link above. 
@@ -46,7 +46,7 @@ in txt format and has a captcha button functions as an anti-web scraping defense
 The developers of this project have stored the 1995-2023 Michigan campaign finance 
 contribution data and READMEs in a Google Drive for the duration of this project.
 
-##### Features
+### Features
 - This dataset covers 1998 to 2023
 - The contributions data are stored in tab separated text files with naming conventions {year}_mi_cfr_contribution_00.txt, in which only the 00 file contains a header. The data includes RUNTIME in the header which indicates the time these transactions were exported from the Bureau of Elections database. RUNTIME is only indluded in the header.
 
@@ -68,9 +68,9 @@ contribution data and READMEs in a Google Drive for the duration of this project
         - IND: Independent PAC.   
 
 
-#### Minnesota Campaign Finance Data
+## Minnesota Campaign Finance Data
 
-##### Summary
+### Summary
 - The Minnesota Campaign Finance data are available in this shared
 [Google Drive](https://drive.google.com/drive/u/2/folders/1uA70woWDhTf3_0F8AbadDa_XIKraCeoc) in zip format and has no anti-webscraping defenses. Please first unzip it and store 12 csv files (10 candidate-recipient contribution dataset, 1 noncandidate-recipient dataset, and 1 expenditure dataset) to local repo in this format: repo root / "data" / "file name"
 
@@ -80,7 +80,7 @@ contribution data and READMEs in a Google Drive for the duration of this project
 
 - For the purpose of our project I will focus on contribution and independent expenditure from 2018 to 2023.
 
-##### Features
+### Features
 - Races / Office Sought:
     - AG: Attorney General
     - AP: State Appeals Court Judge
@@ -119,20 +119,15 @@ contribution data and READMEs in a Google Drive for the duration of this project
     4. The dataset has 467 missing rows, of which belong to "Registration fee for Netroots event" and have no recipient, donor, or total donation amount.
 
 
-#### Pennsylvania Campaign Finance Data
-##### Summary
-- The Pennsylvania Campaign Finance Data comes from the Pennsylvania Government Website’s Full Finance Campaign Report section. To see the actual forms and reports 
-those can be found here: https://www.dos.pa.gov/VotingElections/CandidatesCommittees/FormsReports/Pages/default.aspx. No defenses or anti-captcha mechanisms exist 
-to monitor access to the data. The data is stored in the form of csvs, but is named with a .txt and .zip tag depending on the year. This is because while the data
-spans from 1987-2022, there are incongruences in the formatting. The pre-2000 data have their sub-categories listed as separate links in the form of .txt, while the 
-post-2000 years have each year as a .zip nested file that contains the sub-categories. Additionally, 2022 has 2 additional fields (Timestamp & Reported ID) in the 
-filer report, making it have more columns than previous years.
+## Pennsylvania Campaign Finance Data
+### Summary
+- The Pennsylvania Campaign Finance Data comes from the [Pennsylvania Department of State Website’s Full Campaign Finance Export section](https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Pages/FullCampaignFinanceExport.aspx). Although only some years are visible on this page, the url for each year follows the same format. To see the actual forms and reports those can be found here: https://www.dos.pa.gov/VotingElections/CandidatesCommittees/FormsReports/Pages/default.aspx. No defenses or anti-captcha mechanisms exist to monitor access to the data. The data is stored in the form of csvs, but is named with a .txt and .zip tag depending on the year. This is because while the data spans from 1987-2022, there are incongruences in the formatting. The pre-2000 data have their sub-categories listed as separate links in the form of .txt, while the post-2000 years have each year as a .zip nested file that contains the sub-categories. Additionally, 2022 has 2 additional fields (Timestamp & Reported ID) in the filer report, making it have more columns than previous years.
 
-##### Format
-- The data consists of csv files organized according to year, with each annual file having 5 files/categories: contributions, debt, expenditures, basic filer info, and other receipts. While there is a readme file, it is largely ineffectual since it merely describes some of the data types. A more useful description can be found on the https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Pages/Technical-Specifications.aspx page, which redirects to a page that better details what the data is about. Even then one must consult the filing documentations like the report cover sheet, and its various Schedules, to better understand how some of the values (like filerType) can be intepreted.
+### Format
+- The data consists of csv files organized according to year, with each year having 5 files representing 5 categories. Although the exact filenames are not consistent, they always start with the same string (at least since 2010): `contrib` (contributions), `debt` (debt), `expense` (expenditures), `filer` (basic filer info), and `receipt` (other receipts). While there is a readme file, it is largely ineffectual since it merely describes some of the data types. A more useful description can be found on the https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Pages/Technical-Specifications.aspx page, which redirects to a page that better details what the data is about. Even then one must consult the filing documentations like the report cover sheet, and its various Schedules, to better understand how some of the values (like filerType) can be intepreted.
 - As mentioned, in 2022 there were changes to the format of the data, including concatenating the name fields (no more separate fields for first, middle and last name), the treasurer’s address fields were removed in the filer document, party codes were updated to be more intuitive, and some more minor adjustments. 
 
-##### Features
+### Features
 - The following statewide offices, which can be grouped into administrative, judicial, and legislative appointments, are required to file out the finance reports: 
 
 - Administrative:
@@ -157,7 +152,7 @@ filer report, making it have more columns than previous years.
 -Other:
 14. OTH: Other candidates for local offices
 
-##### Other Relevant Information
+### Other Relevant Information
 1. Candidates, political committees, and contributing lobbyists are required to disclose expenditures and contributions through the Campaign Finance Report document. However they can fill out a statement in lieu of a full report when the amount of contributions (including in-kind contributions) received, the amount of money expended, and the liabilities incurred each did not exceed $250.00 during the reporting period. This means that the cumulative contributions received, the money expended, and liabilities incurred in the entire reporting period (campaign cycle), each did not exceed \$250.00. 
 
 2. Debts that are forgiven are considered contributions, but double counting is prevented as the data is reviewed and updated months after the last filing period, allowing for data that was classified as debt to be itemized as a contribution. Corporations or unincorporated associations are prohibited from forgiving debts and thus contributing in this manner.   
