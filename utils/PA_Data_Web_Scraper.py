@@ -1,35 +1,52 @@
 import zipfile
 from io import BytesIO
 
-import numpy as np
 import requests
+from pathlib import Path
 
-from utils import constants as const
+from utils.constants import repo_root
 
 
-def download_PA_data(start_year: int, end_year: int):
+def download_PA_data(
+    start_year: int, end_year: int, output_directory: Path = None
+) -> None:
     """downloads PA datasets from specified years to a local directory
+
     Args:
         start_year: The first year in the range of desired years to extract data
-
         end_year: The last year in the range of desired years to extract data.
-    Returns:
-        unzipped .txt files (that are really csvs) stored in the 'data'
-        directory
+        output_directory: desired output location. Defaults to 'data/raw/PA'
+    Modifies:
+        Saves raw files from dos.pa.gov to output_directory with a separate directory
+        for each year's files.
     """
+    if output_directory is None:
+        output_directory = repo_root / "data" / "raw" / "PA"
 
-    years = np.arange(start_year, end_year + 1)
-    for year in years:
-        link = f"{const.PA_MAIN_URL}{const.PA_ZIPPED_URL}{year}.zip"
+    else:
+        output_directory = Path(output_directory).resolve()
+    pa_domain = "https://www.dos.pa.gov"
+    pa_campaign_finance_path = (
+        "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
+    )
 
-        req = requests.get(link)
+    for year in range(start_year, end_year + 1):
+        link = f"{pa_domain}{pa_campaign_finance_path}{year}.zip"
 
-        zippedfiles = zipfile.ZipFile(BytesIO(req.content))
+        response = requests.get(link)
+        if response.status_code != 200:
+            print(f"Pennsylvania data from {year} returned {response.reason}")
+
+        year_directory = output_directory / str(year)
+        year_directory.mkdir(exist_ok=True, parents=True)
+        zippedfiles = zipfile.ZipFile(BytesIO(response.content))
         for zippedfile in zippedfiles.infolist():
-            zippedfile.filename = zippedfile.filename.replace(
-                ".txt", "_" + str(year) + ".txt"
-            )
-            zippedfiles.extract(zippedfile, "../data/raw/PA")
+            # some years have all contents in a single directory named after the
+            # year by default
+            if zippedfile.filename.startswith(f"{year}/"):
+                zippedfiles.extract(zippedfile, output_directory)
+            else:
+                zippedfiles.extract(zippedfile, year_directory)
 
 
 def main():
@@ -43,4 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    download_PA_data(2010, 2023)

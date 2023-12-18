@@ -208,11 +208,6 @@ MI_EXP_DROP_COLS = [
 ]
 
 
-PA_MAIN_URL = "https://www.dos.pa.gov"
-PA_ZIPPED_URL = (
-    "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
-)
-
 # PA EDA constants:
 
 PA_CONT_COLS_NAMES_PRE2022: list = [
