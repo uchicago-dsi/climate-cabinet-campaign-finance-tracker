@@ -60,18 +60,18 @@ here = Path(__file__).resolve()
 repo_root = here.parent.parent
 
 MN_FILEPATHS_LST = [
-    repo_root / "data" / "raw" / "AG.csv",
-    repo_root / "data" / "raw" / "AP.csv",
-    repo_root / "data" / "raw" / "DC.csv",
-    repo_root / "data" / "raw" / "GC.csv",
-    repo_root / "data" / "raw" / "House.csv",
-    repo_root / "data" / "raw" / "SA.csv",
-    repo_root / "data" / "raw" / "SC.csv",
-    repo_root / "data" / "raw" / "Senate.csv",
-    repo_root / "data" / "raw" / "SS.csv",
-    repo_root / "data" / "raw" / "ST.csv",
-    repo_root / "data" / "raw" / "non_candidate_con.csv",
-    repo_root / "data" / "raw" / "independent_exp.csv",
+    repo_root / "data" / "raw" / "MN" / "AG.csv",
+    repo_root / "data" / "raw" / "MN" / "AP.csv",
+    repo_root / "data" / "raw" / "MN" / "DC.csv",
+    repo_root / "data" / "raw" / "MN" / "GC.csv",
+    repo_root / "data" / "raw" / "MN" / "House.csv",
+    repo_root / "data" / "raw" / "MN" / "SA.csv",
+    repo_root / "data" / "raw" / "MN" / "SC.csv",
+    repo_root / "data" / "raw" / "MN" / "Senate.csv",
+    repo_root / "data" / "raw" / "MN" / "SS.csv",
+    repo_root / "data" / "raw" / "MN" / "ST.csv",
+    repo_root / "data" / "raw" / "MN" / "non_candidate_con.csv",
+    repo_root / "data" / "raw" / "MN" / "independent_exp.csv",
 ]
 
 MN_CANDIDATE_CONTRIBUTION_COL = [

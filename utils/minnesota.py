@@ -194,7 +194,7 @@ class MinnesotaCleaner(StateCleaner):
         """
 
         df = data[0]
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"], format="mixed")
         df["year"] = df["date"].dt.year
         df = df.drop(columns=["date"])
         type_mapping = {
