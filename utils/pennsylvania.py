@@ -1,10 +1,11 @@
-import uuid
 from pathlib import Path
+import uuid
 
 import pandas as pd
 
 from utils import clean
 from utils import constants as const
+from utils.constants import repo_root
 
 
 class PennsylvaniaCleaner(clean.StateCleaner):
@@ -21,7 +22,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Returns:
             a list of the appropriate column names for the dataset
         """
-
         if "contrib" in file_name:
             if year < 2022:
                 return const.PA_CONT_COLS_NAMES_PRE2022
@@ -388,9 +388,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         entities = entities.drop_duplicates()
         entities["state"] = "Pennsylvania"
 
-        entities.to_csv("../output/PA_IDs.csv", index=False)
+        entities.to_csv(repo_root / "output" / "PA_IDs.csv", index=False)
 
-    def make_individuals_table(df: pd.DataFrame) -> pd.DataFrame:
+    def make_individuals_table(self, df: pd.DataFrame) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
         individuals and returns a dataframe with strictly individual information
         pertinent to the StateCleaner schema.
@@ -440,7 +440,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         return all_individuals
 
-    def make_organizations_table(organizations_df: pd.DataFrame) -> pd.DataFrame:
+    def make_organizations_table(self, organizations_df: pd.DataFrame) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
         committees or organizations and returns a dataframe with strictly
         committee/organization information pertinent to the StateCleaner schema.
@@ -481,7 +481,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
         return all_organizations
 
-    def make_transactions_table(organizations_df: pd.DataFrame) -> list[pd.DataFrame]:
+    def make_transactions_table(
+        self, organizations_df: pd.DataFrame
+    ) -> list[pd.DataFrame]:
         """This function takes in donor and recipient information, and
         reformates it into 4 dataframe that indicate transactions flowing from:
         1. Individuals -> Individuals
@@ -570,46 +572,52 @@ class PennsylvaniaCleaner(clean.StateCleaner):
     # end of helper functions:
 
     # functions inherited from StateCleaner:
-    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
+    def preprocess(self, directory: str | Path = None) -> list[pd.DataFrame]:
+        """Read raw campaign finance files from PA secretary of state
+
+        Files should be stored in directory with format:
+        /
+        |--YYYY/
+        |   |--contrib_*.txt
+        |   |--debt_*.txt
+        |   |--expense_*.txt
+        |   |--filer_*.txt
+        |   |--receipt_*.txt
+        |--YYYY/
+        ...
+        """
         contributor_datasets, filer_datasets, expense_datasets = [], [], []
-        # incase the provided filepath was not in increasing order, this just
-        # makes sure the filepaths numerically line up
-        filepaths_list.sort()
-        for path in filepaths_list:
-            # because of the different formatting for data in different years
-            # obstained from the PA website years, I had my webscraper append
-            # the year to the filename
-            dir = path.split("/")
-            file_name = dir[len(dir) - 1]
+        if directory is None:
+            directory = repo_root / "data" / "raw" / "PA"
+        else:
+            directory = Path(directory)
+        for year_directory in directory.iterdir():
+            year = int(year_directory.stem)
+            for file_path in year_directory.iterdir():
+                file_name = file_path.stem
+                # only want contributor, filer, and expenditure files:
+                if (
+                    ("contrib" in file_name)
+                    | ("filer" in file_name)
+                    | ("expense" in file_name)
+                ):
+                    df = pd.read_csv(
+                        file_path,
+                        names=self.assign_col_names(file_name, year),
+                        sep=",",
+                        encoding="latin-1",
+                        on_bad_lines="warn",
+                    )
+                    df["YEAR"] = year
 
-            # only want contributor, filer, and expenditure files:
-            if (
-                ("contrib" in file_name)
-                | ("filer" in file_name)
-                | ("expense" in file_name)
-            ):
-                file_name_split = file_name.split("_")
-
-                year = file_name_split[len(file_name_split) - 1].replace(".txt", "")
-                year = int(year)
-
-                df = pd.read_csv(
-                    path,
-                    names=self.assign_col_names(file_name, year),
-                    sep=",",
-                    encoding="latin-1",
-                    on_bad_lines="warn",
-                )
-                df["YEAR"] = year
-
-                if "contrib" in file_name:
-                    contributor_datasets.append(df)
-                elif "filer" in file_name:
-                    filer_datasets.append(df)
+                    if "contrib" in file_name:
+                        contributor_datasets.append(df)
+                    elif "filer" in file_name:
+                        filer_datasets.append(df)
+                    else:
+                        expense_datasets.append(df)
                 else:
-                    expense_datasets.append(df)
-            else:
-                continue
+                    continue
 
         return contributor_datasets, filer_datasets, expense_datasets
 
@@ -688,18 +696,13 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "TRANSACTION_ID",
             ]
         ]
-        transactions_table = self.make_transactions_table(transactions_df)
+        transactions_tables = self.make_transactions_table(transactions_df)
 
-        return individuals_table, organizations_table, transactions_table
+        return individuals_table, organizations_table, transactions_tables
 
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        Base_Filepath = Path(__file__).resolve().parent.parent
-        PA_Filepath = Base_Filepath / "data" / "raw" / "PA"
-        filepath_list = []
-        for file in PA_Filepath.iterdir():
-            filepath_list.append(str(file))
-
-        pre_processed_df = self.preprocess(filepath_list)
-        clean_df = self.clean(pre_processed_df)
-        standardized_df = self.standardize(clean_df)
-        return self.create_tables(standardized_df)
+        PA_directory = repo_root / "data" / "raw" / "PA"
+        pre_processed_dfs = self.preprocess(PA_directory)
+        clean_dfs = self.clean(pre_processed_dfs)
+        standardized_dfs = self.standardize(clean_dfs)
+        return self.create_tables(standardized_dfs)
