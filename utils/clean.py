@@ -10,29 +10,25 @@ class StateCleaner(ABC):
 
     @property
     def entity_name_dictionary(self) -> dict:
-        """
-        A dict mapping a state's raw entity names to standard versions
-
-            Inputs: None
-
-            Returns: _entity_name_dictionary
-        """
+        """A dict mapping a state's raw entity names to standard versions"""
         return self.entity_name_dictionary
 
     @abstractmethod
-    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
+    def preprocess(self, directory: str = None) -> list[pd.DataFrame]:
         """
         Preprocesses the state data and returns a dataframe
 
         Reads in the state's data, makes any necessary bug fixes, and
-        combines the data into a list of DataFrames, discards data not schema
+        combines the data into a list of DataFrames, discards data not in schema
 
         Inputs:
-            filepaths_list: list of absolute filepaths to relevant state data.
+            directory: absolute path to a directory with relevant state data.
                 required naming conventions, order, and extensions
                 defined per state.
 
-        Returns: a list of dataframes based on the needs of each state.
+        Returns:
+            either a list of one dataframe with all relevant information or
+            a list of 3 dataframes representing transactions, individuals, and orgs
         """
         pass
 
@@ -45,7 +41,6 @@ class StateCleaner(ABC):
 
         Inputs:
             data: a list of 1 or 3 dataframes as output from preprocess method.
-            data: a list of 1 or 3 dataframes as outputted from preprocess method.
 
         Returns: a list of dataframes. If state data is all in one format
             (i.e. there are not separate individual and transaction tables),
