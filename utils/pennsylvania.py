@@ -8,35 +8,349 @@ from utils import constants as const
 from utils.constants import repo_root
 
 
+def assign_PA_column_names(file_name: str, year: int) -> list:
+    """Assigns the right column names to the right datasets.
+
+    Args:
+        filepath: the path in which the data is stored/located.
+
+        year: to make parsing through the data more manageable, the year
+        from which the data originates is also taken.
+
+    Returns:
+        a list of the appropriate column names for the dataset
+    """
+    if "contrib" in file_name:
+        if year < 2022:
+            return const.PA_CONT_COLS_NAMES_PRE2022
+        else:
+            return const.PA_CONT_COLS_NAMES_POST2022
+    elif "filer" in file_name:
+        if year < 2022:
+            return const.PA_FILER_COLS_NAMES_PRE2022
+        else:
+            return const.PA_FILER_COLS_NAMES_POST2022
+    elif "expense" in file_name:
+        if year < 2022:
+            return const.PA_EXPENSE_COLS_NAMES_PRE2022
+        else:
+            return const.PA_EXPENSE_COLS_NAMES_POST2022
+
+
 class PennsylvaniaCleaner(clean.StateCleaner):
-    # helper functions:
-    def assign_col_names(self, file_name: str, year: int) -> list:
-        """Assigns the right column names to the right datasets.
+    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+        PA_directory = repo_root / "data" / "raw" / "PA"
+        pre_processed_dfs = self.preprocess(PA_directory)
+        clean_dfs = self.clean(pre_processed_dfs)
+        standardized_dfs = self.standardize(clean_dfs)
+        return self.create_tables(standardized_dfs)
+
+    def preprocess(self, directory: str | Path = None) -> list[pd.DataFrame]:
+        """Read raw campaign finance files from PA secretary of state
+
+        Files should be stored in directory with format:
+        /
+        |--YYYY/
+        |   |--contrib_*.txt
+        |   |--debt_*.txt
+        |   |--expense_*.txt
+        |   |--filer_*.txt
+        |   |--receipt_*.txt
+        |--YYYY/
+        ...
+        """
+        contributor_datasets, filer_datasets, expense_datasets = [], [], []
+        if directory is None:
+            directory = repo_root / "data" / "raw" / "PA"
+        else:
+            directory = Path(directory)
+        for year_directory in directory.iterdir():
+            year = int(year_directory.stem)
+            for file_path in year_directory.iterdir():
+                file_name = file_path.stem
+                # only want contributor, filer, and expenditure files:
+                if (
+                    ("contrib" in file_name)
+                    | ("filer" in file_name)
+                    | ("expense" in file_name)
+                ):
+                    df = pd.read_csv(
+                        file_path,
+                        names=assign_PA_column_names(file_name, year),
+                        sep=",",
+                        encoding="latin-1",
+                        on_bad_lines="warn",
+                    )
+                    df["YEAR"] = year
+
+                    if "contrib" in file_name:
+                        contributor_datasets.append(df)
+                    elif "filer" in file_name:
+                        filer_datasets.append(df)
+                    else:
+                        expense_datasets.append(df)
+                else:
+                    continue
+
+        return contributor_datasets, filer_datasets, expense_datasets
+
+    def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+        contributor_datasets, filer_datasets, expense_datasets = [], [], []
+        cont_ds, filer_ds, exp_ds = data
+
+        for contrib_df, filer_df, exp_df in zip(cont_ds, filer_ds, exp_ds):
+            contributor_datasets.append(
+                self.pre_process_contributor_dataset(contrib_df)
+            )
+            filer_datasets.append(self.pre_process_filer_dataset(filer_df))
+            expense_datasets.append(self.pre_process_expense_dataset(exp_df))
+
+        return contributor_datasets, filer_datasets, expense_datasets
+
+    def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+        contributor_ds, filer_ds, expense_ds = data
+        merged_dataset = self.combine_contributor_expenditure_datasets(
+            contributor_ds, filer_ds, expense_ds
+        )
+        dictionary, merged_dataset = self.replace_id_with_uuid(
+            merged_dataset, "DONOR_ID", "RECIPIENT_ID"
+        )
+        self.output_ID_mapping(dictionary, merged_dataset)  # return dictionary
+
+        # assign transaction_id
+        merged_dataset["TRANSACTION_ID"] = str(uuid.uuid4())
+        return merged_dataset
+
+    def create_tables(
+        self, standardized_df: pd.DataFrame
+    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+        # separate the standardized_df information into the relevant columns for
+        # individuals, organizations, and transactions tables
+
+        # Individuals Table:
+        individuals_df = standardized_df[
+            [
+                "DONOR",
+                "DONOR_ID",
+                "DONOR_PARTY",
+                "DONOR_TYPE",
+                "RECIPIENT",
+                "RECIPIENT_ID",
+                "RECIPIENT_PARTY",
+                "RECIPIENT_TYPE",
+            ]
+        ]
+        individuals_table = self.make_individuals_table(individuals_df)
+
+        # Organizations Table
+        organizations_df = standardized_df[
+            [
+                "DONOR",
+                "DONOR_ID",
+                "DONOR_TYPE",
+                "RECIPIENT",
+                "RECIPIENT_ID",
+                "RECIPIENT_TYPE",
+            ]
+        ]
+        organizations_table = self.make_organizations_table(organizations_df)
+        # Transactions Table
+        transactions_df = standardized_df[
+            [
+                "AMOUNT",
+                "DONOR_ID",
+                "DONOR_TYPE",
+                "DONOR_OFFICE",
+                "PURPOSE",
+                "RECIPIENT_ID",
+                "RECIPIENT_TYPE",
+                "RECIPIENT_OFFICE",
+                "YEAR",
+                "TRANSACTION_ID",
+            ]
+        ]
+        transactions_tables = self.make_transactions_tables(transactions_df)
+
+        return individuals_table, organizations_table, transactions_tables
+
+    def make_individuals_table(self, df: pd.DataFrame) -> pd.DataFrame:
+        """This function isolates donors and recipients who are classified as
+        individuals and returns a dataframe with strictly individual information
+        pertinent to the StateCleaner schema.
 
         Args:
-            filepath: the path in which the data is stored/located.
-
-            year: to make parsing through the data more manageable, the year
-            from which the data originates is also taken.
-
+            df: a pandas dataframe with donor and recipient information
         Returns:
-            a list of the appropriate column names for the dataset
+            a pandas dataframe strictly with information regarding individuals
+            from the inputted dataframe
         """
-        if "contrib" in file_name:
-            if year < 2022:
-                return const.PA_CONT_COLS_NAMES_PRE2022
-            else:
-                return const.PA_CONT_COLS_NAMES_POST2022
-        elif "filer" in file_name:
-            if year < 2022:
-                return const.PA_FILER_COLS_NAMES_PRE2022
-            else:
-                return const.PA_FILER_COLS_NAMES_POST2022
-        elif "expense" in file_name:
-            if year < 2022:
-                return const.PA_EXPENSE_COLS_NAMES_PRE2022
-            else:
-                return const.PA_EXPENSE_COLS_NAMES_POST2022
+        donor_individuals = df.loc[
+            (
+                (df.DONOR_TYPE == "Individuals")
+                | (df.DONOR_TYPE == "Candidate")
+                | (df.DONOR_TYPE == "Lobbyist")
+            )
+        ][["DONOR", "DONOR_ID", "DONOR_PARTY", "DONOR_TYPE"]].rename(
+            columns={
+                "DONOR": "full_name",
+                "DONOR_ID": "id",
+                "DONOR_PARTY": "party",
+                "DONOR_TYPE": "entity_type",
+            }
+        )
+
+        recipient_individuals = df.loc[
+            (
+                (df.RECIPIENT_TYPE == "Individuals")
+                | (df.RECIPIENT_TYPE == "Candidate")
+                | (df.RECIPIENT_TYPE == "Lobbyist")
+            )
+        ][["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]].rename(
+            columns={
+                "RECIPIENT": "full_name",
+                "RECIPIENT_ID": "id",
+                "RECIPIENT_PARTY": "party",
+                "RECIPIENT_TYPE": "entity_type",
+            }
+        )
+
+        all_individuals = pd.concat([donor_individuals, recipient_individuals])
+        all_individuals = all_individuals.drop_duplicates()
+
+        new_cols = ["first_name", "last_name", "company"]
+        all_individuals = all_individuals.assign(**{col: None for col in new_cols})
+        all_individuals["state"] = "PA"
+
+        return all_individuals
+
+    def make_organizations_table(self, organizations_df: pd.DataFrame) -> pd.DataFrame:
+        """This function isolates donors and recipients who are classified as
+        committees or organizations and returns a dataframe with strictly
+        committee/organization information pertinent to the StateCleaner schema.
+
+        Args:
+            df: a pandas dataframe with donor and recipient information
+        Returns:
+            a pandas dataframe strictly with information regarding committess or
+            organizations from the inputted dataframe.
+        """
+        donor_organizations = organizations_df.loc[
+            (
+                (organizations_df.DONOR_TYPE == "Committee")
+                | (organizations_df.DONOR_TYPE == "Organization")
+            )
+        ][["DONOR_ID", "DONOR", "DONOR_TYPE"]].rename(
+            columns={"DONOR_ID": "id", "DONOR": "name", "DONOR_TYPE": "entity_type"}
+        )
+        recipient_organizations = organizations_df.loc[
+            (
+                (organizations_df.RECIPIENT_TYPE == "Committee")
+                | (organizations_df.RECIPIENT_TYPE == "Organization")
+            )
+        ]
+        recipient_organizations = recipient_organizations[
+            ["RECIPIENT_ID", "RECIPIENT", "RECIPIENT_TYPE"]
+        ]
+        recipient_organizations = recipient_organizations.rename(
+            columns={
+                "RECIPIENT_ID": "id",
+                "RECIPIENT": "name",
+                "RECIPIENT_TYPE": "entity_type",
+            }
+        )
+        all_organizations = pd.concat([donor_organizations, recipient_organizations])
+        all_organizations = all_organizations.drop_duplicates()
+        all_organizations["state"] = "PA"
+
+        return all_organizations
+
+    def make_transactions_tables(
+        self, organizations_df: pd.DataFrame
+    ) -> list[pd.DataFrame]:
+        """This function takes in donor and recipient information, and
+        reformates it into 4 dataframe that indicate transactions flowing from:
+        1. Individuals -> Individuals
+        2. Individuals -> Organizations:
+        3. Organizations -> Individuals
+        4. Organizations -> Organizations.
+
+        Args:
+            df: a pandas dataframe with donor and recipient information that
+            details relevant information about a singular transactions,
+            including a transaction ID, donor and recipient IDs, and the
+            donation amount
+        Returns:
+            a list of pandas dataframe with 4 dataframes detailing the 4
+            aformentioned transaction types.
+        """
+
+        df = organizations_df.copy()
+        column_names = list(organizations_df.columns.str.lower())
+        df.columns = column_names
+        df["transaction_type"] = None
+        df["office_sought"] = df.apply(
+            lambda x: x["donor_office"]
+            if x["recipient_office"] is None
+            else x["recipient_office"],
+            axis=1,
+        )
+        df = df.drop(columns={"donor_office", "recipient_office"})
+
+        # now to separate the tables into 4:
+        # individuals -> individuals:
+        ind_to_ind = df.loc[
+            (
+                (
+                    (df.donor_type == "Individual")
+                    | (df.donor_type == "Candidate")
+                    | (df.donor_type == "Lobbyist")
+                )
+                & (
+                    (df.recipient_type == "Candidate")
+                    | (df.recipient_type == "Individual")
+                    | (df.recipient_type == "Lobbyist")
+                )
+            )
+        ]
+
+        # individuals -> Organizations:
+        ind_to_org = df.loc[
+            (
+                (
+                    (df.donor_type == "Individual")
+                    | (df.donor_type == "Candidate")
+                    | (df.donor_type == "Lobbyist")
+                )
+                & (
+                    (df.recipient_type == "Committee")
+                    | (df.recipient_type == "Organization")
+                )
+            )
+        ]
+
+        # Organizations -> Individuals
+        org_to_ind = df.loc[
+            (
+                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
+                & (
+                    (df.recipient_type == "Candidate")
+                    | (df.recipient_type == "Lobbyist")
+                )
+            )
+        ]
+
+        # Organizations -> Organizations:
+        org_to_org = df.loc[
+            (
+                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
+                & (
+                    (df.recipient_type == "Committee")
+                    | (df.recipient_type == "Organization")
+                )
+            )
+        ]
+
+        return [ind_to_ind, ind_to_org, org_to_ind, org_to_org]
 
     def replace_id_with_uuid(
         self, df: pd.DataFrame, col1: str, col2: str
@@ -389,320 +703,3 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         entities["state"] = "Pennsylvania"
 
         entities.to_csv(repo_root / "output" / "PA_IDs.csv", index=False)
-
-    def make_individuals_table(self, df: pd.DataFrame) -> pd.DataFrame:
-        """This function isolates donors and recipients who are classified as
-        individuals and returns a dataframe with strictly individual information
-        pertinent to the StateCleaner schema.
-
-        Args:
-            df: a pandas dataframe with donor and recipient information
-        Returns:
-            a pandas dataframe strictly with information regarding individuals
-            from the inputted dataframe
-        """
-        donor_individuals = df.loc[
-            (
-                (df.DONOR_TYPE == "Individuals")
-                | (df.DONOR_TYPE == "Candidate")
-                | (df.DONOR_TYPE == "Lobbyist")
-            )
-        ][["DONOR", "DONOR_ID", "DONOR_PARTY", "DONOR_TYPE"]].rename(
-            columns={
-                "DONOR": "full_name",
-                "DONOR_ID": "id",
-                "DONOR_PARTY": "party",
-                "DONOR_TYPE": "entity_type",
-            }
-        )
-
-        recipient_individuals = df.loc[
-            (
-                (df.RECIPIENT_TYPE == "Individuals")
-                | (df.RECIPIENT_TYPE == "Candidate")
-                | (df.RECIPIENT_TYPE == "Lobbyist")
-            )
-        ][["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]].rename(
-            columns={
-                "RECIPIENT": "full_name",
-                "RECIPIENT_ID": "id",
-                "RECIPIENT_PARTY": "party",
-                "RECIPIENT_TYPE": "entity_type",
-            }
-        )
-
-        all_individuals = pd.concat([donor_individuals, recipient_individuals])
-        all_individuals = all_individuals.drop_duplicates()
-
-        new_cols = ["first_name", "last_name", "company"]
-        all_individuals = all_individuals.assign(**{col: None for col in new_cols})
-        all_individuals["state"] = "PA"
-
-        return all_individuals
-
-    def make_organizations_table(self, organizations_df: pd.DataFrame) -> pd.DataFrame:
-        """This function isolates donors and recipients who are classified as
-        committees or organizations and returns a dataframe with strictly
-        committee/organization information pertinent to the StateCleaner schema.
-
-        Args:
-            df: a pandas dataframe with donor and recipient information
-        Returns:
-            a pandas dataframe strictly with information regarding committess or
-            organizations from the inputted dataframe.
-        """
-        donor_organizations = organizations_df.loc[
-            (
-                (organizations_df.DONOR_TYPE == "Committee")
-                | (organizations_df.DONOR_TYPE == "Organization")
-            )
-        ][["DONOR_ID", "DONOR", "DONOR_TYPE"]].rename(
-            columns={"DONOR_ID": "id", "DONOR": "name", "DONOR_TYPE": "entity_type"}
-        )
-        recipient_organizations = organizations_df.loc[
-            (
-                (organizations_df.RECIPIENT_TYPE == "Committee")
-                | (organizations_df.RECIPIENT_TYPE == "Organization")
-            )
-        ]
-        recipient_organizations = recipient_organizations[
-            ["RECIPIENT_ID", "RECIPIENT", "RECIPIENT_TYPE"]
-        ]
-        recipient_organizations = recipient_organizations.rename(
-            columns={
-                "RECIPIENT_ID": "id",
-                "RECIPIENT": "name",
-                "RECIPIENT_TYPE": "entity_type",
-            }
-        )
-        all_organizations = pd.concat([donor_organizations, recipient_organizations])
-        all_organizations = all_organizations.drop_duplicates()
-        all_organizations["state"] = "PA"
-
-        return all_organizations
-
-    def make_transactions_table(
-        self, organizations_df: pd.DataFrame
-    ) -> list[pd.DataFrame]:
-        """This function takes in donor and recipient information, and
-        reformates it into 4 dataframe that indicate transactions flowing from:
-        1. Individuals -> Individuals
-        2. Individuals -> Organizations:
-        3. Organizations -> Individuals
-        4. Organizations -> Organizations.
-
-        Args:
-            df: a pandas dataframe with donor and recipient information that
-            details relevant information about a singular transactions,
-            including a transaction ID, donor and recipient IDs, and the
-            donation amount
-        Returns:
-            a list of pandas dataframe with 4 dataframes detailing the 4
-            aformentioned transaction types.
-        """
-
-        df = organizations_df.copy()
-        column_names = list(organizations_df.columns.str.lower())
-        df.columns = column_names
-        df["transaction_type"] = None
-        df["office_sought"] = df.apply(
-            lambda x: x["donor_office"]
-            if x["recipient_office"] is None
-            else x["recipient_office"],
-            axis=1,
-        )
-        df = df.drop(columns={"donor_office", "recipient_office"})
-
-        # now to separate the tables into 4:
-        # individuals -> individuals:
-        ind_to_ind = df.loc[
-            (
-                (
-                    (df.donor_type == "Individual")
-                    | (df.donor_type == "Candidate")
-                    | (df.donor_type == "Lobbyist")
-                )
-                & (
-                    (df.recipient_type == "Candidate")
-                    | (df.recipient_type == "Individual")
-                    | (df.recipient_type == "Lobbyist")
-                )
-            )
-        ]
-
-        # individuals -> Organizations:
-        ind_to_org = df.loc[
-            (
-                (
-                    (df.donor_type == "Individual")
-                    | (df.donor_type == "Candidate")
-                    | (df.donor_type == "Lobbyist")
-                )
-                & (
-                    (df.recipient_type == "Committee")
-                    | (df.recipient_type == "Organization")
-                )
-            )
-        ]
-
-        # Organizations -> Individuals
-        org_to_ind = df.loc[
-            (
-                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
-                & (
-                    (df.recipient_type == "Candidate")
-                    | (df.recipient_type == "Lobbyist")
-                )
-            )
-        ]
-
-        # Organizations -> Organizations:
-        org_to_org = df.loc[
-            (
-                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
-                & (
-                    (df.recipient_type == "Committee")
-                    | (df.recipient_type == "Organization")
-                )
-            )
-        ]
-
-        return [ind_to_ind, ind_to_org, org_to_ind, org_to_org]
-
-    # end of helper functions:
-
-    # functions inherited from StateCleaner:
-    def preprocess(self, directory: str | Path = None) -> list[pd.DataFrame]:
-        """Read raw campaign finance files from PA secretary of state
-
-        Files should be stored in directory with format:
-        /
-        |--YYYY/
-        |   |--contrib_*.txt
-        |   |--debt_*.txt
-        |   |--expense_*.txt
-        |   |--filer_*.txt
-        |   |--receipt_*.txt
-        |--YYYY/
-        ...
-        """
-        contributor_datasets, filer_datasets, expense_datasets = [], [], []
-        if directory is None:
-            directory = repo_root / "data" / "raw" / "PA"
-        else:
-            directory = Path(directory)
-        for year_directory in directory.iterdir():
-            year = int(year_directory.stem)
-            for file_path in year_directory.iterdir():
-                file_name = file_path.stem
-                # only want contributor, filer, and expenditure files:
-                if (
-                    ("contrib" in file_name)
-                    | ("filer" in file_name)
-                    | ("expense" in file_name)
-                ):
-                    df = pd.read_csv(
-                        file_path,
-                        names=self.assign_col_names(file_name, year),
-                        sep=",",
-                        encoding="latin-1",
-                        on_bad_lines="warn",
-                    )
-                    df["YEAR"] = year
-
-                    if "contrib" in file_name:
-                        contributor_datasets.append(df)
-                    elif "filer" in file_name:
-                        filer_datasets.append(df)
-                    else:
-                        expense_datasets.append(df)
-                else:
-                    continue
-
-        return contributor_datasets, filer_datasets, expense_datasets
-
-    def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
-        contributor_datasets, filer_datasets, expense_datasets = [], [], []
-        cont_ds, filer_ds, exp_ds = data
-
-        for contrib_df, filer_df, exp_df in zip(cont_ds, filer_ds, exp_ds):
-            contributor_datasets.append(
-                self.pre_process_contributor_dataset(contrib_df)
-            )
-            filer_datasets.append(self.pre_process_filer_dataset(filer_df))
-            expense_datasets.append(self.pre_process_expense_dataset(exp_df))
-
-        return contributor_datasets, filer_datasets, expense_datasets
-
-    def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
-        contributor_ds, filer_ds, expense_ds = data
-        merged_dataset = self.combine_contributor_expenditure_datasets(
-            contributor_ds, filer_ds, expense_ds
-        )
-        dictionary, merged_dataset = self.replace_id_with_uuid(
-            merged_dataset, "DONOR_ID", "RECIPIENT_ID"
-        )
-        self.output_ID_mapping(dictionary, merged_dataset)  # return dictionary
-
-        # assign transaction_id
-        merged_dataset["TRANSACTION_ID"] = str(uuid.uuid4())
-        return merged_dataset
-
-    def create_tables(
-        self, standardized_df: pd.DataFrame
-    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        # separate the standardized_df information into the relevant columns for
-        # individuals, organizations, and transactions tables
-
-        # Individuals Table:
-        individuals_df = standardized_df[
-            [
-                "DONOR",
-                "DONOR_ID",
-                "DONOR_PARTY",
-                "DONOR_TYPE",
-                "RECIPIENT",
-                "RECIPIENT_ID",
-                "RECIPIENT_PARTY",
-                "RECIPIENT_TYPE",
-            ]
-        ]
-        individuals_table = self.make_individuals_table(individuals_df)
-
-        # Organizations Table
-        organizations_df = standardized_df[
-            [
-                "DONOR",
-                "DONOR_ID",
-                "DONOR_TYPE",
-                "RECIPIENT",
-                "RECIPIENT_ID",
-                "RECIPIENT_TYPE",
-            ]
-        ]
-        organizations_table = self.make_organizations_table(organizations_df)
-        # Transactions Table
-        transactions_df = standardized_df[
-            [
-                "AMOUNT",
-                "DONOR_ID",
-                "DONOR_TYPE",
-                "DONOR_OFFICE",
-                "PURPOSE",
-                "RECIPIENT_ID",
-                "RECIPIENT_TYPE",
-                "RECIPIENT_OFFICE",
-                "YEAR",
-                "TRANSACTION_ID",
-            ]
-        ]
-        transactions_tables = self.make_transactions_table(transactions_df)
-
-        return individuals_table, organizations_table, transactions_tables
-
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        PA_directory = repo_root / "data" / "raw" / "PA"
-        pre_processed_dfs = self.preprocess(PA_directory)
-        clean_dfs = self.clean(pre_processed_dfs)
-        standardized_dfs = self.standardize(clean_dfs)
-        return self.create_tables(standardized_dfs)
