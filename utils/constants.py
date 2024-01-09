@@ -3,20 +3,27 @@ Constants to be used in various parts of the project.
 """
 from pathlib import Path
 
-MI_FILEPATH = "../data/Contributions/"
+BASE_FILEPATH = Path("constants.py").resolve().parent
+# returns the base_path to the directory
 
-MI_VALUES_TO_CHECK = ["1998", "1999", "2000", "2001", "2002", "2003"]
+MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
+MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
+
+AZ_TRANSACTIONS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_transactions_demo.csv"
+)
+
+AZ_INDIVIDUALS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
+)
+
+AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
 USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
                 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
 
 HEADERS = {"User-Agent": USER_AGENT}
-
-MI_EXP_FILEPATH = str(BASE_FILEPATH / "data" / "Expenditure")
-
-MI_CON_FILEPATH = str(BASE_FILEPATH / "data" / "Contribution")
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
@@ -48,6 +55,159 @@ MI_CONTRIBUTION_COLUMNS = [
     "extra_desc",
 ]
 
+# MN State Cleaner Constants:
+here = Path(__file__).resolve()
+repo_root = here.parent.parent
+
+MN_FILEPATHS_LST = [
+    repo_root / "data" / "raw" / "AG.csv",
+    repo_root / "data" / "raw" / "AP.csv",
+    repo_root / "data" / "raw" / "DC.csv",
+    repo_root / "data" / "raw" / "GC.csv",
+    repo_root / "data" / "raw" / "House.csv",
+    repo_root / "data" / "raw" / "SA.csv",
+    repo_root / "data" / "raw" / "SC.csv",
+    repo_root / "data" / "raw" / "Senate.csv",
+    repo_root / "data" / "raw" / "SS.csv",
+    repo_root / "data" / "raw" / "ST.csv",
+    repo_root / "data" / "raw" / "non_candidate_con.csv",
+    repo_root / "data" / "raw" / "independent_exp.csv",
+]
+
+MN_CANDIDATE_CONTRIBUTION_COL = [
+    "OfficeSought",
+    "CandRegNumb",
+    "CandFirstName",
+    "CandLastName",
+    "DonationDate",
+    "DonorType",
+    "DonorName",
+    "DonationAmount",
+    "InKindDonAmount",
+    "InKindDescriptionText",
+]
+
+MN_CANDIDATE_CONTRIBUTION_MAP = {
+    "OfficeSought": "office_sought",
+    "CandRegNumb": "recipient_id",
+    "CandFirstName": "recipient_first_name",
+    "CandLastName": "recipient_last_name",
+    "DonationDate": "date",
+    "DonorType": "donor_type",
+    "DonorName": "donor_full_name",
+    "DonationAmount": "amount",
+    "InKindDonAmount": "inkind_amount",
+    "InKindDescriptionText": "purpose",
+}
+
+MN_NONCANDIDATE_CONTRIBUTION_COL = [
+    "PCFRegNumb",
+    "Committee",
+    "ETType",
+    "DonationDate",
+    "DonorType",
+    "DonorRegNumb",
+    "DonorName",
+    "DonationAmount",
+    "InKindDonAmount",
+    "InKindDescriptionText",
+]
+
+MN_NONCANDIDATE_CONTRIBUTION_MAP = {
+    "PCFRegNumb": "recipient_id",
+    "Committee": "recipient_full_name",
+    "ETType": "recipient_type",
+    "DonationDate": "date",
+    "DonorType": "donor_type",
+    "DonorRegNumb": "donor_id",
+    "DonorName": "donor_full_name",
+    "DonationAmount": "amount",
+    "InKindDonAmount": "inkind_amount",
+    "InKindDescriptionText": "purpose",
+}
+
+MN_INDEPENDENT_EXPENDITURE_COL = [
+    "Spender",
+    "Spender Reg Num",
+    "Spender type",
+    "Affected Comte Name",
+    "Affected Cmte Reg Num",
+    "For /Against",
+    "Date",
+    "Type",
+    "Amount",
+    "Purpose",
+    "Vendor State",
+]
+
+MN_INDEPENDENT_EXPENDITURE_MAP = {
+    "Spender": "donor_full_name",
+    "Spender Reg Num": "donor_id",
+    "Spender type": "donor_type",
+    "Affected Comte Name": "recipient_full_name",
+    "Affected Cmte Reg Num": "recipient_id",
+    "Date": "date",
+    "Amount": "amount",
+    "Purpose": "purpose",
+    "Type": "transaction_type",
+    "Vendor State": "state",
+}
+
+MN_RACE_MAP = {
+    "GC": "Governor",
+    "AG": "Attorney General",
+    "SS": "Secretary of State",
+    "SA": "State Auditor",
+    "ST": "State Treasurer",
+    "Senate": "State Senator",
+    "House": "State Representative",
+    "SC": "State Supreme Court Justice",
+    "AP": "State Appeals Court Judge",
+    "DC": "State District Court Judge",
+}
+
+
+MI_CONT_DROP_COLS = [
+    "doc_seq_no",
+    "page_no",
+    "cont_detail_id",
+    "doc_type_desc",
+    "address",
+    "city",
+    "zip",
+    "occupation",
+    "received_date",
+    "aggregate",
+    "extra_desc",
+]
+
+MI_EXP_DROP_COLS = [
+    "doc_seq_no",
+    "expenditure_type",
+    "gub_account_type",
+    "gub_elec_type",
+    "page_no",
+    "detail_id",
+    "doc_type_desc",
+    "extra_desc",
+    "address",
+    "city",
+    "zip",
+    "exp_date",
+    "state_loc",
+    "supp_opp",
+    "can_or_ballot",
+    "county",
+    "debt_payment",
+    "vend_addr",
+    "vend_city",
+    "vend_state",
+    "vend_zip",
+    "gotv_ink_ind",
+    "fundraiser",
+]
+
+
 PA_MAIN_URL = "https://www.dos.pa.gov"
 PA_ZIPPED_URL = (
     "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
@@ -56,11 +216,11 @@ PA_ZIPPED_URL = (
 # PA EDA constants:
 
 PA_CONT_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "YEAR",
     "CYCLE",
     "SECTION",
-    "CONTRIBUTOR",
+    "DONOR",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -79,17 +239,17 @@ PA_CONT_COLS_NAMES_PRE2022: list = [
     "CONT_AMT_2",
     "CONT_DATE_3",
     "CONT_AMT_3",
-    "CONT_DESCRIP",
+    "PURPOSE",
 ]
 
 PA_CONT_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "REPORTER_ID",
     "TIMESTAMP",
     "YEAR",
     "CYCLE",
     "SECTION",
-    "CONTRIBUTOR",
+    "DONOR",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -108,20 +268,20 @@ PA_CONT_COLS_NAMES_POST2022: list = [
     "CONT_AMT_2",
     "CONT_DATE_3",
     "CONT_AMT_3",
-    "CONT_DESCRIP",
+    "PURPOSE",
 ]
 
 PA_FILER_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "YEAR",
     "CYCLE",
     "AMEND",
     "TERMINATE",
-    "FILER_TYPE",
-    "FILER_NAME",
-    "OFFICE",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
     "DISTRICT",
-    "PARTY",
+    "RECIPIENT_PARTY",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -135,18 +295,18 @@ PA_FILER_COLS_NAMES_PRE2022: list = [
 ]
 
 PA_FILER_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "RECIPIENT_ID",
     "REPORTER_ID",
     "TIMESTAMP",
     "YEAR",
     "CYCLE",
     "AMEND",
     "TERMINATE",
-    "FILER_TYPE",
-    "FILER_NAME",
-    "OFFICE",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
     "DISTRICT",
-    "PARTY",
+    "RECIPIENT_PARTY",
     "ADDRESS_1",
     "ADDRESS_2",
     "CITY",
@@ -160,35 +320,35 @@ PA_FILER_COLS_NAMES_POST2022: list = [
 ]
 
 PA_EXPENSE_COLS_NAMES_PRE2022: list = [
-    "FILER_ID",
+    "DONOR_ID",
     "YEAR",
     "EXPENSE_CYCLE",
-    "EXPENSE_NAME",
+    "RECIPIENT",
     "EXPENSE_ADDRESS_1",
     "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
     "EXPENSE_DATE",
-    "EXPENSE_AMT",
-    "EXPENSE_DESC",
+    "AMOUNT",
+    "PURPOSE",
 ]
 
 PA_EXPENSE_COLS_NAMES_POST2022: list = [
-    "FILER_ID",
+    "DONOR_ID",
     "EXPENSE_REPORTER_ID",
     "EXPENSE_TIMESTAMP",
     "YEAR",
     "EXPENSE_CYCLE",
-    "EXPENSE_NAME",
+    "RECIPIENT",
     "EXPENSE_ADDRESS_1",
     "EXPENSE_ADDRESS_2",
     "EXPENSE_CITY",
     "EXPENSE_STATE",
     "EXPENSE_ZIPCODE",
     "EXPENSE_DATE",
-    "EXPENSE_AMT",
-    "EXPENSE_DESC",
+    "AMOUNT",
+    "PURPOSE",
 ]
 
 PA_OFFICE_ABBREV_DICT: dict = {
@@ -214,6 +374,7 @@ PA_OFFICE_ABBREV_DICT: dict = {
     "OTH": "Other(local offices)",
 }
 PA_FILER_ABBREV_DICT: dict = {1.0: "Candidate", 2.0: "Committee", 3.0: "Lobbyist"}
+
 PA_ORGANIZATION_IDENTIFIERS: list = [
     "FRIENDS",
     "CITIZENS",
@@ -248,6 +409,7 @@ PA_ORGANIZATION_IDENTIFIERS: list = [
     "INC",
     "INCORPORATED",
     "LLC",
+    "FUND",
 ]
 
 MI_EXPENDITURE_COLUMNS = [
@@ -290,12 +452,66 @@ MI_EXPENDITURE_COLUMNS = [
     "fundraiser",
 ]
 
+MICHIGAN_CONTRIBUTION_COLS_REORDER = [
+    "doc_seq_no",
+    "page_no",
+    "contribution_id",
+    "cont_detail_id",
+    "doc_stmnt_year",
+    "doc_type_desc",
+    "common_name",
+    "com_type",
+    "can_first_name",
+    "can_last_name",
+    "contribtype",
+    "f_name",
+    "l_name_or_org",
+    "address",
+    "city",
+    "state",
+    "zip",
+    "occupation",
+    "employer",
+    "amount",
+    "received_date",
+    "aggregate",
+    "extra_desc",
+    "amount",
+]
+
+MICHIGAN_CONTRIBUTION_COLS_RENAME = [
+    "doc_seq_no",
+    "page_no",
+    "contribution_id",
+    "cont_detail_id",
+    "doc_stmnt_year",
+    "doc_type_desc",
+    "com_legal_name",
+    "common_name",
+    "cfr_com_id",
+    "com_type",
+    "can_first_name",
+    "can_last_name",
+    "contribtype",
+    "f_name",
+    "l_name_or_org",
+    "address",
+    "city",
+    "state",
+    "zip",
+    "occupation",
+    "employer",
+    "received_date",
+    "amount",
+    "aggregate",
+]
+
 
 AZ_pages_dict = {
     "Candidate": 1,
     "PAC": 2,
     "Political Party": 3,
-    "Organzations": 4,
+    "Organizations": 4,
     "Independent Expenditures": 5,
     "Ballot Measures": 6,
     "Individual Contributors": 7,
@@ -392,3 +608,60 @@ AZ_base_data = {
     "search[value]": "",
     "search[regex]": "false",
 }
+
+state_abbreviations = [
+    " AK ",
+    " AL ",
+    " AR ",
+    " AZ ",
+    " CA ",
+    " CO ",
+    " CT ",
+    " DC ",
+    " DE ",
+    " FL ",
+    " GA ",
+    " GU ",
+    " HI ",
+    " IA ",
+    " ID ",
+    " IL ",
+    " IN ",
+    " KS ",
+    " KY ",
+    " LA ",
+    " MA ",
+    " MD ",
+    " ME ",
+    " MI ",
+    " MN ",
+    " MO ",
+    " MS ",
+    " MT ",
+    " NC ",
+    " ND ",
+    " NE ",
+    " NH ",
+    " NJ ",
+    " NM ",
+    " NV ",
+    " NY ",
+    " OH ",
+    " OK ",
+    " OR ",
+    " PA ",
+    " PR ",
+    " RI ",
+    " SC ",
+    " SD ",
+    " TN ",
+    " TX ",
+    " UT ",
+    " VA ",
+    " VI ",
+    " VT ",
+    " WA ",
+    " WI ",
+    " WV ",
+    " WY ",
+]
