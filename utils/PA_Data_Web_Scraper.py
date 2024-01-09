@@ -15,7 +15,7 @@ def download_PA_data(start_year: int, end_year: int):
         end_year: The last year in the range of desired years to extract data.
     Returns:
         unzipped .txt files (that are really csvs) stored in the 'data'
-        directory
+        directory.
     """
 
     years = np.arange(start_year, end_year + 1)
