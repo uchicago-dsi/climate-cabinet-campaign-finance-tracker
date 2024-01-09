@@ -1,9 +1,68 @@
+"""
+Scraping function for Arizona
+
+Arizona has relational database with an endpoint `GetNEWTableData` that seems most
+relevant and has what would usually be multiple different endpoints separated by
+a `page` parameter. The page parameter has entities:
+    1 - Candidate
+    2 - PAC
+    3 - Political Party
+    4 - Organizations
+    5 - Independent Expenditures
+    6 - Ballot Measures
+    7 - Individual Contributors
+    8 - Vendors
+
+That mainly just list the names of all entities and their IDs. Candidate usefully
+includes a candidate committee name, which seems to be the conduit for all AZ 
+contributions. 
+
+Each entity type has pages that have transaction level details, starting with the 
+digit that is *one more* than their page digit. (Candidate details start with 2, 
+PAC details start with 3, etc.). The next digit represents one of the following,
+always in the same order, but not always all present:
+    Income
+    Expense
+    IEFor
+    IEAgainst
+    Ballot Measure Expenditure For
+    Ballot Measure Expenditure Against
+    All Transactions
+So, to get candidate income, look at page 20, Political party all transactions is
+42 because political parties don't have IE or Ballot Measure endpoints.
+
+"""
+
+
 import pandas as pd
 import requests
-from constants import AZ_base_data, AZ_head, AZ_pages_dict, AZ_valid_detailed_pages
+from utils.constants import (
+    AZ_base_data,
+    AZ_head,
+    AZ_pages_dict,
+    AZ_valid_detailed_pages,
+    HEADERS,
+)
+
+"""
+1 - Candidate info and their committees
+2 - pacs
+3 - political parties
 
 
-def az_wrapper(
+"""
+
+
+def scrape_and_download_az_data(start_year, end_year):
+    """Collect and download all arizona data within range"""
+    pages = []
+    for page in AZ_pages_dict:
+        page_data = scrape_az_page_data(page, start_year, end_year)
+        pages.append(page_data)
+    return pages
+
+
+def scrape_az_page_data(
     page: str, start_year=2023, end_year=2023, *args, **kwargs: int
 ) -> pd.DataFrame:
     """Scrape data from arizona database at https://seethemoney.az.gov/
@@ -51,8 +110,8 @@ def detailed_wrapper_director(page: int) -> int:
 
     Returns: an integer representing the parent page
     """
-    if page not in AZ_valid_detailed_pages:
-        raise ValueError("not a valid detailed page number")
+    # if page not in AZ_valid_detailed_pages:
+    #     raise ValueError("not a valid detailed page number")
 
     return int(str(page)[0]) - 1
 
@@ -178,7 +237,7 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
     return requests.post(
         "https://seethemoney.az.gov/Reporting/GetNEWTableData/",
         params=params,
-        headers=AZ_head,
+        headers=HEADERS,
         data=AZ_base_data,
     )
 
@@ -387,3 +446,10 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
     ]
 
     return dat
+
+
+if __name__ == "__main__":
+    # scrape_and_download_az_data(2020, 2023)
+    parameters = detailed_parametrize(101502, 24, 2020, 2025)
+    resp = detailed_scrape(parameters)
+    x = 1

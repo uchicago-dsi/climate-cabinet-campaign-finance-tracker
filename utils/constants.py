@@ -20,12 +20,12 @@ AZ_INDIVIDUALS_FILEPATH = (
 
 AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
-USER_AGENT = """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
-                (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"""
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    "(KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
+)
 
 HEADERS = {"User-Agent": USER_AGENT}
-
-MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
 MI_CONTRIBUTION_COLUMNS = [
     "doc_seq_no",
@@ -556,8 +556,10 @@ AZ_head = {
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-origin",
     "sec-gpc": "1",
-    "user-agent": """Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
-    AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36""",
+    "user-agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
+    ),
     "x-requested-with": "XMLHttpRequest",
 }
 
