@@ -48,6 +48,22 @@ class MichiganCleaner(StateCleaner):
     ]
     # map to entity types listed in the schema
 
+    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+        """
+        Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
+
+        Returns: use preprocess, clean, standardize, and create_tables methods
+        to output (individuals_table, organizations_table, transactions_table)
+        as defined in database schema
+        """
+        filepaths_lst = self.create_filepaths_list()
+        preprocessed_dataframe_lst = self.preprocess(filepaths_lst)
+        cleaned_dataframe_lst = self.clean(preprocessed_dataframe_lst)
+        standardized_dataframe_lst = self.standardize(cleaned_dataframe_lst)
+        tables = self.create_tables(standardized_dataframe_lst)
+
+        return tables
+
     def create_filepaths_list(self) -> list[list[str], list[str]]:
         """Creates a list of Michigan Contribution and Expenditure filepaths by
         first iterating through the expenditure filepaths then the contribution
@@ -909,19 +925,3 @@ class MichiganCleaner(StateCleaner):
             standardized_dataframe_lst
         )
         return [transactions_table, id_mapping]
-
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """
-        Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
-
-        Returns: use preprocess, clean, standardize, and create_tables methods
-        to output (individuals_table, organizations_table, transactions_table)
-        as defined in database schema
-        """
-        filepaths_lst = self.create_filepaths_list()
-        preprocessed_dataframe_lst = self.preprocess(filepaths_lst)
-        cleaned_dataframe_lst = self.clean(preprocessed_dataframe_lst)
-        standardized_dataframe_lst = self.standardize(cleaned_dataframe_lst)
-        tables = self.create_tables(standardized_dataframe_lst)
-
-        return tables

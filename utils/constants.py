@@ -3,7 +3,7 @@ Constants to be used in various parts of the project
 """
 from pathlib import Path
 
-BASE_FILEPATH = Path("constants.py").resolve().parent
+BASE_FILEPATH = Path(__file__).resolve().parent.parent
 # returns the base_path to the directory
 
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
