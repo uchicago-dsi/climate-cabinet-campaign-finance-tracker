@@ -542,69 +542,6 @@ AZ_pages_dict = {
     "Vendors/All Transactions": 90,
 }
 
-AZ_head = {
-    "authority": "seethemoney.az.gov",
-    "accept": "application/json, text/javascript, */*; q=0.01",
-    "accept-language": "en-US,en;q=0.7",
-    "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "origin": "https://seethemoney.az.gov",
-    "referer": "https://seethemoney.az.gov/Reporting/Explore",
-    "sec-ch-ua": '"Chromium";v="116", "Not)A;Brand";v="24", "Brave";v="116"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
-    "sec-gpc": "1",
-    "user-agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
-    ),
-    "x-requested-with": "XMLHttpRequest",
-}
-
-
-AZ_valid_detailed_pages = [
-    20,
-    21,
-    22,
-    23,
-    24,
-    30,
-    31,
-    32,
-    33,
-    34,
-    35,
-    36,
-    40,
-    41,
-    42,
-    50,
-    51,
-    52,
-    53,
-    54,
-    60,
-    61,
-    62,
-    70,
-    71,
-    72,
-    80,
-    90,
-]
-
-
-AZ_base_data = {
-    "draw": "2",
-    "order[0][column]": "0",
-    "order[0][dir]": "asc",
-    "start": "0",
-    "length": "500000",
-    "search[value]": "",
-    "search[regex]": "false",
-}
 
 state_abbreviations = [
     " AK ",

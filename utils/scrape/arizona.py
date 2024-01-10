@@ -38,7 +38,6 @@ import pandas as pd
 import requests
 from utils.constants import (
     AZ_pages_dict,
-    AZ_valid_detailed_pages,
     HEADERS,
 )
 
@@ -50,9 +49,9 @@ from utils.constants import (
 
 """
 
-BASE_URL = "https://seethemoney.az.gov/Reporting/GetNEWTableData/"
+BASE_URL = "https://seethemoney.az.gov/Reporting"
 BASE_ENDPOINT = "GetNEWTableData"
-DETAILED_ENDPOINT = "GETNEWDetailedTableData"
+DETAILED_ENDPOINT = "GetNEWDetailedTableData"
 AZ_SEARCH_DATA = {
     "draw": "2",
     "order[0][column]": "0",
@@ -62,19 +61,39 @@ AZ_SEARCH_DATA = {
     "search[value]": "",
     "search[regex]": "false",
 }
+AZ_HEADER = HEADERS.update(
+    {
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        "Origin": "https://seethemoney.az.gov",
+        "Connection": "keep-alive",
+        "Referer": "https://seethemoney.az.gov/Reporting/Explore",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+    }
+)
+NAME_INFO_PAGE = 11
+AZ_valid_detailed_pages = [v for v in AZ_pages_dict.values() if v >= 20]
 
 
-def scrape_and_download_az_data(start_year, end_year):
+def scrape_and_download_az_data(start_year, end_year, max_per_entity_type=None):
     """Collect and download all arizona data within range"""
     pages = []
     for page in AZ_pages_dict:
+        if AZ_pages_dict[page] < 20:
+            continue
         page_data = scrape_az_page_data(page, start_year, end_year)
         pages.append(page_data)
     return pages
 
 
 def scrape_az_page_data(
-    page: str, start_year=2023, end_year=2023, *args, **kwargs: int
+    page: str,
+    start_year=2023,
+    end_year=2023,
 ) -> pd.DataFrame:
     """Scrape data from arizona database at https://seethemoney.az.gov/
 
@@ -84,46 +103,44 @@ def scrape_az_page_data(
     NOTE: Empty returns are to be expected for some inputs,
     as some tables are empty or near empty even for long spans of time.
 
-    Args: page: the name of a basic or detailed page in the
-    Arizona dataset, excluding the Name page.
-    start_year: earliest year to include scraped data, inclusive
-    end_year: last year to include scraped data, inclusive
+    Args:
+        page: the name of a basic or detailed page in the
+            Arizona dataset, excluding the Name page.
+        start_year: earliest year to include scraped data, inclusive
+        end_year: last year to include scraped data, inclusive
 
     Returns: two pandas dataframes and two lists. The first dataframe
     contains the requested transactions data. The following two lists
     contain either the entity or committee name, and the final dataframe
     contains the information on those entities or committees
     """
-
     page = AZ_pages_dict[page]
 
+    # page is a basic type, showing entity information
     if page < 10:
         return scrape_wrapper(page, start_year, end_year)
-
+    elif page == 11:
+        raise ValueError("'Name' endpoint unimplemented")
+    # page is detailed, showing transaction information. Get relevant entity
+    # information first and then get transaction details for each entity
     else:
-        det = detailed_wrapper_director(page)
-        agg_df = scrape_wrapper(det, start_year, end_year)
+        base_page = get_base_page_code(page)
+        agg_df = scrape_wrapper(base_page, start_year, end_year)
         entities = agg_df["EntityID"]
 
         return detailed_scrape_wrapper(entities, page, start_year, end_year)
 
 
-def detailed_wrapper_director(page: int) -> int:
-    """Direct az_wrapper to base page from detailed page
+def get_base_page_code(page: int) -> int:
+    """Get the base page code from a seethemoney.az.gov DetailedTable page code
 
-    This function takes as input the number of the page input to
-    scrape_wrapper in the course of az_wrapper, and derives the
-    number of the parent page which must be scraped for
-    entities first
-
-    Args: page: the two-digit page number belonging to a
-    detailed page as shown in AZ_pages_dict.
+    Args:
+        page: 2-digit seethemoney GetNEWDetailedPageData page
 
     Returns: an integer representing the parent page
     """
-    # if page not in AZ_valid_detailed_pages:
-    #     raise ValueError("not a valid detailed page number")
-
+    if page not in AZ_valid_detailed_pages:
+        raise ValueError("not a valid detailed page number")
     return int(str(page)[0]) - 1
 
 
@@ -134,8 +151,9 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     call the basic scraper for a certain basic page. To scrape the detailed
     pages, use detailed_scrape_wrapper() instead.
 
-    Args: page: the one-digit number representing one of the eight
-    basic pages in the arizona dataset, such as Candidates, PAC,
+    Args:
+        page: the one-digit number representing one of the eight
+            basic pages in the arizona dataset, such as Candidates, PAC,
     Individual Contributions, etc. Refer to AZ_pages_dict
     start_year: earliest year to include scraped data, inclusive
     end_year: last year to include scraped data, inclusive
@@ -143,7 +161,7 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     Returns: a pandas dataframe containing the table data for
     the selected timeframe
     """
-
+    assert page < 10
     params = parametrize(page, start_year, end_year)
     res = scrape(BASE_ENDPOINT, params)
     results = res.json()
@@ -153,7 +171,8 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     return df
 
 
-def get_keys_from_value(d, val):
+def get_keys_from_value(d: dict, val) -> str:
+    """Returns first key from dict with value 'val'"""
     return [k for k, v in d.items() if v == val][0]
 
 
@@ -175,15 +194,20 @@ def detailed_scrape_wrapper(
     Returns: a pandas dataframe containing the table data for
     the selected timeframe
     """
-
-    d_params = []
+    max_per_entity_type = 10
+    entities = entities[:max_per_entity_type]
+    entity_detail_params = []
     info_params = []
 
     for entity in entities:
-        ent = detailed_parametrize(entity, page, start_year, end_year)
-        name_details = detailed_parametrize(entity, 11, start_year, end_year)
+        entity_detailed_parameters = detailed_parametrize(
+            entity, page, start_year, end_year
+        )
+        name_details = detailed_parametrize(
+            entity, NAME_INFO_PAGE, start_year, end_year
+        )
 
-        d_params.append(ent)
+        entity_detail_params.append(entity_detailed_parameters)
         info_params.append(name_details)
 
     detail_dfs = []
@@ -194,7 +218,7 @@ def detailed_scrape_wrapper(
 
     entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
 
-    for d_param, entity in zip(d_params, entities):
+    for d_param, entity in zip(entity_detail_params, entities):
         res = scrape(DETAILED_ENDPOINT, d_param)
         results = res.json()
 
@@ -203,7 +227,8 @@ def detailed_scrape_wrapper(
         detail_df["entity_type"] = entity_type
 
         detail_dfs.append(detail_df)
-
+    # https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData?Page=20&startYear=2022&endYear=2022&JurisdictionId=0&TablePage=1&TableLength=10&Name=1~100944&entityId=100944&ChartName=20&IsLessActive=false&ShowOfficeHolder=false
+    # https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData?Page=20&startYear=2022&endYear=2022&JurisdictionId=0%7CPage&TablePage=1&TableLength=500000&ChartName=20&IsLessActive=false&ShowOfficeHolder=false&CommitteeId=100994&NameId=100994&Name=1~100994&entityId=100994'
     for info_param in info_params:
         entity_name, info = info_scrape(info_param)
         info_table = info.json()
@@ -250,7 +275,7 @@ def scrape(
     returns: request response containing aggregate information
     """
     if headers is None:
-        headers = HEADERS
+        headers = AZ_HEADER
     if data is None:
         data = AZ_SEARCH_DATA
 
@@ -347,13 +372,11 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     args: detailed parameters dictionary
 
     returns: two request responses
-
     """
-
     entity_name_response = requests.get(
         "https://seethemoney.az.gov/Reporting/GetEntityName/",
         params=detailed_params,
-        headers=AZ_head,
+        headers=AZ_HEADER,
     ).json()
 
     if str(entity_name_response) == "  ":
@@ -365,7 +388,7 @@ def info_scrape(detailed_params: dict) -> requests.models.Response:
     info_response = requests.post(
         "https://seethemoney.az.gov/Reporting/GetDetailedInformation",
         params=detailed_params,
-        headers=AZ_head,
+        headers=AZ_HEADER,
     )
 
     return entity_name_response, info_response
@@ -382,9 +405,7 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
     the info_scrape() response
 
     returns: reprocessed info dataframe
-
     """
-
     l2 = []
     for i in range(int(len(info_df) / 20)):
         it = 20 * i
@@ -417,12 +438,11 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
         "status",
         "treasurer",
     ]
-
     return dat
 
 
 if __name__ == "__main__":
-    # scrape_and_download_az_data(2020, 2023)
-    parameters = detailed_parametrize(101502, 24, 2020, 2025)
-    resp = scrape(DETAILED_ENDPOINT, parameters)
-    x = 1
+    scrape_and_download_az_data(2022, 2022)
+    # parameters = detailed_parametrize(101502, 24, 2020, 2025)
+    # resp = scrape(DETAILED_ENDPOINT, parameters)
+    # x = 1
