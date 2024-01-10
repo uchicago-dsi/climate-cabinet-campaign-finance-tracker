@@ -1,5 +1,5 @@
 """
-Scraping function for Arizona
+This module provides functions to scrape Arizona Campaign Finance data.
 
 Arizona has relational database with an endpoint `GetNEWTableData` that seems most
 relevant and has what would usually be multiple different endpoints separated by
@@ -14,13 +14,13 @@ a `page` parameter. The page parameter has entities:
     8 - Vendors
 
 That mainly just list the names of all entities and their IDs. Candidate usefully
-includes a candidate committee name, which seems to be the conduit for all AZ 
-contributions. 
+includes a candidate committee name, which seems to be the conduit for all AZ
+contributions.
 
-Each entity type has pages that have transaction level details, starting with the 
-digit that is *one more* than their page digit. (Candidate details start with 2, 
-PAC details start with 3, etc.). The next digit represents one of the following,
-always in the same order, but not always all present:
+Each entity type has pages in a GetNEWDetailedTableData endpoint that have transaction
+level details, starting with the digit that is *one more* than their page digit. 
+(Candidate details start with 2, PAC details start with 3, etc.). The next digit 
+represents one of the following, always in the same order, but not always all present:
     Income
     Expense
     IEFor
@@ -37,8 +37,6 @@ So, to get candidate income, look at page 20, Political party all transactions i
 import pandas as pd
 import requests
 from utils.constants import (
-    AZ_base_data,
-    AZ_head,
     AZ_pages_dict,
     AZ_valid_detailed_pages,
     HEADERS,
@@ -51,6 +49,19 @@ from utils.constants import (
 
 
 """
+
+BASE_URL = "https://seethemoney.az.gov/Reporting/GetNEWTableData/"
+BASE_ENDPOINT = "GetNEWTableData"
+DETAILED_ENDPOINT = "GETNEWDetailedTableData"
+AZ_SEARCH_DATA = {
+    "draw": "2",
+    "order[0][column]": "0",
+    "order[0][dir]": "asc",
+    "start": "0",
+    "length": "500000",
+    "search[value]": "",
+    "search[regex]": "false",
+}
 
 
 def scrape_and_download_az_data(start_year, end_year):
@@ -134,7 +145,7 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     """
 
     params = parametrize(page, start_year, end_year)
-    res = scrape(params, AZ_head, AZ_base_data)
+    res = scrape(BASE_ENDPOINT, params)
     results = res.json()
     df = pd.DataFrame(data=results["data"])
     df = df.reset_index().drop(columns={"index"})
@@ -184,7 +195,7 @@ def detailed_scrape_wrapper(
     entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
 
     for d_param, entity in zip(d_params, entities):
-        res = detailed_scrape(d_param)
+        res = scrape(DETAILED_ENDPOINT, d_param)
         results = res.json()
 
         detail_df = pd.DataFrame(data=results["data"])
@@ -215,7 +226,9 @@ def detailed_scrape_wrapper(
     )
 
 
-def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
+def scrape(
+    endpoint: str, params: dict, headers: dict = None, data: dict = None
+) -> requests.models.Response:
     """Scrape a table from the main arizona site
 
     This function takes in the header and base provided
@@ -223,51 +236,29 @@ def scrape(params: dict, headers: dict, data: dict) -> requests.models.Response:
     to locate and scrape data from one of the eight
     aggregate tables on the Arizona database.
 
-    Args: params: created from parametrize(), containing
-    the page, start and end years, table page, and table length.
-    Note that 'page' encodes the page to be scraped, such as
-    Candidates, IndividualContributions, etc. Refer to the
-    attached Pages dictionary for details.
-    headers: necessary for calling the response, provided above
-    data: necessary for calling the response, provided above
+    Args:
+        endpoint: which of the seethemoney endpoints to call
+            (either GetNEWTableData or GetNEWDetailedTableData)
+        params: created from parametrize(), containing
+            the page, start and end years, table page, and table length.
+            Note that 'page' encodes the page to be scraped, such as
+            Candidates, IndividualContributions, etc. Refer to the
+            attached Pages dictionary for details.
+        headers: headers for https post, standard defaults provided
+        data: data for https post, defaults defined as constant
 
     returns: request response containing aggregate information
     """
+    if headers is None:
+        headers = HEADERS
+    if data is None:
+        data = AZ_SEARCH_DATA
 
     return requests.post(
-        "https://seethemoney.az.gov/Reporting/GetNEWTableData/",
+        f"{BASE_URL}/{endpoint}",
         params=params,
-        headers=HEADERS,
-        data=AZ_base_data,
-    )
-
-
-def detailed_scrape(detailed_params: dict) -> requests.models.Response:
-    """Scrape a sub-table from the arizona database
-
-    This function takes an entity number, which can be
-    gathered from an aggregate table using scrape() or
-    inputted manually, and gathers that entity's detailed
-    information within the specified time frame from
-    one of the sub-tables.
-
-    Args: detailed_params: created from detailed_parametrize(),
-    containing the entity_id, page, start and end years, table page,
-    and table length.
-    Note that 'page' encodes the page to be scraped, such as
-    Candidates, IndividualContributions, etc. Refer to the
-    AZ_pages_dict dictionary for details.
-    headers: necessary for calling the response, provided above
-    data: necessary for calling the response, provided above
-
-    returns: request response containing entity details
-    """
-
-    return requests.post(
-        "https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData/",
-        params=detailed_params,
-        headers=AZ_head,
-        data=AZ_base_data,
+        headers=headers,
+        data=data,
     )
 
 
@@ -277,7 +268,6 @@ def parametrize(
     end_year=2025,
     table_page=1,
     table_length=500000,
-    **kwargs: int
 ) -> dict:
     """Input parameters for scrape and return as dict
 
@@ -285,18 +275,19 @@ def parametrize(
     given section of the arizona database, and turns
     them into a dictionary to be fed into scrape() as params
 
-    Kwargs: page: encodes the page to be scraped, such as
-    Candidates, Individual Contributions, etc. Refer to the
-    AZ_pages_dict dictionary for details.
-    start_year: earliest year to include scraped data, inclusive
-    end_year: last year to include scraped data, inclusive
-    table_page: the numbered page to be accessed. Only necessary
-    to iterate on this if accessing large quantities of Individual
-    Contributions data, as all other data will be captured whole by
-    the default table_length
-    table_length: the length of the table to be scraped. The default
-    setting should scrape the entirety of the desired data unless
-    looking at Individual Contributions
+    Args:
+        page: encodes the page to be scraped, such as
+            Candidates, Individual Contributions, etc. Refer to the
+            AZ_pages_dict dictionary for details.
+        start_year: earliest year to include scraped data, inclusive
+        end_year: last year to include scraped data, inclusive
+        table_page: the numbered page to be accessed. Only necessary
+            to iterate on this if accessing large quantities of Individual
+            Contributions data, as all other data will be captured whole by
+            the default table_length
+        table_length: the length of the table to be scraped. The default
+            setting should scrape the entirety of the desired data unless
+            looking at Individual Contributions
 
     Returns: a dictionary of the parameters, to be fed into scrape()
     """
@@ -321,46 +312,28 @@ def detailed_parametrize(
     end_year=2025,
     table_page=1,
     table_length=500000,
-    *args: int,
-    **kwargs: int
 ) -> dict:
     """Input parameters for detailed_scrape and return as dict
 
     This function takes in a similar list of parameters as parametrize()
     and creates the params dictionary used by detailed_scrape.
 
-    Args: entity_id: the unique id given to eahc entity in the
-    arizona database
-    Kwargs: page: encodes the page to be scraped, such as
-    Candidates, Individual Contributions, etc. Refer to the
-    AZ_pages_dict dictionary for details.
-    start_year: earliest year to include scraped data, inclusive
-    end_year: last year to include scraped data, inclusive
-    table_page: the numbered page to be accessed. Only necessary
-    to iterate on this if accessing large quantities of Individual
-    Contributions data, as all other data will be captured whole by
-    the default table_length
-    table_length: the length of the table to be scraped. The default
-    setting should scrape the entirety of the desired data unless
-    looking at Individual Contributions
+    Args:
+        entity_id: the unique id given to eahc entity in the
+        Refer to parameterize() for other arguments.
     """
-
-    return {
-        "CommitteeId": str(entity_id),
-        "NameId": str(entity_id),
-        "Page": str(page),  # refers to the overall page, like candidates
-        # or individual expenditures
-        "startYear": str(start_year),
-        "endYear": str(end_year),
-        "JurisdictionId": "0|Page",
-        "TablePage": str(table_page),
-        "TableLength": str(table_length),
-        "Name": "1~" + str(entity_id),  # these two get used
-        "entityId": str(entity_id),  # when scraping detailed data
-        "ChartName": str(page),
-        "IsLessActive": "false",
-        "ShowOfficeHolder": "false",  # have yet to experiment with these
-    }
+    default_parameters = parametrize(
+        page, start_year, end_year, table_page, table_length
+    )
+    default_parameters.update(
+        {
+            "CommitteeId": str(entity_id),
+            "NameId": str(entity_id),
+            "Name": "1~" + str(entity_id),  # these two get used
+            "entityId": str(entity_id),  # when scraping detailed data
+        }
+    )
+    return default_parameters
 
 
 def info_scrape(detailed_params: dict) -> requests.models.Response:
@@ -451,5 +424,5 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
 if __name__ == "__main__":
     # scrape_and_download_az_data(2020, 2023)
     parameters = detailed_parametrize(101502, 24, 2020, 2025)
-    resp = detailed_scrape(parameters)
+    resp = scrape(DETAILED_ENDPOINT, parameters)
     x = 1
