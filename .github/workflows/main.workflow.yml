@@ -1,3 +1,9 @@
+name: Development Checks
+
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  workflow_dispatch:
   pull_request:
     branches:
       - main
