@@ -3,7 +3,6 @@ import uuid
 from utils.clean import StateCleaner
 from utils.cleaner_utils import (
     convert_date,
-    transactions_splitter,
 )
 from utils.constants import (
     AZ_INDIVIDUALS_FILEPATH,
@@ -237,6 +236,9 @@ def az_employment_checker(row, transactions):
     if row["entity_type"] == "Candidate":
         row["company"] = "None (Is a Candidate)"
     else:
+        transactions[transactions["retrieved_id"] == row["retrieved_id"]].iloc[0][
+            "TransactionEmployer"
+        ]
         row["company"] = transactions[
             transactions["retrieved_id"] == row["retrieved_id"]
         ].iloc[0]["TransactionEmployer"]
@@ -414,12 +416,7 @@ class ArizonaCleaner(StateCleaner):
         else:
             az_organizations = None
 
-        # will result in small or empty dataframes if a subset of the data is used
-        transactions_tuple = transactions_splitter(
-            az_individuals, az_organizations, az_transactions
-        )
-
-        return (az_individuals, az_organizations, transactions_tuple)
+        return (az_individuals, az_organizations, az_transactions)
 
     def standardize(self, details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """standardize names of entities
@@ -460,6 +457,11 @@ class ArizonaCleaner(StateCleaner):
         returns: cleaned transactions and details dataframes
         """
         transactions, entities = data
+
+        merged_df = pd.merge(entities, transactions, on="retrieved_id", how="inner")
+
+        # Filter rows in the first dataframe based on the common 'ids'
+        entities = entities[entities["retrieved_id"].isin(merged_df["retrieved_id"])]
 
         try:
             transactions["TransactionDate"] = transactions["TransactionDate"].apply(
