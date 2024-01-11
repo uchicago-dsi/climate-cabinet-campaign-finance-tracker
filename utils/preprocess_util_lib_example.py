@@ -14,6 +14,10 @@ def save_random_dataframe(output_directory: Path, output_file: Path):
         output_directory: absolute path to directory to save df in
         output_file: filename to save dataframe to in output_directory
     Returns: None.
+
+    Sample Doctest:
+    >>> 1 > 0
+    True
     """
     random_df = pd.DataFrame(
         np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD")

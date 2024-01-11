@@ -80,8 +80,12 @@ def scrape_and_download_az_data(start_year, end_year, output_directory=None):
         formatted_page = page.replace("/", "-").replace(" ", "-")
         if AZ_pages_dict[page] not in all_transactions_pages:
             continue
-        transaction_data, filer_data = scrape_az_page_data(page, start_year, end_year)
-        transaction_data.to_csv(output_directory / f"{formatted_page}-transactions.csv")
+        transaction_data, filer_data = scrape_az_page_data(
+            page, start_year, end_year
+        )
+        transaction_data.to_csv(
+            output_directory / f"{formatted_page}-transactions.csv"
+        )
         filer_data.to_csv(output_directory / f"{formatted_page}-details.csv")
 
 

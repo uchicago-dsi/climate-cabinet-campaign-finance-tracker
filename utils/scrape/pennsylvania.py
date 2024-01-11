@@ -25,13 +25,10 @@ def download_PA_data(
 
     else:
         output_directory = Path(output_directory).resolve()
-    pa_domain = "https://www.dos.pa.gov"
-    pa_campaign_finance_path = (
-        "/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"
-    )
+    pa_url = "https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"  # noqa
 
     for year in range(start_year, end_year + 1):
-        link = f"{pa_domain}{pa_campaign_finance_path}{year}.zip"
+        link = f"{pa_url}{year}.zip"
 
         response = requests.get(link)
         if response.status_code != 200:

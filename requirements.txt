@@ -1,7 +1,10 @@
 # development tools
-flake8~=4.0
-black~=22.1
-pre-commit~=2.20
+flake8~=6.1
+flake8-bugbear~=23.11
+black~=23.11
+pre-commit~=3.5
+pytest~=7.4
+coverage~=7.3
 ipykernel~=6.16
 
 # project packages
