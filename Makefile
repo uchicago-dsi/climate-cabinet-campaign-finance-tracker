@@ -7,8 +7,8 @@ current_abs_path := $(subst Makefile,,$(mkfile_path))
 
 # pipeline constants
 # PROJECT_NAME
-project_image_name := "2023-fall-clinic-climate-cabinet"
-project_container_name := "2023-fall-clinic-climate-cabinet-container"
+project_image_name := "2024-winter-clinic-climate-cabinet"
+project_container_name := "2024-winter-clinic-climate-cabinet-container"
 project_dir := "$(current_abs_path)"
 
 # environment variables
