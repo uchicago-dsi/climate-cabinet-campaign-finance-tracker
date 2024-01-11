@@ -56,3 +56,6 @@ Student Email: aichacamara@uchicago.edu
 
 Student Name: Alan Kagiri
 Student Email: alankagiri@uchicago.edu. 
+
+Student Name: Adil Kassim
+Student Email: adilk@uchicago.edu
