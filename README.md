@@ -75,3 +75,6 @@ Student Email: alankagiri@uchicago.edu.
 
 Student Name: Adil Kassim
 Student Email: adilk@uchicago.edu
+
+Student Name: Nayna Pashilkar
+Student Email: npashilkar@uchicago.edu
