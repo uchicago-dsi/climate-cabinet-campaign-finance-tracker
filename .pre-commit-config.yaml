@@ -10,23 +10,29 @@ repos:
       - id: end-of-file-fixer
         types: [python]         
       - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=25000']
 
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 23.11.0
     hooks:
       - id: black
+        args: ["--line-length=80"]
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
       - id: isort
+        args: ["--settings-path=setup.cfg"]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 6.1.0
     hooks:
       - id: flake8
         args: ["--config=setup.cfg"]
-        additional_dependencies: [flake8-isort]
+        additional_dependencies: 
+          - flake8-isort
+          - flake8-bugbear~=23.11
 
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 ci:

@@ -16,22 +16,21 @@
                 },
                 "python.defaultInterpreterPath": "/usr/local/bin/python3",
                 "python.languageServer": "Pylance",
-                "editor.defaultFormatter": "ms-python.black-formatter",
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": true
+                "python.formatting.provider": "black",
+                "[python]": {
+                    "diffEditor.ignoreTrimWhitespace": false,
+                    "editor.formatOnSave": true,
+                    "editor.wordBasedSuggestions": "matchingDocuments",
+                    "editor.defaultFormatter": "ms-python.black-formatter",
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": true
+                    }
                 },
                 "isort.args": [
-                    "--profile", "black",
-                    "--line_length", "88",
-                    "--multi_line_output", "3",
-                    "--include_trailing_comma", "true",
-                    "force_grid_wrap", "0",
-                    "--use_parentheses", "true"
+                    "--settings-path", "${workspaceFolder}/setup.cfg"
                 ],
                 "flake8.args": [
-                    "--max-line-length", "88",
-                    "--extend-ignore", "E203",    
+                    "--config", "${workspaceFolder}/setup.cfg"
                 ]
             },
             "extensions": [
