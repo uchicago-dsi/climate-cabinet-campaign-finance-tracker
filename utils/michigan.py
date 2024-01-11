@@ -386,7 +386,10 @@ class MichiganCleaner(StateCleaner):
         transactions_table, transactions_id_mapping = self.create_transactions_table(
             data
         )
-
+        # TODO: fix duplicated transaction_type column
+        transactions_table = transactions_table.loc[
+            :, ~transactions_table.columns.duplicated()
+        ]
         self.output_id_mapping(
             individuals_id_mapping, organizations_id_mapping, transactions_id_mapping
         )

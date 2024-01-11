@@ -417,64 +417,17 @@ class MinnesotaCleaner(StateCleaner):
                 "transaction_type",
             ],
         )
-        tran_org2org = tran_df[
-            (
-                tran_df["recipient_type"].isin(
-                    ["Company", "Committee", "Committee", "Party", "Other"]
-                )
-            )
-            & (
-                tran_df["donor_type"].isin(
-                    ["Company", "Committee", "Committee", "Party", "Other"]
-                )
-            )
-        ]
-        tran_org2org = tran_org2org.drop(["recipient_type", "donor_type"], axis=1)
 
-        tran_ind2ind = tran_df[
-            (tran_df["recipient_type"].isin(["Individual", "Lobbyist"]))
-            & (tran_df["donor_type"].isin(["Individual", "Lobbyist"]))
-        ]
-        tran_ind2ind = tran_ind2ind.drop(["recipient_type", "donor_type"], axis=1)
-
-        tran_ind2org = tran_df[
-            (
-                tran_df["recipient_type"].isin(
-                    ["Company", "Committee", "Committee", "Party", "Other"]
-                )
-            )
-            & (tran_df["donor_type"].isin(["Individual", "Lobbyist"]))
-        ]
-        tran_ind2org = tran_ind2org.drop(["recipient_type", "donor_type"], axis=1)
-
-        tran_org2ind = tran_df[
-            (tran_df["recipient_type"].isin(["Individual", "Lobbyist"]))
-            & (
-                tran_df["donor_type"].isin(
-                    ["Company", "Committee", "Committee", "Party", "Other"]
-                )
-            )
-        ]
-        tran_org2ind = tran_org2ind.drop(["recipient_type", "donor_type"], axis=1)
-
-        return (
-            ind_df,
-            org_df,
-            [tran_ind2ind, tran_ind2org, tran_org2org, tran_org2ind],
-        )
+        return (ind_df, org_df, tran_df)
 
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
         preprocessed_df = self.preprocess(MN_FILEPATHS_LST)
         cleaned_df = self.clean(preprocessed_df)
         standardized_df = self.standardize(cleaned_df)
-        (
-            ind_df,
-            org_df,
-            [tran_df_org2org, tran_df_ind2ind, tran_df_ind2org, tran_df_org2ind],
-        ) = self.create_tables(standardized_df)
+        (ind_df, org_df, tran_df) = self.create_tables(standardized_df)
 
         return (
             ind_df,
             org_df,
-            [tran_df_org2org, tran_df_ind2ind, tran_df_ind2org, tran_df_org2ind],
+            tran_df,
         )

@@ -169,9 +169,12 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "TRANSACTION_ID",
             ]
         ]
-        transactions_tables = self.make_transactions_tables(transactions_df)
+        transactions_df.columns = map(str.lower, transactions_df.columns)
+        transactions_df = transactions_df.rename(
+            columns={"recipient_office": "office_sought"}
+        )
 
-        return individuals_table, organizations_table, transactions_tables
+        return individuals_table, organizations_table, transactions_df
 
     def make_individuals_table(self, df: pd.DataFrame) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
