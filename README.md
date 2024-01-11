@@ -1,4 +1,4 @@
-# 2023-fall-clinic-climate-cabinet
+# 2024-winter-clinic-climate-cabinet
 
 ## Data Science Clinic Project Goals
 
@@ -37,7 +37,7 @@ If you prefer to develop inside a container with VS Code then do the following s
 ### Project Pipeline
 1. Collect the data through **<span style="color: red;">one</span>** of the steps below
     a. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN) OR
-    b. Go to the [Project's Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / <State Initial> / "file"
+    b. Go to the [Project's Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
 2. Open in development container which installs all necessary packages.
 3. Run the project by running ```python utils/pipeline.py``` or ```python3 utils/pipeline.py``` run the processing pipeline that cleans, standardizes, and creates the individuals, organizations, and transactions concatenated into one comprehensive database.
 5. running ```pipeline.py``` returns the tables to the output folder as csv files containing the complete individuals, organizations, and transactions DataFrames combining the AZ, MI, MN, and PA datasets.
