@@ -14,7 +14,7 @@ def assign_col_names(filepath: str, year: int) -> list:
         which the data originates is also taken.
 
     Returns:
-        a list of the appropriate column names for the dataset
+        a list of the appropriate column names for the dataset.
     """
     dir = filepath.split("/")
     file_type = dir[len(dir) - 1]
@@ -369,7 +369,7 @@ def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
         data_frame=cont_by_donor,
         x="YEAR",
         y="TOTAL_CONT_AMT",
-        color="RECIPIENT_TYPE",
+        color="FILER_TYPE",
         title="Pennsylvania Recipients of Annual Contributions (2018 - 2023)",
         labels={
             "TOTAL_CONT_AMT": "Total Contribution Amount",
