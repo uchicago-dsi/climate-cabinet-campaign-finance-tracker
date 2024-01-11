@@ -5,4 +5,12 @@ pre-commit~=2.20
 ipykernel~=6.16
 
 # project packages
-pandas~=1.4
+plotly~=5.17.0
+pandas~=2.0.3
+bs4~=0.0.1
+nbformat~=5.9.2
+spacy~=3.7.2
+beautifulsoup4==4.11.1
+numpy==1.25.0
+Requests==2.31.0
+setuptools==68.0.0
