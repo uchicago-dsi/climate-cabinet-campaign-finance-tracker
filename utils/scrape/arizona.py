@@ -37,21 +37,15 @@ So, to get candidate income, look at page 20, Political party all transactions i
 import pandas as pd
 import requests
 from utils.constants import (
+    repo_root,
     AZ_pages_dict,
     HEADERS,
 )
 
-"""
-1 - Candidate info and their committees
-2 - pacs
-3 - political parties
-
-
-"""
-
 BASE_URL = "https://seethemoney.az.gov/Reporting"
 BASE_ENDPOINT = "GetNEWTableData"
 DETAILED_ENDPOINT = "GetNEWDetailedTableData"
+INFO_ENDPOINT = "GetDetailedInformation"
 AZ_SEARCH_DATA = {
     "draw": "2",
     "order[0][column]": "0",
@@ -77,17 +71,21 @@ AZ_HEADER = HEADERS.update(
 )
 NAME_INFO_PAGE = 11
 AZ_valid_detailed_pages = [v for v in AZ_pages_dict.values() if v >= 20]
+all_transactions_pages = [24, 36, 42, 54, 62, 72, 80, 90]
 
 
-def scrape_and_download_az_data(start_year, end_year, max_per_entity_type=None):
+def scrape_and_download_az_data(start_year, end_year, output_directory=None):
     """Collect and download all arizona data within range"""
-    pages = []
+    if output_directory is None:
+        output_directory = repo_root / "data" / "raw" / "AZ2"
+        output_directory.mkdir(parents=True, exist_ok=True)
     for page in AZ_pages_dict:
-        if AZ_pages_dict[page] < 20:
+        formatted_page = page.replace("/", "-").replace(" ", "-")
+        if AZ_pages_dict[page] not in all_transactions_pages:
             continue
-        page_data = scrape_az_page_data(page, start_year, end_year)
-        pages.append(page_data)
-    return pages
+        transaction_data, filer_data = scrape_az_page_data(page, start_year, end_year)
+        transaction_data.to_csv(output_directory / f"{formatted_page}-transactions.csv")
+        filer_data.to_csv(output_directory / f"{formatted_page}-details.csv")
 
 
 def scrape_az_page_data(
@@ -191,8 +189,7 @@ def detailed_scrape_wrapper(
     start_year: earliest year to include scraped data, inclusive
     end_year: last year to include scraped data, inclusive
 
-    Returns: a pandas dataframe containing the table data for
-    the selected timeframe
+    Returns: 2 pandas dataframes with transaction information and filer information
     """
     max_per_entity_type = 10
     entities = entities[:max_per_entity_type]
@@ -211,7 +208,6 @@ def detailed_scrape_wrapper(
         info_params.append(name_details)
 
     detail_dfs = []
-    entity_names = []
     info_dfs = []
 
     entity_type_code = int(str(page)[0]) - 1
@@ -227,24 +223,18 @@ def detailed_scrape_wrapper(
         detail_df["entity_type"] = entity_type
 
         detail_dfs.append(detail_df)
-    # https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData?Page=20&startYear=2022&endYear=2022&JurisdictionId=0&TablePage=1&TableLength=10&Name=1~100944&entityId=100944&ChartName=20&IsLessActive=false&ShowOfficeHolder=false
-    # https://seethemoney.az.gov/Reporting/GetNEWDetailedTableData?Page=20&startYear=2022&endYear=2022&JurisdictionId=0%7CPage&TablePage=1&TableLength=500000&ChartName=20&IsLessActive=false&ShowOfficeHolder=false&CommitteeId=100994&NameId=100994&Name=1~100994&entityId=100994'
     for info_param in info_params:
-        entity_name, info = info_scrape(info_param)
+        info = scrape(INFO_ENDPOINT, info_param)
         info_table = info.json()
-        entity_names.append(entity_name)  #
+        if info_table == "":
+            continue
         info_dfs.append(pd.DataFrame(data=info_table)[["ReportFilerInfo"]])
 
     info_complete = info_process(
         pd.concat(info_dfs).reset_index().drop(columns={"index"})
     )
-
-    info_complete["retrieved_name"] = entity_names
-
     info_complete["retrieved_id"] = entities
-
     info_complete["entity_type"] = entity_type
-
     return (
         pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
         info_complete,
@@ -361,39 +351,6 @@ def detailed_parametrize(
     return default_parameters
 
 
-def info_scrape(detailed_params: dict) -> requests.models.Response:
-    """Scrape the name and filer information of individuals and organizations
-
-    This function takes in detailed scrape parameters created by
-    detailed_parametrize(), scrapes entity names and their
-    detailed information, and returns both the list of entity
-    names and the dataframe of entity details.
-
-    args: detailed parameters dictionary
-
-    returns: two request responses
-    """
-    entity_name_response = requests.get(
-        "https://seethemoney.az.gov/Reporting/GetEntityName/",
-        params=detailed_params,
-        headers=AZ_HEADER,
-    ).json()
-
-    if str(entity_name_response) == "  ":
-        entity_name_response = None
-
-    else:
-        entity_name_response = entity_name_response.strip()
-
-    info_response = requests.post(
-        "https://seethemoney.az.gov/Reporting/GetDetailedInformation",
-        params=detailed_params,
-        headers=AZ_HEADER,
-    )
-
-    return entity_name_response, info_response
-
-
 def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
     """processes detailed entity information
 
@@ -443,6 +400,3 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
 
 if __name__ == "__main__":
     scrape_and_download_az_data(2022, 2022)
-    # parameters = detailed_parametrize(101502, 24, 2020, 2025)
-    # resp = scrape(DETAILED_ENDPOINT, parameters)
-    # x = 1
