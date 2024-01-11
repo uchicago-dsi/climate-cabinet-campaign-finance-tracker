@@ -1,9 +1,9 @@
-import pandas as pd
 import uuid
+
+import pandas as pd
+
 from utils.clean import StateCleaner
-from utils.cleaner_utils import (
-    convert_date,
-)
+from utils.cleaner_utils import convert_date
 from utils.constants import (
     AZ_INDIVIDUALS_FILEPATH,
     AZ_ORGANIZATIONS_FILEPATH,

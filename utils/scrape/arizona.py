@@ -18,8 +18,8 @@ includes a candidate committee name, which seems to be the conduit for all AZ
 contributions.
 
 Each entity type has pages in a GetNEWDetailedTableData endpoint that have transaction
-level details, starting with the digit that is *one more* than their page digit. 
-(Candidate details start with 2, PAC details start with 3, etc.). The next digit 
+level details, starting with the digit that is *one more* than their page digit.
+(Candidate details start with 2, PAC details start with 3, etc.). The next digit
 represents one of the following, always in the same order, but not always all present:
     Income
     Expense
@@ -36,11 +36,8 @@ So, to get candidate income, look at page 20, Political party all transactions i
 
 import pandas as pd
 import requests
-from utils.constants import (
-    repo_root,
-    AZ_pages_dict,
-    HEADERS,
-)
+
+from utils.constants import HEADERS, AZ_pages_dict, repo_root
 
 BASE_URL = "https://seethemoney.az.gov/Reporting"
 BASE_ENDPOINT = "GetNEWTableData"

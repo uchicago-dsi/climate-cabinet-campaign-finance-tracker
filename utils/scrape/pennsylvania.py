@@ -1,8 +1,8 @@
 import zipfile
 from io import BytesIO
+from pathlib import Path
 
 import requests
-from pathlib import Path
 
 from utils.constants import repo_root
 
