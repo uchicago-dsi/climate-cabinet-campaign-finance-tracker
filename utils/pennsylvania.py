@@ -208,7 +208,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 | (df.RECIPIENT_TYPE == "Candidate")
                 | (df.RECIPIENT_TYPE == "Lobbyist")
             )
-        ][["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]].rename(
+        ][
+            ["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]
+        ].rename(
             columns={
                 "RECIPIENT": "full_name",
                 "RECIPIENT_ID": "id",
@@ -221,12 +223,16 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         all_individuals = all_individuals.drop_duplicates()
 
         new_cols = ["first_name", "last_name", "company"]
-        all_individuals = all_individuals.assign(**{col: None for col in new_cols})
+        all_individuals = all_individuals.assign(
+            **{col: None for col in new_cols}
+        )
         all_individuals["state"] = "PA"
 
         return all_individuals
 
-    def make_organizations_table(self, organizations_df: pd.DataFrame) -> pd.DataFrame:
+    def make_organizations_table(
+        self, organizations_df: pd.DataFrame
+    ) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
         committees or organizations and returns a dataframe with strictly
         committee/organization information pertinent to the StateCleaner schema.
@@ -243,7 +249,11 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 | (organizations_df.DONOR_TYPE == "Organization")
             )
         ][["DONOR_ID", "DONOR", "DONOR_TYPE"]].rename(
-            columns={"DONOR_ID": "id", "DONOR": "name", "DONOR_TYPE": "entity_type"}
+            columns={
+                "DONOR_ID": "id",
+                "DONOR": "name",
+                "DONOR_TYPE": "entity_type",
+            }
         )
         recipient_organizations = organizations_df.loc[
             (
@@ -261,7 +271,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "RECIPIENT_TYPE": "entity_type",
             }
         )
-        all_organizations = pd.concat([donor_organizations, recipient_organizations])
+        all_organizations = pd.concat(
+            [donor_organizations, recipient_organizations]
+        )
         all_organizations = all_organizations.drop_duplicates()
         all_organizations["state"] = "PA"
 
@@ -334,7 +346,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # Organizations -> Individuals
         org_to_ind = df.loc[
             (
-                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
+                (
+                    (df.donor_type == "Committee")
+                    | (df.donor_type == "Organization")
+                )
                 & (
                     (df.recipient_type == "Candidate")
                     | (df.recipient_type == "Lobbyist")
@@ -345,7 +360,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # Organizations -> Organizations:
         org_to_org = df.loc[
             (
-                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
+                (
+                    (df.donor_type == "Committee")
+                    | (df.donor_type == "Organization")
+                )
                 & (
                     (df.recipient_type == "Committee")
                     | (df.recipient_type == "Organization")
@@ -541,7 +559,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         Returns
             The merged pandas dataframe
         """
-        merged_df = pd.merge(cont_file, filer_file, how="left", on="RECIPIENT_ID")
+        merged_df = pd.merge(
+            cont_file, filer_file, how="left", on="RECIPIENT_ID"
+        )
         return merged_df
 
     def merge_expend_filer_datasets(
@@ -623,7 +643,9 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # contributors dataset
         na_free = df.dropna(subset="DONOR_TYPE")
         only_na = df[~df.index.isin(na_free.index)]
-        only_na["DONOR_TYPE"] = only_na["DONOR"].apply(self.classify_contributor)
+        only_na["DONOR_TYPE"] = only_na["DONOR"].apply(
+            self.classify_contributor
+        )
         df = pd.concat([na_free, only_na])
 
         columns = df.columns.to_list()
@@ -698,7 +720,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             columns={"DONOR_TYPE": "entity_type", "DONOR_ID": "database_id"}
         )
         recipients = recipients.rename(
-            columns={"RECIPIENT_TYPE": "entity_type", "RECIPIENT_ID": "database_id"}
+            columns={
+                "RECIPIENT_TYPE": "entity_type",
+                "RECIPIENT_ID": "database_id",
+            }
         )
 
         entities = pd.concat([donors, recipients])

@@ -214,7 +214,10 @@ def az_donor_recipient_director(row):
 
     """
     if row["TransactionTypeDispositionId"] == 2:
-        row["donor_id"], row["recipient_id"] = row["recipient_id"], row["donor_id"]
+        row["donor_id"], row["recipient_id"] = (
+            row["recipient_id"],
+            row["donor_id"],
+        )
     return row
 
 
@@ -236,9 +239,9 @@ def az_employment_checker(row, transactions):
     if row["entity_type"] == "Candidate":
         row["company"] = "None (Is a Candidate)"
     else:
-        transactions[transactions["retrieved_id"] == row["retrieved_id"]].iloc[0][
-            "TransactionEmployer"
-        ]
+        transactions[transactions["retrieved_id"] == row["retrieved_id"]].iloc[
+            0
+        ]["TransactionEmployer"]
         row["company"] = transactions[
             transactions["retrieved_id"] == row["retrieved_id"]
         ].iloc[0]["TransactionEmployer"]
@@ -279,7 +282,9 @@ def az_id_table(
     trans_ids = transactions_df["transaction_id"]
 
     years = pd.concat[
-        individuals_df["year"], organizations_df["year"], transactions_df["year"]
+        individuals_df["year"],
+        organizations_df["year"],
+        transactions_df["year"],
     ]
 
     all_ids = pd.concat([ind_ids, org_ids, trans_ids])
@@ -298,7 +303,9 @@ def az_id_table(
     }
 
     id_map_df = pd.DataFrame(data=d)
-    id_map_df["database_id"] = [uuid.uuid4() for _ in range(len(id_map_df.index))]
+    id_map_df["database_id"] = [
+        uuid.uuid4() for _ in range(len(id_map_df.index))
+    ]
 
     return id_map_df
 
@@ -329,7 +336,9 @@ class ArizonaCleaner(StateCleaner):
 
         details = pd.concat([individuals, organizations])
 
-        cleaned_transactions, cleaned_details = self.clean([transactions, details])
+        cleaned_transactions, cleaned_details = self.clean(
+            [transactions, details]
+        )
 
         standardized_transactions, standardized_details = self.standardize(
             [cleaned_transactions, cleaned_details]
@@ -339,7 +348,9 @@ class ArizonaCleaner(StateCleaner):
             az_individuals,
             az_organizations,
             az_transactions,
-        ) = self.create_tables([standardized_transactions, standardized_details])
+        ) = self.create_tables(
+            [standardized_transactions, standardized_details]
+        )
 
         return (az_individuals, az_organizations, az_transactions)
 
@@ -418,7 +429,9 @@ class ArizonaCleaner(StateCleaner):
 
         return (az_individuals, az_organizations, az_transactions)
 
-    def standardize(self, details_df_list: list[pd.DataFrame]) -> list[pd.DataFrame]:
+    def standardize(
+        self, details_df_list: list[pd.DataFrame]
+    ) -> list[pd.DataFrame]:
         """standardize names of entities
 
         takes in details dataframe and replaces the names of
@@ -458,22 +471,28 @@ class ArizonaCleaner(StateCleaner):
         """
         transactions, entities = data
 
-        merged_df = pd.merge(entities, transactions, on="retrieved_id", how="inner")
+        merged_df = pd.merge(
+            entities, transactions, on="retrieved_id", how="inner"
+        )
 
         # Filter rows in the first dataframe based on the common 'ids'
-        entities = entities[entities["retrieved_id"].isin(merged_df["retrieved_id"])]
+        entities = entities[
+            entities["retrieved_id"].isin(merged_df["retrieved_id"])
+        ]
 
         try:
-            transactions["TransactionDate"] = transactions["TransactionDate"].apply(
-                convert_date
-            )
+            transactions["TransactionDate"] = transactions[
+                "TransactionDate"
+            ].apply(convert_date)
         except TypeError as e:
             print(f"Error converting Arizona dates: {e}")
             transactions["TransactionDate"] = transactions["TransactionDate"]
 
         entities = az_name_clean(entities)
 
-        entities = entities.apply(az_employment_checker, args=(transactions,), axis=1)
+        entities = entities.apply(
+            az_employment_checker, args=(transactions,), axis=1
+        )
 
         transactions = transactions.apply(az_transactor_sorter, axis=1)
 
@@ -485,7 +504,9 @@ class ArizonaCleaner(StateCleaner):
             right_on="retrieved_id",
         )
 
-        office_sought = merged_df.where(pd.notnull(merged_df), None)["office_name"]
+        office_sought = merged_df.where(pd.notnull(merged_df), None)[
+            "office_name"
+        ]
 
         transactions["office_sought"] = office_sought
 

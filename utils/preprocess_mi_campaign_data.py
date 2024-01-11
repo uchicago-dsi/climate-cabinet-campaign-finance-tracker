@@ -60,7 +60,9 @@ def read_contribution_data(filepath: str, columns: list[str]) -> pd.DataFrame:
 
 
 # NOTE: DEPRECIATED
-def plot_year_contribution_types(all_year_contribution_dataframe: pd.DataFrame) -> None:
+def plot_year_contribution_types(
+    all_year_contribution_dataframe: pd.DataFrame,
+) -> None:
     """Plots contributions per year by type
 
     Inputs: year: year to plot
@@ -93,7 +95,9 @@ def plot_year_contribution_types(all_year_contribution_dataframe: pd.DataFrame) 
 
 
 # NOTE: DEPRECIATED
-def plot_committee_types_by_year(all_year_contribution_dataframe: pd.DataFrame) -> None:
+def plot_committee_types_by_year(
+    all_year_contribution_dataframe: pd.DataFrame,
+) -> None:
     """Plots committees contributions per year by type
 
     Inputs: year : year to plot
@@ -186,7 +190,9 @@ def plot_expenditure_committee_types_by_year(
 
 
 # NOTE: DEPRECIATED
-def plot_year_schedule_types(all_year_expenditure_dataframe: pd.DataFrame) -> None:
+def plot_year_schedule_types(
+    all_year_expenditure_dataframe: pd.DataFrame,
+) -> None:
     """Plots committees contributions per year by type
 
     Inputs: year: year to plot
@@ -196,7 +202,9 @@ def plot_year_schedule_types(all_year_expenditure_dataframe: pd.DataFrame) -> No
     Return: None
     """
     expenditure_schedule_types_by_year = (
-        all_year_expenditure_dataframe.groupby("doc_stmnt_year")["schedule_desc"]
+        all_year_expenditure_dataframe.groupby("doc_stmnt_year")[
+            "schedule_desc"
+        ]
         .value_counts()
         .reset_index()
     )

@@ -70,7 +70,9 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
     Returns:
         a pandas dataframe whose columns are appropriately formatted.
     """
-    df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
+    df["TOTAL_CONT_AMT"] = (
+        df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
+    )
     df["DONOR"] = df["DONOR"].astype("str")
     df["DONOR"] = df["DONOR"].str.upper()
     df["DONOR_TYPE"] = df["DONOR"].apply(classify_contributor)
@@ -170,7 +172,9 @@ def pre_process_expense_dataset(df: pd.DataFrame):
         inplace=True,
     )
     if "EXPENSE_REPORTER_ID" in df.columns:
-        df.drop(columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True)
+        df.drop(
+            columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True
+        )
     df["PURPOSE"] = df["PURPOSE"].apply(lambda x: str(x).upper())
     df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).upper())
 
@@ -311,7 +315,9 @@ def group_filerType_Party(dataset: pd.DataFrame) -> object:
 
     Returns:
         A table object"""
-    return dataset.groupby(["RECIPIENT_TYPE", "PARTY"]).agg({"TOTAL_CONT_AMT": sum})
+    return dataset.groupby(["RECIPIENT_TYPE", "PARTY"]).agg(
+        {"TOTAL_CONT_AMT": sum}
+    )
 
 
 def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:

@@ -18,7 +18,9 @@ AZ_INDIVIDUALS_FILEPATH = (
     BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
 )
 
-AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
+AZ_ORGANIZATIONS_FILEPATH = (
+    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
+)
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -368,7 +370,11 @@ PA_OFFICE_ABBREV_DICT: dict = {
     "RSC": "Member of Rep State Committee",
     "OTH": "Other(local offices)",
 }
-PA_FILER_ABBREV_DICT: dict = {1.0: "Candidate", 2.0: "Committee", 3.0: "Lobbyist"}
+PA_FILER_ABBREV_DICT: dict = {
+    1.0: "Candidate",
+    2.0: "Committee",
+    3.0: "Lobbyist",
+}
 
 PA_ORGANIZATION_IDENTIFIERS: list = [
     "FRIENDS",
