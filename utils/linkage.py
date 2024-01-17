@@ -43,4 +43,6 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             continue
         else:
             string += [part]
-    return " ".join(string)
+
+    string = " ".join(string)
+    print('"{}"'.format(string))
