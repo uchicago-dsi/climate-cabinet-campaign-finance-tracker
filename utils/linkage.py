@@ -38,8 +38,7 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
 
     string = []
     for part in parts:
-        part_lower = part.lower()
-        if part.isdigit() or "." in part_lower:
+        if part.isdigit() or "." in part:
             continue
         else:
             string += [part]
