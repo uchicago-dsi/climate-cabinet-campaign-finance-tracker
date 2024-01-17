@@ -15,7 +15,7 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             found.
 
     >>> get_street_from_address_line_1("5645 N. UBER ST")
-    "UBER ST"
+    'UBER ST'
     >>> get_street_from_address_line_1("")
     Traceback (most recent call last):
         ...
@@ -37,12 +37,11 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     parts = address_line_1.split()
 
     string = []
-    for _, part in enumerate(parts):
+    for part in parts:
         part_lower = part.lower()
         if part.isdigit() or "." in part_lower:
             continue
         else:
             string += [part]
 
-    string = " ".join(string)
-    print('"{}"'.format(string))
+    return " ".join(string)
