@@ -37,7 +37,7 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     parts = address_line_1.split()
 
     string = []
-    for i, part in enumerate(parts):
+    for part in enumerate(parts):
         part_lower = part.lower()
         if part.isdigit() or "." in part_lower:
             continue
