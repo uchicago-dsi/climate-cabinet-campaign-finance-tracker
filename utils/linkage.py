@@ -30,4 +30,4 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
     True
     """
 
-    return float(td.jaro_winkler(string1, string2))
+    return float(td.jaro_winkler(string1.lower(), string2.lower()))
