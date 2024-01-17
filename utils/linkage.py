@@ -26,7 +26,7 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
     0.0
     >>> similar_score = calculate_string_similarity("very similar", "vary similar")
     >>> different_score = calculate_string_similarity("very similar", "very not close")
-    >>> similar_socre > different_score
+    >>> similar_score > different_score
     True
     """
 
