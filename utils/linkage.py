@@ -67,9 +67,5 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     names = " ".join(names)
     names = names.split(" ")
     final_name = []
-    [
-        final_name.append(x)
-        for x in names
-        if ((x not in final_name) & (len(x) != 0))
-    ]
-    return " ".join(final_name).title()
+    [final_name.append(x) for x in names if x not in final_name]
+    return " ".join(final_name).title().strip()
