@@ -62,13 +62,19 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
 
     Sample Usage:
     >>> get_likely_name("Jane", "Doe", "")
-    "Jane Doe"
+    'Jane Doe'
     >>> get_likely_name("", "", "Jane Doe")
-    "Jane Doe"
+    'Jane Doe'
     >>> get_likely_name("", "Doe, Jane", "")
-    "Jane Doe"
+    'Jane Doe'
     >>> get_likely_name("Jane Doe", "Doe", "Jane Doe")
-    "Jane Doe"
+    'Jane Doe'
+    >>> get_likely_name("Jane","","Doe, Sr")
+    'Jane Doe, Sr'
+    >>> get_likely_name("Jane Elisabeth Doe, IV","Elisabeth","Doe, IV)
+    'Jane Elisabeth Doe, Iv'
+    >>> get_likely_name("","",Jane Elisabeth Doe, IV")
+    'Jane Elisabeth Doe Iv'
     """
     # first ensure clean input by deleting spaces:
     first_name, last_name, full_name = list(
@@ -99,16 +105,14 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
         # if there is a ',' deal with it accordingly
         if "," in names[i]:
             names[i] = determine_comma_role(names[i])
-            print(names[i])
+
         names[i] = names[i].replace(".", "").split(" ")
         names[i] = [
             name_part for name_part in names[i] if name_part not in titles
         ]
         names[i] = " ".join(names[i])
-        print(names[i])
 
     names = " ".join(names)
-    print("after comma: ", names)
     names = names.split(" ")
     final_name = []
     [final_name.append(x) for x in names if x not in final_name]
