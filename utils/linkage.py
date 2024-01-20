@@ -111,9 +111,9 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
             name_part for name_part in names[i] if name_part not in titles
         ]
         names[i] = " ".join(names[i])
-    
-    #one last check to remove any pieces that might add extra whitespace
-    names = list(filter(lambda x: x != '', names))
+
+    # one last check to remove any pieces that might add extra whitespace
+    names = list(filter(lambda x: x != "", names))
     names = " ".join(names)
     names = names.split(" ")
     final_name = []
