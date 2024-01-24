@@ -1,6 +1,7 @@
 """
 Module for performing record linkage on state campaign finance dataset
 """
+import usaddress
 
 
 def get_street_from_address_line_1(address_line_1: str) -> str:
@@ -24,8 +25,13 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     Traceback (most recent call last):
         ...
     ValueError: address_line_1 is PO Box
+    >>> get_street_from_address_line_1("300 59 St.")
+    '59 St.'
+    >>> get_street_from_address_line_1("Uber St.")
+    'Uber St.'
+    >>> get_street_from_address_line_1("3NW 59th St")
+    '59th St'
     """
-
     if not address_line_1 or address_line_1.isspace():
         raise ValueError("address_line_1 must have whitespace")
 
@@ -34,13 +40,10 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     if "po box" in address_line_lower:
         raise ValueError("address_line_1 is PO Box")
 
-    parts = address_line_1.split()
-
     string = []
-    for part in parts:
-        if part.isdigit() or "." in part:
-            continue
-        else:
-            string += [part]
+    address = usaddress.parse(address_line_1)
+    for key, val in address:
+        if val in ["StreetName", "StreetNamePostType"]:
+            string.append(key)
 
     return " ".join(string)
