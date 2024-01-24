@@ -5,6 +5,7 @@ import usaddress
 Module for performing record linkage on state campaign finance dataset
 """
 
+
 def calculate_string_similarity(string1: str, string2: str) -> float:
     """Returns how similar two strings are on a scale of 0 to 1
 
@@ -86,4 +87,3 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             string.append(key)
 
     return " ".join(string)
-
