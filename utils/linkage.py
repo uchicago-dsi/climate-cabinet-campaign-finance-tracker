@@ -8,9 +8,9 @@ Module for performing record linkage on state campaign finance dataset
 def calculate_string_similarity(string1: str, string2: str) -> float:
     """Returns how similar two strings are on a scale of 0 to 1
 
-    This version utilizes Jaro-Winkler distance, which is a metric of 
-    edit distance. Jaro-Winkler specially prioritizes the early 
-    characters in a string. 
+    This version utilizes Jaro-Winkler distance, which is a metric of
+    edit distance. Jaro-Winkler specially prioritizes the early
+    characters in a string.
 
     Since the ends of strings are often more valuable in matching names
     and addresses, we reverse the strings before matching them.
