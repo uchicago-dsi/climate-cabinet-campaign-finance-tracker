@@ -60,6 +60,23 @@ def calculate_row_similarity(
     exists as to provide basic functionality. Once we have
     the comparison function locked in, using .apply will
     likely be easier and more efficient.
+
+    >>> d = {'name': ["bob von rosevich", "anantarya smith", "bob j
+    vonrosevich"],'address': ["3 Circle Drive, Chicago, Illinois",
+    "4 Circle Drive, Chicago, Illinois", "8 Fancy Way, Chicago, Illinois"]}
+    >>> df = pd.DataFrame(data = d)
+    >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],
+    np.array([.8, .2]), calculate_string_similarity)
+    >>> right = calculate_row_similarity(df.iloc[[0]], df.iloc[[2]],
+    np.array([.8, .2]), calculate_string_similarity)
+    >>> right > wrong
+    True
+    >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],
+    np.array([.2, .8]), calculate_string_similarity)
+    >>> right = calculate_row_similarity(df.iloc[[0]], df.iloc[[2]],
+    np.array([.2, .8]), calculate_string_similarity)
+    >>> right > wrong
+    False
     """
 
     row_length = len(weights)
@@ -69,7 +86,10 @@ def calculate_row_similarity(
     similarity = np.zeros(row_length)
 
     for i in range(row_length):
-        similarity[i] = comparison_func(row1.iloc[:, i], row2.iloc[:, i])
+        similarity[i] = comparison_func(
+            row1.reset_index().drop(columns="index").iloc[:, i][0],
+            row2.reset_index().drop(columns="index").iloc[:, i][0],
+        )
 
     return sum(similarity * weights)
 
@@ -84,7 +104,8 @@ def row_matches(
     row which is matched to any other row is not examined again. Matches are
     stored in a dictionary object, with each index appearing no more than once.
 
-    This is not optimized
+    This is not optimized. Not presently sure how to make a good test case
+    for this, will submit and ask in mentor session.
     """
 
     all_indices = np.array(list(df.index))
