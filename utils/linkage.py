@@ -47,31 +47,6 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
     return float(td.jaro_winkler(string1.lower()[::-1], string2.lower()[::-1]))
 
 
-def get_street_from_address_line_1(address_line_1: str) -> str:
-    """Given an address line 1, return the street name
-
-    Args:
-        address_line_1: either street information or PO box
-    Returns:
-        street name
-    Raises:
-        ValueError: if string is malformed and no street can be reasonably
-            found.
-
-    >>> get_street_from_address_line_1("5645 N. UBER ST")
-    'UBER ST'
-    >>> get_street_from_address_line_1("")
-    Traceback (most recent call last):
-        ...
-    ValueError: address_line_1 must have whitespace
-    >>> get_street_from_address_line_1("PO Box 1111")
-    Traceback (most recent call last):
-        ...
-    ValueError: address_line_1 is PO Box
-    """
-    pass
-
-
 def calculate_row_similarity(
     row1: pd.DataFrame, row2: pd.DataFrame, weights: np.array, comparison_func
 ) -> float:
