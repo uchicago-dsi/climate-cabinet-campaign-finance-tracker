@@ -138,7 +138,9 @@ def calculate_row_similarity(
     return sum(similarity * weights)
 
 
-def row_matches(df: pd.DataFrame, weights: np.array, threshold: float, comparison_func) -> dict:
+def row_matches(
+    df: pd.DataFrame, weights: np.array, threshold: float, comparison_func
+) -> dict:
     """Get weighted similarity score of two rows
 
     Run through the rows using indices: if two rows have a comparison score
@@ -168,7 +170,12 @@ def row_matches(df: pd.DataFrame, weights: np.array, threshold: float, compariso
                 continue
 
             # Our conditional
-            if calculate_row_similarity(df.iloc[[i]], df.iloc[[j]], weights, comparison_func) > threshold:
+            if (
+                calculate_row_similarity(
+                    df.iloc[[i]], df.iloc[[j]], weights, comparison_func
+                )
+                > threshold
+            ):
                 # Store the other index and mark it for skipping in future iterations
                 discard_indices.append(j)
                 index_dict[i].append[j]
