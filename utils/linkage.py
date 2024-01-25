@@ -61,8 +61,8 @@ def calculate_row_similarity(
     the comparison function locked in, using .apply will
     likely be easier and more efficient.
 
-    >>> d = {'name': ["bob von rosevich", "anantarya smith", "bob j
-    vonrosevich"],'address': ["3 Circle Drive, Chicago, Illinois",
+    >>> d = {'name': ["bob von rosevich", "anantarya smith",
+    "bob j vonrosevich"],'address': ["3 Circle Drive, Chicago, Illinois",
     "4 Circle Drive, Chicago, Illinois", "8 Fancy Way, Chicago, Illinois"]}
     >>> df = pd.DataFrame(data = d)
     >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],
