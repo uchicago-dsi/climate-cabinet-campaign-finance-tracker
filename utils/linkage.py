@@ -1,5 +1,6 @@
 import textdistance as td
-import usaddress
+
+# import usaddress
 
 """
 Module for performing record linkage on state campaign finance dataset
