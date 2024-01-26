@@ -5,8 +5,8 @@ import usaddress
 Module for performing record linkage on state campaign finance dataset
 """
 
+
 def get_address_line_1_from_full_address(address: str) -> str:
-   
     """Given a full address, return the first line of the formatted address
 
     Address line 1 usually includes street address or PO Box information.
@@ -30,11 +30,13 @@ def get_address_line_1_from_full_address(address: str) -> str:
     """
     pass
 
-    address_tuples = usaddress.parse(address) #takes a string address and put them into value,key pairs as tuples
+    address_tuples = usaddress.parse(
+        address
+    )  # takes a string address and put them into value,key pairs as tuples
     line1_components = []
-    for value,key in address_tuples:
+    for value, key in address_tuples:
         if key == "PlaceName":
-            break 
+            break
         elif key in (
             "AddressNumber",
             "StreetNamePreDirectional",
@@ -46,7 +48,6 @@ def get_address_line_1_from_full_address(address: str) -> str:
             line1_components.append(value)
     line1 = " ".join(line1_components)
     return line1
-
 
 
 def calculate_string_similarity(string1: str, string2: str) -> float:
