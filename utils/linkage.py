@@ -4,6 +4,7 @@ Module for performing record linkage on state campaign finance dataset
 import textdistance as td
 import usaddress
 
+
 def calculate_string_similarity(string1: str, string2: str) -> float:
     """Returns how similar two strings are on a scale of 0 to 1
 
@@ -75,8 +76,8 @@ def determine_comma_role(name: str) -> str:
     if name_parts[1].strip() in suffixes:
         return name
     # at this point either it's just poor name placement, or the suffix is
-    # in the beginning of the name. Either way, the first part of the list is the
-    # true last name.
+    # in the beginning of the name. Either way, the first part of the list is
+    # the true last name.
     last_part = name_parts.pop(0)
     first_part = " ".join(name_parts)
     return first_part + " " + last_part
@@ -157,7 +158,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     final_name = []
     [final_name.append(x) for x in names if x not in final_name]
     return " ".join(final_name).title().strip()
-    
+
 
 def get_street_from_address_line_1(address_line_1: str) -> str:
     """Given an address line 1, return the street name
