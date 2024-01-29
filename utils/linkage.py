@@ -36,6 +36,7 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
 
     return float(td.jaro_winkler(string1.lower()[::-1], string2.lower()[::-1]))
 
+
 def determine_comma_role(name: str) -> str:
     """Given a string (someone's name), attempts to determine the role of the
     comma in the name and where it ought to belong.
