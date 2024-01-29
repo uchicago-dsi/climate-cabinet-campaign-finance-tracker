@@ -17,16 +17,16 @@ def get_address_line_1_from_full_address(address: str) -> str:
         address_line_1
 
     Sample Usage:
-    >>> get_address_line_1_from_full_address("6727 W. Corrine Dr.  Peoria,AZ 85381")
-    "6727 W. Corrine Dr."
-    >>> get_address_line_1_from_full_address("P.O. Box 5456  Sun City West ,AZ 85375")
-    "P.O. Box 5456"
-    >>> get_address_line_1_from_full_address("119 S 5th St  Niles,MI 49120")
-    "119 S 5th St"
+    >>> get_address_line_1_from_full_address('6727 W. Corrine Dr.  Peoria,AZ 85381')
+    '6727 W. Corrine Dr.'
+    >>> get_address_line_1_from_full_address('P.O. Box 5456  Sun City West ,AZ 85375')
+    'P.O. Box 5456'
+    >>> get_address_line_1_from_full_address('119 S 5th St  Niles,MI 49120')
+    '119 S 5th St'
     >>> get_address_line_1_from_full_address(
-    ...     "1415 PARKER STREET APT 251	DETROIT	MI	48214-0000"
+    ...     '1415 PARKER STREET APT 251	DETROIT	MI	48214-0000'
     ... )
-    "1415 PARKER STREET"
+    '1415 PARKER STREET'
     """
     pass
 
