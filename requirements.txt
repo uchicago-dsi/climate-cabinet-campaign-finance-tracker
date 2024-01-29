@@ -17,3 +17,5 @@ beautifulsoup4==4.11.1
 numpy==1.25.0
 Requests==2.31.0
 setuptools==68.0.0
+textdistance==4.6.1
+usaddress==0.5.4

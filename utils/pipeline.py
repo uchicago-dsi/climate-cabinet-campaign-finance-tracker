@@ -18,6 +18,7 @@ if __name__ == "__main__":
     single_state_organizations_tables = []
     single_state_transactions_tables = []
     for state_cleaner in state_cleaners:
+        print("Cleaning...")
         (
             individuals_table,
             organizations_table,
