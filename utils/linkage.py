@@ -87,3 +87,69 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             string.append(key)
 
     return " ".join(string)
+
+
+def standardize_corp_names(company_name: str) -> str:
+    """Given an employer name, return the standardized version
+
+    Args:
+        company_name: corporate name
+    Returns:
+        standardized company name
+        
+    >>>standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC')
+    'MI BEER WINE WHOLESALERS ASSOCIATION'
+    
+    >>>standardize_corp_names('MI COMMUNITY COLLEGE ASSOCIATION')
+    'MI COMMUNITY COLLEGE ASSOCIATION'
+    
+    >>>standardize_corp_names('STEPHANIES CHANGEMAKER FUND')
+    'STEPHANIES CHANGEMAKER FUND' 
+    
+    """
+
+
+    company_name_split = company_name.upper().split(' ')
+
+    company_types = {
+    'CORP': 'CORPORATION',
+    'CO': 'CORPORATION',
+    'LLC': 'LIMITED LIABILITY COMPANY',
+    'PTNR': 'PARTNERSHIP',
+    'LP': 'LIMITED PARTNERSHIP',
+    'LLP': 'LIMITED LIABILITY PARTNERSHIP',
+    'SOLE PROP': 'SOLE PROPRIETORSHIP',
+    'SP': 'SOLE PROPRIETORSHIP',
+    'NPO': 'NONPROFIT ORGANIZATION',
+    'PC': 'PROFESSIONAL CORPORATION',
+    'CO-OP': 'COOPERATIVE',
+    'LTD': 'LIMITED COMPANY',
+    'JSC': 'JOINT STOCK COMPANY',
+    'HOLDCO': 'HOLDING COMPANY',
+    'PLC': 'PUBLIC LIMITED COMPANY',
+    'PVT LTD': 'PRIVATE LIMITED COMPANY',
+    'INC': 'INCORPORATED',
+    'ASSOC': 'ASSOCIATION',
+    'FDN': 'FOUNDATION',
+    'TR': 'TRUST',
+    'SOC': 'SOCIETY',
+    'CONSORT': 'CONSORTIUM',
+    'SYND': 'SYNDICATE',
+    'GRP': 'GROUP',
+    'CORP SOLE': 'CORPORATION SOLE',
+    'JV': 'JOINT VENTURE',
+    'SUB': 'SUBSIDIARY',
+    'FRANCHISE': 'FRANCHISE',
+    'PA': 'PROFESSIONAL ASSOCIATION',
+    'CIC': 'COMMUNITY INTEREST COMPANY',
+    
+    'PAC': 'POLITICAL ACTION COMMITTEE'
+}
+
+    for i in range(len(company_name_split)):
+        if company_name_split[i] in list(company_types.keys()):
+            hold = company_name_split[i]
+            company_name_split[i] = company_types[hold]
+
+    new_company_name = ' '.join(company_name_split)
+    return new_company_name
