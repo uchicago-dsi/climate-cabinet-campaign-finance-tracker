@@ -61,21 +61,21 @@ def calculate_row_similarity(
     the comparison function locked in, using .apply will
     likely be easier and more efficient.
 
-    >>> d = {
-    ...     'name':["bob von rosevich", "anantarya smith","bob j vonrosevich"],
-    ...     'address': ["3 Blue Drive, Chicago", "4 Blue Drive,
+    >>> d = {\
+    ...     'name':["bob von rosevich", "anantarya smith","bob j vonrosevich"],\
+    ...     'address': ["3 Blue Drive, Chicago", "4 Blue Drive,\
     ...     Chicago", "8 Fancy Way, Chicago"]}
     >>> df = pd.DataFrame(data = d)
-    >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],
+    >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],\
     ...     np.array([.8, .2]), calculate_string_similarity)
-    >>> right = calculate_row_similarity(df.iloc[[0]], df.iloc[[2]],
+    >>> right = calculate_row_similarity(df.iloc[[0]], df.iloc[[2]],\
     ...     np.array([.8, .2]), calculate_string_similarity)
     >>> right > wrong
     True
-    >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],
+    >>> wrong = calculate_row_similarity(df.iloc[[0]], df.iloc[[1]],\
     ...     np.array([.2, .8]), calculate_string_similarity)
     >>> right = calculate_row_similarity(df.iloc[[0]], df.iloc[[2]],
-    ...     np.array([.2, .8]), calculate_string_similarity)
+    ...     np.array([.2, .8]), calculate_string_similarity)\
     >>> right > wrong
     False
     """
