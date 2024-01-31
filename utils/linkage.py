@@ -174,13 +174,13 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
         address or po box number
 
     Sample Usage:
-    >>> get_building_from_address_line_1('6727 W. Corrine Dr.  Peoria,AZ 85381')
+    >>> get_address_number_from_address_line_1('6727 W. Corrine Dr.  Peoria,AZ 85381')
     '6727'
-    >>> get_building_from_address_line_1('P.O. Box 5456  Sun City West ,AZ 85375')
+    >>> get_address_number_from_address_line_1('P.O. Box 5456  Sun City West ,AZ 85375')
     'P.O. Box 5456'
-    >>> get_building_from_address_line_1('119 S 5th St  Niles,MI 49120')
+    >>> get_address_number_from_address_line_1('119 S 5th St  Niles,MI 49120')
     '119'
-    >>> get_building_from_address_line_1(
+    >>> get_address_number_from_address_line_1(
     ...     '1415 PARKER STREET APT 251	DETROIT	MI	48214-0000'
     ... )
     '1415'
