@@ -1,5 +1,9 @@
 import textdistance as td
 import usaddress
+from names_dataset import NameDataset
+
+nd = NameDataset()
+# 'The library takes time to initialize because the database is massive.'
 
 """
 Module for performing record linkage on state campaign finance dataset
@@ -131,3 +135,36 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             string.append(key)
 
     return " ".join(string)
+
+
+def name_rank(first_name: str, last_name: str) -> list:
+    """Returns a score for the rank of a first name and last name in the US
+    https://github.com/philipperemy/name-dataset
+
+    Args:
+        first_name: any string
+        last_name: any string
+    Returns:
+        name rank for first name and last names
+        1 is the most common name, only for names in the 'United States'
+        first element is the element corresponds to the rank of the first name
+        second element is the element corresponds to the rank of the last name
+    """
+
+    first_name_result = nd.search(first_name)
+    last_name_result = nd.search(last_name)
+    first_name_rank = 0
+    last_name_rank = 0
+    try:
+        first_name_rank = first_name_result["first_name"]["rank"][
+            "United States"
+        ]
+    except KeyError:
+        pass
+
+    try:
+        last_name_rank = last_name_result["last_name"]["rank"]["United States"]
+    except KeyError:
+        pass
+
+    return [first_name_rank, last_name_rank]
