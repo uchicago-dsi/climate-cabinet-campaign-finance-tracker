@@ -123,7 +123,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     >>> get_likely_name("Jane Elisabeth Doe, IV","Elisabeth","Doe, IV")
     'Jane Elisabeth Doe, Iv'
     >>> get_likely_name("","","Jane Elisabeth Doe, IV")
-    'Jane Elisabeth Doe Iv'
+    'Jane Elisabeth Doe, Iv'
     >>> get_likely_name("Jane","","Doe, Jane, Elisabeth")
     'Jane Elisabeth Doe'
     """
