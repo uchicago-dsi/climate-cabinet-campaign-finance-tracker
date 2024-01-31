@@ -53,6 +53,16 @@ def determine_comma_role(name: str) -> str:
         name: a string representing a name/names of individuals
     Returns:
         the name with or without a comma based on some conditions
+
+    Sample Usage:
+    >>> determine_comma_role("Jane Doe, Jr")
+    'Jane Doe, Jr'
+    >>> determine_comma_role("Doe, Jane Elisabeth")
+    ' Jane Elisabeth Doe'
+    >>> determine_comma_role("Jane Doe,")
+    'Jane Doe'
+    >>> determine_comma_role("DOe, Jane")
+    ' Jane Doe'
     """
     suffixes = [
         "sr",
@@ -68,19 +78,19 @@ def determine_comma_role(name: str) -> str:
         "ix",
         "x",
     ]
-    name_parts = name.split(",")
+    name_parts = name.lower().split(",")
     # if the comma is just in the end as a typo:
     if len(name_parts[1]) == 0:
-        return name_parts[0]
+        return name_parts[0].title()
     # if just the suffix in the end, leave the name as it is
     if name_parts[1].strip() in suffixes:
-        return name
+        return name.title()
     # at this point either it's just poor name placement, or the suffix is
     # in the beginning of the name. Either way, the first part of the list is
     # the true last name.
     last_part = name_parts.pop(0)
     first_part = " ".join(name_parts)
-    return first_part + " " + last_part
+    return first_part.title() + " " + last_part.title()
 
 
 def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
@@ -114,6 +124,8 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     'Jane Elisabeth Doe, Iv'
     >>> get_likely_name("","","Jane Elisabeth Doe, IV")
     'Jane Elisabeth Doe Iv'
+    >>> get_likely_name("Jane","","Doe, Jane, Elisabeth")
+    'Jane Elisabeth Doe'
     """
     # first ensure clean input by deleting spaces:
     first_name, last_name, full_name = list(
@@ -154,10 +166,10 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     # one last check to remove any pieces that might add extra whitespace
     names = list(filter(lambda x: x != "", names))
     names = " ".join(names)
-    names = names.split(" ")
+    names = names.title().replace("  ", " ").split(" ")
     final_name = []
     [final_name.append(x) for x in names if x not in final_name]
-    return " ".join(final_name).title().strip()
+    return " ".join(final_name).strip()
 
 
 def get_street_from_address_line_1(address_line_1: str) -> str:
