@@ -1,6 +1,6 @@
-import textdistance as td
 import numpy as np
 import pandas as pd
+import textdistance as td
 import usaddress
 
 """
