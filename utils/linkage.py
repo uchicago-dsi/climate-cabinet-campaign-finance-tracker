@@ -118,6 +118,3 @@ def standardize_corp_names(company_name: str) -> str:
 
     new_company_name = " ".join(company_name_split)
     return new_company_name
-
-
-print(standardize_corp_names("MI BEER WINE WHOLESALERS ASSOCIATION"))
