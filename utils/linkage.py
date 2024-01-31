@@ -1,8 +1,7 @@
-from utils.constants import (
-    COMPANY_TYPES
-)
 import textdistance as td
 import usaddress
+
+from utils.constants import COMPANY_TYPES
 
 """
 Module for performing record linkage on state campaign finance dataset
@@ -121,4 +120,5 @@ def standardize_corp_names(company_name: str) -> str:
     new_company_name = " ".join(company_name_split)
     return new_company_name
 
-print(standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC'))
+
+print(standardize_corp_names("MI BEER WINE WHOLESALERS ASSOC"))
