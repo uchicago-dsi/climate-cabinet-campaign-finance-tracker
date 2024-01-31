@@ -177,7 +177,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     >>> get_address_number_from_address_line_1('6727 W. Corrine Dr.  Peoria,AZ 85381')
     '6727'
     >>> get_address_number_from_address_line_1('P.O. Box 5456  Sun City West ,AZ 85375')
-    'P.O. Box 5456'
+    '5456'
     >>> get_address_number_from_address_line_1('119 S 5th St  Niles,MI 49120')
     '119'
     >>> get_address_number_from_address_line_1(
