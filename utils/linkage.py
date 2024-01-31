@@ -3,6 +3,7 @@ Module for performing record linkage on state campaign finance dataset
 """
 import textdistance as td
 import usaddress
+import pandas as pd
 
 
 def calculate_string_similarity(string1: str, string2: str) -> float:
@@ -215,3 +216,15 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             string.append(key)
 
     return " ".join(string)
+
+def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
+    '''Given a dataframe, remove rows that have identical entry data beyond
+    UUIDs, and output a file mapping an entry to other the UUIDs of the
+    deduplicated rows
+    
+    Args:
+        a pandas dataframe containing contribution data
+    Returns:
+        a deduplicated pandas dataframe containing contribution data
+    '''
+    pass
