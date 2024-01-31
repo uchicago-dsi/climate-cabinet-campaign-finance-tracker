@@ -1,7 +1,8 @@
 """
 Module for performing record linkage on state campaign finance dataset
 """
-import pandas as pd
+import re
+
 import usaddress
 
 
@@ -50,12 +51,7 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(string)
 
 
-"""
-Module for standardizing the 'company' columnn of the state campaign finance dataset
-"""
-
-
-def cleaning_company_column(company: str) -> str:
+def cleaning_company_column(company_entry: str) -> str:
     """
     Given a string, check if it contains a variation of self employed, unemployed,
     or retired and return the standardized version.
@@ -72,30 +68,44 @@ def cleaning_company_column(company: str) -> str:
     'Self Employed'
     >>> cleaning_company_column("None")
     'Unemployed'
+    >>> cleaning_company_column("N/A")
+    'Unemployed'
+    >>> cleaning_company_column("nan")
+    'Unemployed'
     """
-    if pd.isnull(company):
-        return company
 
-    company_edited = company.lower()
-    company_edited = company_edited.strip()
-    company_edited = company_edited.replace(".", " ")
-    company_edited = company_edited.replace(",", " ")
-    company_edited = company_edited.replace("-", " ")
+    if not company_entry:
+        return company_entry
 
-    if "retire" in company_edited:
+    company_edited = company_entry.lower()
+
+    if company_edited == "n/a":
+        return "Unemployed"
+
+    company_edited = re.sub(r"[^\w\s]", "", company_edited)
+
+    if (
+        company_edited == "retired"
+        or company_edited == "retiree"
+        or company_edited == "retire"
+        or "retiree" in company_edited
+    ):
         return "Retired"
-    elif "self employe" in company_edited or company_edited == "self":
+
+    elif (
+        "self employe" in company_edited
+        or "freelance" in company_edited
+        or company_edited == "self"
+        or company_edited == "independent contractor"
+    ):
         return "Self Employed"
     elif (
         "unemploye" in company_edited
         or company_edited == "none"
         or company_edited == "not employed"
+        or company_edited == "nan"
     ):
         return "Unemployed"
 
     else:
-        return company
-
-
-# Example implementation of the function standardize_company_column for a dataframe
-# df['standardized_company'] = df['company'].apply(standardize_company_column)
+        return company_edited
