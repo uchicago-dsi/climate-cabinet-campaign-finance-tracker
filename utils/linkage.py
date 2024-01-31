@@ -97,13 +97,13 @@ def standardize_corp_names(company_name: str) -> str:
     Returns:
         standardized company name
 
-    >>>standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC')
+    >>> standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC')
     'MI BEER WINE WHOLESALERS ASSOCIATION'
 
-    >>>standardize_corp_names('MI COMMUNITY COLLEGE ASSOCIATION')
+    >>> standardize_corp_names('MI COMMUNITY COLLEGE ASSOCIATION')
     'MI COMMUNITY COLLEGE ASSOCIATION'
 
-    >>>standardize_corp_names('STEPHANIES CHANGEMAKER FUND')
+    >>> standardize_corp_names('STEPHANIES CHANGEMAKER FUND')
     'STEPHANIES CHANGEMAKER FUND'
 
     """
