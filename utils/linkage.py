@@ -1,4 +1,6 @@
-import utils.constants
+from utils.constants import (
+    COMPANY_TYPES
+)
 import textdistance as td
 import usaddress
 
@@ -112,9 +114,11 @@ def standardize_corp_names(company_name: str) -> str:
     company_name_split = company_name.upper().split(" ")
 
     for i in range(len(company_name_split)):
-        if company_name_split[i] in list(constants.COMPANY_TYPES.keys()):
+        if company_name_split[i] in list(COMPANY_TYPES.keys()):
             hold = company_name_split[i]
-            company_name_split[i] = constants.COMPANY_TYPES[hold]
+            company_name_split[i] = COMPANY_TYPES[hold]
 
     new_company_name = " ".join(company_name_split)
     return new_company_name
+
+print(standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC'))
