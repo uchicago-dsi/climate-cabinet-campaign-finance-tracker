@@ -270,6 +270,22 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(string)
 
 
+def convert_duplicates_to_dict(df: pd.DataFrame) -> pd.DataFrame:
+    """Takes a dataframe whose indexes are UUIDs, and a column that is a list of
+    all other UUIDs that have duplicate values. The function then outputs a
+    dictionary file where the deduped UUIDs map to the dataframe main UUID
+
+    Args:
+        A pandas dataframe with UUIDs as indexes and deduplicated UUIDs
+        matching up to the index in the same row
+
+    Returns
+        None. However it outputs a dictionary
+    """
+    # df.to_csv(repo_root / "output" / "deduplicated_UUIDs.csv", index=False)
+    pass
+
+
 def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     """Given a dataframe, remove rows that have identical entry data beyond
     UUIDs, and output a file mapping an entry to other the UUIDs of the
@@ -284,9 +300,14 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     new_df = df.drop_duplicates()
 
     # now find the duplicates along all columns but the ID
-    cols = new_df.columns[1:]
-    duplicates = new_df[new_df.duplicated(cols)]
-    new_df = new_df.drop(index=duplicates.index.tolist())
+    new_df = (
+        new_df.groupby(df.columns[1:].tolist())["id"]
+        .agg(list)
+        .reset_index()
+        .rename(columns={"id": "duplicated"})
+    )
+    new_df.index = new_df["duplicated"].str[0].tolist()
+    new_df["duplicated"] = new_df["duplicated"].str[1:]
 
     return new_df
 
