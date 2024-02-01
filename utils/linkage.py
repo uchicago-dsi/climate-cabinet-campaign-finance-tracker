@@ -279,6 +279,5 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     cols = new_df.columns[1:]
     duplicates = new_df[new_df.duplicated(cols)]
     new_df = new_df.drop(index=duplicates.index.tolist())
-    # for index in duplicates.index:
 
     return new_df
