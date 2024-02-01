@@ -5,6 +5,8 @@ import pandas as pd
 import textdistance as td
 import usaddress
 
+from utils.constants import COMPANY_TYPES
+
 
 def get_address_line_1_from_full_address(address: str) -> str:
     """Given a full address, return the first line of the formatted address
@@ -68,6 +70,12 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
     2. strings with no similar characters must return 0
     3. strings with higher intuitive similarity must return higher scores
     similarity score
+
+    Args:
+        string1: any string
+        string2: any string
+    Returns:
+        similarity score
 
     Sample Usage:
     >>> calculate_string_similarity("exact match", "exact match")
@@ -281,3 +289,33 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     new_df = new_df.drop(index=duplicates.index.tolist())
 
     return new_df
+
+
+def standardize_corp_names(company_name: str) -> str:
+    """Given an employer name, return the standardized version
+
+    Args:
+        company_name: corporate name
+    Returns:
+        standardized company name
+
+    >>> standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC')
+    'MI BEER WINE WHOLESALERS ASSOCIATION'
+
+    >>> standardize_corp_names('MI COMMUNITY COLLEGE ASSOCIATION')
+    'MI COMMUNITY COLLEGE ASSOCIATION'
+
+    >>> standardize_corp_names('STEPHANIES CHANGEMAKER FUND')
+    'STEPHANIES CHANGEMAKER FUND'
+
+    """
+
+    company_name_split = company_name.upper().split(" ")
+
+    for i in range(len(company_name_split)):
+        if company_name_split[i] in list(COMPANY_TYPES.keys()):
+            hold = company_name_split[i]
+            company_name_split[i] = COMPANY_TYPES[hold]
+
+    new_company_name = " ".join(company_name_split)
+    return new_company_name
