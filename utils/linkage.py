@@ -1,9 +1,9 @@
 """
 Module for performing record linkage on state campaign finance dataset
 """
+import pandas as pd
 import textdistance as td
 import usaddress
-import pandas as pd
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -261,23 +261,24 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
 
     return " ".join(string)
 
+
 def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
-    '''Given a dataframe, remove rows that have identical entry data beyond
+    """Given a dataframe, remove rows that have identical entry data beyond
     UUIDs, and output a file mapping an entry to other the UUIDs of the
     deduplicated rows
-    
+
     Args:
         a pandas dataframe containing contribution data
     Returns:
         a deduplicated pandas dataframe containing contribution data
-    '''
-    #first remove all duplicate entries:
+    """
+    # first remove all duplicate entries:
     new_df = df.drop_duplicates()
 
     # now find the duplicates along all columns but the ID
     cols = new_df.columns[1:]
-    duplicates = new_df[new_df.duplicated(cols)]        
+    duplicates = new_df[new_df.duplicated(cols)]
     new_df = new_df.drop(index=duplicates.index.tolist())
-    #for index in duplicates.index:
+    # for index in duplicates.index:
 
     return new_df
