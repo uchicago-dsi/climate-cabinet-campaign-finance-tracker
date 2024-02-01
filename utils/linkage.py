@@ -349,3 +349,34 @@ def standardize_corp_names(company_name: str) -> str:
 
     new_company_name = " ".join(company_name_split)
     return new_company_name
+
+
+def get_address_number_from_address_line_1(address_line_1: str) -> str:
+    """Given an address line 1, return the building number or po box
+
+    Args:
+        address_line_1: either street information or PO box
+    Returns:
+        address or po box number
+
+    Sample Usage:
+    >>> get_address_number_from_address_line_1('6727 W. Corrine Dr.  Peoria,AZ 85381')
+    '6727'
+    >>> get_address_number_from_address_line_1('P.O. Box 5456  Sun City West ,AZ 85375')
+    '5456'
+    >>> get_address_number_from_address_line_1('119 S 5th St  Niles,MI 49120')
+    '119'
+    >>> get_address_number_from_address_line_1(
+    ...     '1415 PARKER STREET APT 251	DETROIT	MI	48214-0000'
+    ... )
+    '1415'
+    """
+
+    address_line_1_components = usaddress.parse(address_line_1)
+
+    for i in range(len(address_line_1_components)):
+        if address_line_1_components[i][1] == "AddressNumber":
+            return address_line_1_components[i][0]
+        elif address_line_1_components[i][1] == "USPSBoxID":
+            return address_line_1_components[i][0]
+    raise ValueError("Can not find Address Number")
