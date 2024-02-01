@@ -151,20 +151,25 @@ def name_rank(first_name: str, last_name: str) -> list:
         second element is the element corresponds to the rank of the last name
     """
 
+    if first_name is None or last_name is None:
+        return [None, None]
+
+    if not isinstance(first_name, str) or not isinstance(last_name, str):
+        return [None, None]
+
     first_name_result = nd.search(first_name)
     last_name_result = nd.search(last_name)
-    first_name_rank = 0
-    last_name_rank = 0
-    try:
-        first_name_rank = first_name_result["first_name"]["rank"][
-            "United States"
-        ]
-    except KeyError:
-        pass
+    first_name_rank = None
+    last_name_rank = None
 
-    try:
-        last_name_rank = last_name_result["last_name"]["rank"]["United States"]
-    except KeyError:
-        pass
+    if first_name_result and isinstance(first_name_result, dict):
+        first_name_data = first_name_result.get("first_name")
+        if first_name_data and "rank" in first_name_data:
+            first_name_rank = first_name_data["rank"].get("United States", None)
+
+    if last_name_result and isinstance(last_name_result, dict):
+        last_name_data = last_name_result.get("last_name")
+        if last_name_data and "rank" in last_name_data:
+            last_name_rank = last_name_data["rank"].get("United States", None)
 
     return [first_name_rank, last_name_rank]
