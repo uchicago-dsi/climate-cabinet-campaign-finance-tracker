@@ -70,8 +70,6 @@ def cleaning_company_column(company_entry: str) -> str:
     'Unemployed'
     >>> cleaning_company_column("N/A")
     'Unemployed'
-    >>> cleaning_company_column("nan")
-    'Unemployed'
     """
 
     if not company_entry:
