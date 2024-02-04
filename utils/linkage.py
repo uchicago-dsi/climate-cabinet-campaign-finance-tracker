@@ -5,7 +5,7 @@ import pandas as pd
 import textdistance as td
 import usaddress
 
-from utils.constants import COMPANY_TYPES
+from utils.constants import COMPANY_TYPES, repo_root
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -280,10 +280,25 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> pd.DataFrame:
         matching up to the index in the same row
 
     Returns
-        None. However it outputs a dictionary
+        None. However it outputs a dictionary to the output directory, with 2
+        columns. The first, which indicates the deduplicated UUIDs, is labeled
+        'duplicated_uuids', and the 2nd, which shows the uuids to which the
+        deduplicated entries match two, is labeled 'mapped_uuids'.
     """
-    # df.to_csv(repo_root / "output" / "deduplicated_UUIDs.csv", index=False)
-    pass
+    deduped_dict = {}
+    for i in range(len(df)):
+        deduped_uudis = df.iloc[i]["duplicated"]
+        for j in range(len(deduped_uudis)):
+            deduped_dict.update({deduped_uudis[j]: df.iloc[i]["id"]})
+
+    # now convert dictionary into a csv file
+    deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
+    deduped_df = deduped_df.reset_index().rename(
+        columns={"index": "duplicated_uuids", 0: "mapped_uuids"}
+    )
+    deduped_df.to_csv(
+        repo_root / "output" / "deduplicated_UUIDs.csv", index=False
+    )
 
 
 def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
