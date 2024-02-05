@@ -1,6 +1,7 @@
 """
 Constants to be used in various parts of the project.
 """
+
 from pathlib import Path
 
 BASE_FILEPATH = Path(__file__).resolve().parent.parent
@@ -174,10 +175,6 @@ MI_CONT_DROP_COLS = [
     "page_no",
     "cont_detail_id",
     "doc_type_desc",
-    "address",
-    "city",
-    "zip",
-    "occupation",
     "received_date",
     "aggregate",
     "extra_desc",

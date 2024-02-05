@@ -1,25 +1,84 @@
 import os
+import re
 import uuid
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from utils.clean import StateCleaner
 from utils.constants import (
-    BASE_FILEPATH,
-    MI_CON_FILEPATH,
     MI_CONT_DROP_COLS,
     MI_CONTRIBUTION_COLUMNS,
     MI_EXP_DROP_COLS,
-    MI_EXP_FILEPATH,
     MI_EXPENDITURE_COLUMNS,
     MICHIGAN_CONTRIBUTION_COLS_RENAME,
     MICHIGAN_CONTRIBUTION_COLS_REORDER,
+    repo_root,
 )
-from utils.preprocess_mi_campaign_data import (
-    read_contribution_data,
-    read_expenditure_data,
-)
+
+
+def read_expenditure_data(
+    filepath: str | Path, columns: list[str]
+) -> pd.DataFrame:
+    """Reads in the MI expenditure data
+
+    Inputs:
+            filepath (str): filepath to the MI Expenditure Data txt file
+            columns (lst): list of string names of the campaign data columns
+
+    Returns: df (Pandas DataFrame): dataframe of the MI Expenditure data
+    """
+    filepath = Path(filepath)
+    if filepath.name.endswith(".txt"):
+        df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            usecols=columns,
+            encoding="mac_roman",
+            low_memory=False,
+        )
+
+    return df
+
+
+def read_contribution_data(
+    filepath: str | Path, columns: list[str]
+) -> pd.DataFrame:
+    """Reads in the MI campaign data and skips the errors
+
+    Inputs: filepath (str): filepath to the MI Campaign Data txt file
+            columns (lst): list of string names of the campaign data columns
+
+    Returns: df (Pandas DataFrame): dataframe of the MI campaign data
+    """
+    filepath = Path(filepath)
+    if filepath.name.endswith("00.txt"):
+        # MI files that contain 00 or between 1998 and 2003 contain headers
+        # VALUES_TO_CHECK contains the years between 1998 and 2003
+        df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            encoding="mac_roman",
+            usecols=columns,
+            low_memory=False,
+            on_bad_lines="skip",
+        )
+    else:
+        df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            encoding="mac_roman",
+            header=None,
+            names=columns,
+            low_memory=False,
+            on_bad_lines="skip",
+        )
+
+    return df
 
 
 class MichiganCleaner(StateCleaner):
@@ -27,6 +86,9 @@ class MichiganCleaner(StateCleaner):
     This class is based on the StateCleaner abstract class,
     and cleans Michigan campaign contribution and expenditure data
     """
+
+    name = "Michigan"
+    abbreviation = "MI"
 
     entity_name_dictionary = {
         "cfr_com_id": "original_com_id",
@@ -49,102 +111,84 @@ class MichiganCleaner(StateCleaner):
     # map to entity types listed in the schema
 
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """
-        Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
+        """Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
 
         Returns: use preprocess, clean, standardize, and create_tables methods
         to output (individuals_table, organizations_table, transactions_table)
         as defined in database schema
         """
-        filepaths_lst = self.create_filepaths_list()
-        preprocessed_dataframe_lst = self.preprocess(filepaths_lst)
+        preprocessed_dataframe_lst = self.preprocess()
         cleaned_dataframe_lst = self.clean(preprocessed_dataframe_lst)
         standardized_dataframe_lst = self.standardize(cleaned_dataframe_lst)
         tables = self.create_tables(standardized_dataframe_lst)
-
         return tables
 
-    def create_filepaths_list(self) -> list[list[str], list[str]]:
-        """Creates a list of Michigan Contribution and Expenditure filepaths by
-        first iterating through the expenditure filepaths then the contribution
-        filepaths
+    def _validate_raw_state_directory(self, directory: Path) -> None:
+        """Confirms directory has structure required in preprosses docstring"""
+        if not directory.exists():
+            raise FileNotFoundError(
+                f"{directory} for {self.name} data not found"
+            )
+        for subdir in ["Contribution", "Expenditure"]:
+            if not (directory / subdir).exists():
+                raise FileNotFoundError(f"{subdir} not in {directory}")
+            for file in (directory / subdir).iterdir():
+                if file.suffix != ".txt":
+                    raise RuntimeError(
+                        f"Expected all files for {self.name} to have extension "
+                        "'.txt'. Found: {file}"
+                    )
+                if not re.match(r"[0-9]{4}", file.name[:4]):
+                    raise RuntimeError(
+                        f"Expected all files for {self.name} to start with year. "
+                        "Found {file}"
+                    )
 
-        Inputs: None
-
-        Returns: List of lists of strings
-            exp_filepath_lst: list of expenditure filepaths
-            con_filepath_lst: list of contribution filepaths
-        """
-        exp_filepath_lst = []
-        con_filepath_lst = []
-
-        for file in MI_EXP_FILEPATH.iterdir():
-            exp_filepath_lst.append(str(file))
-        for file in MI_CON_FILEPATH.iterdir():
-            con_filepath_lst.append(str(file))
-
-        return [exp_filepath_lst, con_filepath_lst]
-
-    # NOTE: Helper methods above are called throughout the class
-
-    def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
-        """
-        Preprocesses the state data and returns a dataframe
+    def preprocess(self, directory: str | Path = None) -> list[pd.DataFrame]:
+        """Preprocesses the state data and returns a dataframe
 
         Reads in the state's data, makes any necessary bug fixes, and
         combines the data into a list of DataFrames, discards data not schema
 
-        Inputs:
-            filepaths_list: list of lists of absolute filepaths to relevant state data.
-                required naming conventions, order, and extensions
-                defined per state.
-
+        Args:
+            directory: files should be stored in directory with the format:
+                    /
+                    |--Contribution
+                    |   |--<YYYY>_mi_cfr_contributions_<NN>.txt
+                    |   |--...
+                    |--Expenditure
+                    |   |--<YYYY>_mi_cfr_expenditures.txt
+                By default, the data/raw/MI directory will be used.
         Returns: a list of dataframes containing campaign contribution and
             expenditure data
         """
-        expenditures_lst, contributions_lst = filepaths_list
+        if directory is None:
+            directory = repo_root / "data" / "raw" / "MI"
+        else:
+            directory = Path(directory)
+        self._validate_raw_state_directory(directory)
 
-        temp_exp_list = []
-        temp_cont_list = []
-
-        for file in expenditures_lst:
-            temp_exp_list.append(
+        expenditure_partial_dfs = []
+        contribution_partial_dfs = []
+        for file in (directory / "Expenditure").iterdir():
+            expenditure_partial_dfs.append(
                 read_expenditure_data(file, MI_EXPENDITURE_COLUMNS)
             )
-        for file in contributions_lst:
-            temp_cont_list.append(
+        for file in (directory / "Contribution").iterdir():
+            contribution_partial_dfs.append(
                 read_contribution_data(file, MI_CONTRIBUTION_COLUMNS)
             )
 
-        contribution_dataframe = self.merge_dataframes(temp_cont_list)
-        expenditure_dataframe = self.merge_dataframes(temp_exp_list)
+        contribution_dataframe = pd.concat(contribution_partial_dfs)
+        contribution_dataframe = self.fix_menominee_county_bug_contribution(
+            contribution_dataframe
+        )
+        expenditure_dataframe = pd.concat(expenditure_partial_dfs)
+        expenditure_dataframe = self.drop_menominee_county(
+            expenditure_dataframe
+        )
 
         return [contribution_dataframe, expenditure_dataframe]
-
-    # NOTE: Helper methods for preprocess are below
-
-    def merge_dataframes(
-        self, temp_list: [pd.DataFrame, pd.DataFrame]
-    ) -> pd.DataFrame:
-        """Merges the list of dataframes into one Pandas DataFrame
-
-        Inputs:
-                temp_list: list of contribution of expenditure dataframes
-
-        Returns:
-                merged_dataframe: Pandas DataFrame of merged contribution
-                                    or expenditure data
-        """
-        merged_dataframe = pd.concat(temp_list)
-        if "schedule_desc" not in merged_dataframe.columns:
-            # "schedule_desc" is only in the expenditure dataframe
-            merged_dataframe = self.fix_menominee_county_bug_contribution(
-                merged_dataframe
-            )
-        else:
-            merged_dataframe = self.drop_menominee_county(merged_dataframe)
-
-        return merged_dataframe
 
     def fix_menominee_county_bug_contribution(
         self, merged_campaign_dataframe: pd.DataFrame
@@ -155,12 +199,10 @@ class MichiganCleaner(StateCleaner):
             merged_campaign_dataframe: Pandas DataFrame of merged MI
                 contribution data
 
-
         Returns:
             merged_campaign_dataframe: Pandas DataFrame of merged MI
             contribution data edited in place to fix the
             Menominee County Democratic Party bug
-
         """
         subset_condition = (
             merged_campaign_dataframe["com_type"]
@@ -202,11 +244,9 @@ class MichiganCleaner(StateCleaner):
             merged_campaign_dataframe["com_type"]
             == "MENOMINEE COUNTY DEMOCRATIC PARTY"
         )
-
         merged_campaign_dataframe = merged_campaign_dataframe.drop(
             merged_campaign_dataframe.loc[subset_condition].index
         )
-
         return merged_campaign_dataframe
 
     def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
@@ -433,7 +473,7 @@ class MichiganCleaner(StateCleaner):
 
         Returns: None, Creates data/output/MichiganIDMAp.csv
         """
-        output_path = BASE_FILEPATH / "output" / "MichiganIDMap.csv"
+        output_path = repo_root / "output" / "MichiganIDMap.csv"
 
         michigan_id_map = pd.concat(
             [individuals_map, organizations_map, transactions_map],
@@ -648,7 +688,11 @@ class MichiganCleaner(StateCleaner):
                 "first_name",
                 "last_name",
                 "full_name",
+                "address",
+                "city",
                 "state",
+                "zip",
+                "occupation",
                 "company",
             ]
         ].copy()
@@ -675,6 +719,10 @@ class MichiganCleaner(StateCleaner):
                 "state",
                 "party",
                 "company",
+                "occupation",
+                "address",
+                "zip",
+                "city",
             ]
         ]
 

@@ -2,63 +2,6 @@ import pandas as pd
 import plotly.express as px
 
 
-def read_expenditure_data(filepath: str, columns: list[str]) -> pd.DataFrame:
-    """Reads in the MI expenditure data
-
-    Inputs:
-            filepath (str): filepath to the MI Expenditure Data txt file
-            columns (lst): list of string names of the campaign data columns
-
-    Returns: df (Pandas DataFrame): dataframe of the MI Expenditure data
-    """
-    if filepath.endswith("txt"):
-        df = pd.read_csv(
-            filepath,
-            delimiter="\t",
-            index_col=False,
-            usecols=columns,
-            encoding="mac_roman",
-            low_memory=False,
-        )
-
-    return df
-
-
-def read_contribution_data(filepath: str, columns: list[str]) -> pd.DataFrame:
-    """Reads in the MI campaign data and skips the errors
-
-    Inputs: filepath (str): filepath to the MI Campaign Data txt file
-            columns (lst): list of string names of the campaign data columns
-
-    Returns: df (Pandas DataFrame): dataframe of the MI campaign data
-    """
-    if filepath.endswith("00.txt"):
-        # MI files that contain 00 or between 1998 and 2003 contain headers
-        # VALUES_TO_CHECK contains the years between 1998 and 2003
-        df = pd.read_csv(
-            filepath,
-            delimiter="\t",
-            index_col=False,
-            encoding="mac_roman",
-            usecols=columns,
-            low_memory=False,
-            on_bad_lines="skip",
-        )
-    else:
-        df = pd.read_csv(
-            filepath,
-            delimiter="\t",
-            index_col=False,
-            encoding="mac_roman",
-            header=None,
-            names=columns,
-            low_memory=False,
-            on_bad_lines="skip",
-        )
-
-    return df
-
-
 # NOTE: DEPRECIATED
 def plot_year_contribution_types(
     all_year_contribution_dataframe: pd.DataFrame,
