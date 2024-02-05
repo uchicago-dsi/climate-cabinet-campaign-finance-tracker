@@ -1,6 +1,7 @@
+import re
+
 import textdistance as td
 import usaddress
-import re
 
 from utils.constants import COMPANY_TYPES
 
@@ -253,4 +254,3 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
         elif address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
     raise ValueError("Can not find Address Number")
-    
