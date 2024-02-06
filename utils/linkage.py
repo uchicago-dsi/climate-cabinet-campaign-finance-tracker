@@ -271,19 +271,21 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
 
 
 def convert_duplicates_to_dict(df: pd.DataFrame) -> pd.DataFrame:
-    """Takes a dataframe whose indexes are UUIDs, and a column that is a list of
-    all other UUIDs that have duplicate values. The function then outputs a
-    dictionary file where the deduped UUIDs map to the dataframe main UUID
+    """Saves to the "output" directory a file mapping multiple strings to one
+    string
+
+    Given a dataframe where each row contains one string in a column and a list
+    of strings in another column, the function maps each string in the list to
+    the single string.
 
     Args:
-        A pandas dataframe with UUIDs as indexes and deduplicated UUIDs
-        matching up to the index in the same row
+        A pandas dataframe
 
     Returns
-        None. However it outputs a dictionary to the output directory, with 2
-        columns. The first, which indicates the deduplicated UUIDs, is labeled
+        None. However it outputs a file to the output directory, with 2
+        columns. The first, which indicates the duplicated UUIDs, is labeled
         'duplicated_uuids', and the 2nd, which shows the uuids to which the
-        deduplicated entries match two, is labeled 'mapped_uuids'.
+        deduplicated entries match to, is labeled 'mapped_uuids'.
     """
     deduped_dict = {}
     for i in range(len(df)):
@@ -297,14 +299,17 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> pd.DataFrame:
         columns={"index": "duplicated_uuids", 0: "mapped_uuids"}
     )
     deduped_df.to_csv(
-        repo_root / "output" / "deduplicated_UUIDs.csv", index=False
+        repo_root / "output" / "deduplicated_UUIDs.csv", index=False, mode="a"
     )
 
 
 def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
-    """Given a dataframe, remove rows that have identical entry data beyond
-    UUIDs, and output a file mapping an entry to other the UUIDs of the
-    deduplicated rows
+    """Return a dataframe with duplicated entries removed.
+
+    Given a dataframe, combines rows that have identical data beyond their
+    UUIDs, keeps the first UUID amond the similarly grouped UUIDs, and saves the
+    rest of the UUIDS to a file in the "output" directory linking them to the
+    first selected UUID.
 
     Args:
         a pandas dataframe containing contribution data
@@ -316,7 +321,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # now find the duplicates along all columns but the ID
     new_df = (
-        new_df.groupby(df.columns[1:].tolist())["id"]
+        new_df.groupby(df.columns[1:].tolist(), dropna=False)["id"]
         .agg(list)
         .reset_index()
         .rename(columns={"id": "duplicated"})
