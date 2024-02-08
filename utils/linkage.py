@@ -1,5 +1,10 @@
+import re
+from typing import Tuple
+
+import pandas as pd
 import textdistance as td
 import usaddress
+from nameparser import HumanName
 
 from utils.constants import COMPANY_TYPES
 
@@ -194,3 +199,142 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
         elif address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
     raise ValueError("Can not find Address Number")
+
+
+def cleaning_company_column(company_entry: str) -> str:
+    """
+    Given a string, check if it contains a variation of self employed, unemployed,
+    or retired and return the standardized version.
+
+    Args:
+        company: string of inputted company names
+    Returns:
+        standardized for retired, self employed, and unemployed,
+        or original string if no match or empty string
+
+    >>> cleaning_company_column("Retireed")
+    'Retired'
+    >>> cleaning_company_column("self")
+    'Self Employed'
+    >>> cleaning_company_column("None")
+    'Unemployed'
+    >>> cleaning_company_column("N/A")
+    'Unemployed'
+    """
+
+    if not company_entry:
+        return company_entry
+
+    company_edited = company_entry.lower()
+
+    if company_edited == "n/a":
+        return "Unemployed"
+
+    company_edited = re.sub(r"[^\w\s]", "", company_edited)
+
+    if (
+        company_edited == "retired"
+        or company_edited == "retiree"
+        or company_edited == "retire"
+        or "retiree" in company_edited
+    ):
+        return "Retired"
+
+    elif (
+        "self employe" in company_edited
+        or "freelance" in company_edited
+        or company_edited == "self"
+        or company_edited == "independent contractor"
+    ):
+        return "Self Employed"
+    elif (
+        "unemploye" in company_edited
+        or company_edited == "none"
+        or company_edited == "not employed"
+        or company_edited == "nan"
+    ):
+        return "Unemployed"
+
+    else:
+        return company_edited
+
+
+def preprocess_pipeline(
+    individuals: pd.DataFrame,
+    Address: str,
+    organizations: pd.DataFrame,
+    transactions: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Preprocesses data for record linkage
+
+    Args:
+        Individuals: dataframe of individual contributions
+        Address: column name of address
+        Organizations: dataframe of organization contributions
+        Transactions: dataframe of transactions
+    Returns:
+        preprocessed tuple of dataframes
+        first element is the individuals dataframe,
+        second element is the organizations dataframe,
+        third element is the transactions dataframe
+    """
+    # Preprocess organizations dataframe
+    organizations["name"] = (
+        organizations["name"].astype(str).apply(standardize_corp_names)
+    )
+
+    # Preprocess individuals dataframe
+    if "Unnamed: 0" in individuals.columns:
+        individuals.drop(columns="Unnamed: 0", inplace=True)
+
+    individuals = individuals.astype(
+        {"first_name": str, "last_name": str, "full_name": str, "company": str}
+    )
+
+    # Standardize company names in individuals dataframe
+    individuals["company"] = individuals["company"].apply(
+        standardize_corp_names
+    )
+    individuals["company"] = individuals["company"].apply(
+        cleaning_company_column
+    )
+
+    # Address functions, assuming address column is named 'address'
+    individuals["Address Line 1"] = individuals[Address].apply(
+        get_address_line_1_from_full_address
+    )
+    individuals["Street Name"] = individuals["Address Line 1"].apply(
+        get_street_from_address_line_1
+    )
+    individuals["Address Number"] = individuals["Address Line 1"].apply(
+        get_address_number_from_address_line_1
+    )
+
+    # Check if first name or last names are empty, if so, extract from full name column
+    individuals["full_name"] = individuals["full_name"].astype(str)
+    if individuals["first_name"].isnull().any():
+        name = (
+            individuals["full_name"]
+            .apply(HumanName)
+            .apply(lambda x: x.as_dict())
+        )
+        first_name = name.apply(lambda x: x["first"])
+        individuals["first_name"] = first_name
+
+    if individuals["last_name"].isnull().any():
+        name = (
+            individuals["full_name"]
+            .apply(HumanName)
+            .apply(lambda x: x.as_dict())
+        )
+        last_name = name.apply(lambda x: x["last"])
+        individuals["last_name"] = last_name
+
+    # Transactions
+    if "Unnamed: 0" in transactions.columns:
+        transactions.drop(columns="Unnamed: 0", inplace=True)
+
+    transactions["purpose"] = transactions["purpose"].str.upper()
+
+    return individuals, organizations, transactions
