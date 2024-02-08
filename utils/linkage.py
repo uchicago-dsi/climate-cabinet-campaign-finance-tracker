@@ -1,10 +1,11 @@
 """
 Module for performing record linkage on state campaign finance dataset
 """
+import os.path
+
 import pandas as pd
 import textdistance as td
 import usaddress
-import os.path
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -297,9 +298,14 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
     deduped_df = deduped_df.reset_index().rename(
-        columns={"index": "duplicated_uuids", 0: "mapped_uuids"})
+        columns={"index": "duplicated_uuids", 0: "mapped_uuids"}
+    )
     deduped_df.to_csv(
-        repo_root / "output" / "deduplicated_UUIDs.csv", index=False, mode="a", header= not os.path.exists('../output/deduplicated_UUIDs.csv'))
+        repo_root / "output" / "deduplicated_UUIDs.csv",
+        index=False,
+        mode="a",
+        header=not os.path.exists("../output/deduplicated_UUIDs.csv"),
+    )
 
 
 def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
