@@ -4,6 +4,7 @@ Module for performing record linkage on state campaign finance dataset
 import pandas as pd
 import textdistance as td
 import usaddress
+import os.path
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -270,9 +271,9 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(string)
 
 
-def convert_duplicates_to_dict(df: pd.DataFrame) -> pd.DataFrame:
-    """Saves to the "output" directory a file mapping multiple strings to one
-    string
+def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
+    """Saves to the "output" directory a file where each row represents a string
+    matching to another string
 
     Given a dataframe where each row contains one string in a column and a list
     of strings in another column, the function maps each string in the list to
@@ -296,11 +297,9 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> pd.DataFrame:
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
     deduped_df = deduped_df.reset_index().rename(
-        columns={"index": "duplicated_uuids", 0: "mapped_uuids"}
-    )
+        columns={"index": "duplicated_uuids", 0: "mapped_uuids"})
     deduped_df.to_csv(
-        repo_root / "output" / "deduplicated_UUIDs.csv", index=False, mode="a"
-    )
+        repo_root / "output" / "deduplicated_UUIDs.csv", index=False, mode="a", header= not os.path.exists('../output/deduplicated_UUIDs.csv'))
 
 
 def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
