@@ -140,7 +140,7 @@ def row_matches(
             ):
                 # Store the other index and mark it for skipping in future iterations
                 discard_indices.append(j)
-                index_dict[i].append[j]
+                index_dict[i].append(j)
 
     return index_dict
 
