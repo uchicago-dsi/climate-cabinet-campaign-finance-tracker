@@ -2,10 +2,10 @@ import pandas as pd
 
 from utils.linkage import calculate_string_similarity
 
-#we want to run down a list of people and, hopefully, their adresses, plus a list of 
+#we want to run down a list of people and, hopefully, their adresses, plus a list of
 #corporations, groups, etc, and classify them, basically just looking for matches
 
-#do we want to just input all the names/people (there's not many, less than 200 for sure), 
+#do we want to just input all the names/people (there's not many, less than 200 for sure),
 #give a string similarity match score, and extract the top ten for manual review?
 #thsi should give us a feeling for how to set our threhsold
 #we might also, once we have all the data, buckle down and just classify some of them manually
@@ -17,7 +17,7 @@ inds_list = []
 
 def similarity_calculator(df: pd.DataFrame, suspect):
     """Run through a pandas dataframe column and compare elements to a constant
-    
+
     """
     # this needs to output somehting useful
 
@@ -42,6 +42,3 @@ for i in inds_list:
 
     #we can use the indices and/or select manually, just add a new column to the subjects table
     #that marks fossil fuels, green energy, or neither
-
-
-
