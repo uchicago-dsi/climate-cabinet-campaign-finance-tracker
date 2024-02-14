@@ -190,7 +190,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
 
     # if data is clean:
     if first_name + " " + last_name == full_name:
-        return full_name
+        return full_name.title()
 
     # some names have titles or professions associated with the name. We need to
     # remove those from the name.
@@ -333,16 +333,11 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"id": "duplicated"})
     )
     new_df.index = new_df["duplicated"].str[0].tolist()
-    new_df["duplicated"] = new_df["duplicated"].str[1:]
 
     # now convert the duplicated column into a dictionary that can will be
     # an output by only feeding the entries with duplicates
     new_df = new_df.reset_index().rename(columns={"index": "id"})
-    convert_duplicates_to_dict(
-        new_df[new_df["duplicated"].apply(lambda x: len(x)) > 0][
-            ["id", "duplicated"]
-        ]
-    )
+    convert_duplicates_to_dict(new_df[["id", "duplicated"]])
     new_df = new_df.drop(["duplicated"], axis=1)
     return new_df
 
