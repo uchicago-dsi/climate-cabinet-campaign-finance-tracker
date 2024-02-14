@@ -19,3 +19,4 @@ Requests==2.31.0
 setuptools==68.0.0
 textdistance==4.6.1
 usaddress==0.5.4
+networkx~=3.1
