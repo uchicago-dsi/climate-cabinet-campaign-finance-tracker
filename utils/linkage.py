@@ -5,6 +5,10 @@ import usaddress
 
 from utils.constants import COMPANY_TYPES
 
+from splink.duckdb.linker import DuckDBLinker
+import splink.duckdb.comparison_template_library as ctl
+import splink.duckdb.comparison_library as cl
+
 """
 Module for performing record linkage on state campaign finance dataset
 """
@@ -254,3 +258,26 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
         elif address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
     raise ValueError("Can not find Address Number")
+
+
+def splink_dedupe(df, settings, blocking):
+
+      """Given a dataframe, configuration settings, and blocking rules return a deduplicated dataframe
+    Args:
+        df: dataframe with potential duplicates
+        settings: model settings based on splink documentation
+        blocking: list of columns to block on
+    Returns:
+        dataframe with matched ids of matching rows"""
+
+    linker = DuckDBLinker(df, settings)
+    linker.estimate_probability_two_random_records_match(blocking, recall=0.6) #default
+    linker.estimate_u_using_random_sampling(max_pairs=5e6)
+    
+    for i in blocking:
+        training_session_names = linker.estimate_parameters_using_expectation_maximisation(i)
+    
+    df_predict = linker.predict()
+    df_e = df_predict.as_pandas_dataframe()
+    clusters = linker.cluster_pairwise_predictions_at_threshold(df_predict, threshold_match_probability=0.7) #default
+    return clusters.as_pandas_dataframe()
