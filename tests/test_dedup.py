@@ -4,7 +4,8 @@ from utils.constants import BASE_FILEPATH
 from utils.linkage import deduplicate_perfect_matches
 
 inds_sample = pd.read_csv(
-    BASE_FILEPATH / "output" / "complete_individuals_table.csv", low_memory=False
+    BASE_FILEPATH / "output" / "complete_individuals_table.csv",
+    low_memory=False,
 )
 orgs_sample = pd.read_csv(
     BASE_FILEPATH / "output" / "complete_organizations_table.csv"
