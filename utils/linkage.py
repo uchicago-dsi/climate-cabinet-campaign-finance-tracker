@@ -2,8 +2,8 @@ import textdistance as td
 import usaddress
 from names_dataset import NameDataset
 
+# Initialize the NameDataset class, takes too long to initialize within the function
 nd = NameDataset()
-# 'The library takes time to initialize because the database is massive.'
 
 """
 Module for performing record linkage on state campaign finance dataset
@@ -138,38 +138,44 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
 
 
 def name_rank(first_name: str, last_name: str) -> list:
-    """Returns a score for the rank of a first name and last name in the US
+    """Returns a score for the rank of a given first name and last name
     https://github.com/philipperemy/name-dataset
-
     Args:
         first_name: any string
         last_name: any string
     Returns:
         name rank for first name and last names
-        1 is the most common name, only for names in the 'United States'
-        first element is the element corresponds to the rank of the first name
-        second element is the element corresponds to the rank of the last name
+        1 is the most common name, only for names in the United States
+        First element in the list corresponds to the rank of the first name
+        Second element in the list corresponds to the rank of the last name
+        Empty or non string values will return None
+        Names that are not found in the dataset will return 0
+
+    >>> name_rank("John", "Smith")
+    [5, 7]
+    >>> name_rank("Adil", "Kassim")
+    [0, 7392]
+    >>> name_rank(None, 9)
+    [None, None
     """
-
-    if first_name is None or last_name is None:
-        return [None, None]
-
-    if not isinstance(first_name, str) or not isinstance(last_name, str):
-        return [None, None]
-
-    first_name_result = nd.search(first_name)
-    last_name_result = nd.search(last_name)
-    first_name_rank = None
-    last_name_rank = None
-
-    if first_name_result and isinstance(first_name_result, dict):
-        first_name_data = first_name_result.get("first_name")
-        if first_name_data and "rank" in first_name_data:
-            first_name_rank = first_name_data["rank"].get("United States", None)
-
-    if last_name_result and isinstance(last_name_result, dict):
-        last_name_data = last_name_result.get("last_name")
-        if last_name_data and "rank" in last_name_data:
-            last_name_rank = last_name_data["rank"].get("United States", None)
-
+    first_name_rank = 0
+    last_name_rank = 0
+    if isinstance(first_name, str):
+        first_name_result = nd.search(first_name)
+        if first_name_result and isinstance(first_name_result, dict):
+            first_name_data = first_name_result.get("first_name")
+            if first_name_data and "rank" in first_name_data:
+                first_name_rank = first_name_data["rank"].get(
+                    "United States", 0
+                )
+    else:
+        first_name_rank = None
+    if isinstance(last_name, str):
+        last_name_result = nd.search(last_name)
+        if last_name_result and isinstance(last_name_result, dict):
+            last_name_data = last_name_result.get("last_name")
+            if last_name_data and "rank" in last_name_data:
+                last_name_rank = last_name_data["rank"].get("United States", 0)
+    else:
+        last_name_rank = None
     return [first_name_rank, last_name_rank]
