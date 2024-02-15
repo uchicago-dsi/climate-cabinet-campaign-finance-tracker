@@ -156,7 +156,7 @@ def name_rank(first_name: str, last_name: str) -> list:
     >>> name_rank("Adil", "Kassim")
     [0, 7392]
     >>> name_rank(None, 9)
-    [None, None
+    [None, None]
     """
     first_name_rank = 0
     last_name_rank = 0
