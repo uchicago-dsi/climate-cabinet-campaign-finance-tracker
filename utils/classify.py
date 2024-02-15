@@ -25,19 +25,9 @@ def similarity_calculator(df: pd.DataFrame, suspect):
     return similarities
 
 
-#crawl through list automatically once a threshold has been set
-def
-
-for i in inds_list:
-    similarities = similarity_calculator(data, i)
-
-    similarities
-    #
 
 
-
-
-    df.apply(calculate_string_similarity, inds_list) #very psuedocode
+     #very psuedocode
     #get top n, maybe just ten, and output
 
     #we can use the indices and/or select manually, just add a new column to the subjects table
