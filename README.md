@@ -43,8 +43,6 @@ If you prefer to develop inside a container with VS Code then do the following s
 5. running ```pipeline.py``` returns the tables to the output folder as csv files containing the complete individuals, organizations, and transactions DataFrames combining the AZ, MI, MN, and PA datasets.
 6. For future reference, the above pipeline also stores the information mapping given id to our database id (generated via uuid) in a csv file in the format of (state)IDMap.csv (example: ArizonaIDMap.csv) in the output folder
 
-## Team Members
-
 ## Repository Structure
 
 ### utils
