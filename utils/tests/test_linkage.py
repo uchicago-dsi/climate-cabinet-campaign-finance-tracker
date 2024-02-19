@@ -29,6 +29,7 @@ test_df = pd.DataFrame(data=d)
 def row_similarity_scen_1():
     return test_df
 
+
 @pytest.fixture
 def row_similarity_scen_2():
     return test_df
@@ -91,6 +92,7 @@ d2 = {
     ],
 }
 test_df2 = pd.DataFrame(data=d2)
+
 
 @pytest.fixture
 def row_match_scen1():
