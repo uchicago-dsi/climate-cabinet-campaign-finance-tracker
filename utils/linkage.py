@@ -3,15 +3,16 @@ Module for performing record linkage on state campaign finance dataset
 
 """
 
-import textdistance as td
-import usaddress
-from names_dataset import NameDataset
 import math
 import os.path
 import re
+
 import networkx as nx
 import numpy as np
 import pandas as pd
+import textdistance as td
+import usaddress
+from names_dataset import NameDataset
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -635,8 +636,9 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
             return address_line_1_components[i][0]
     raise ValueError("Can not find Address Number")
 
-def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph :
-    ''' Takes in a dataframe and generates a MultiDiGraph where the nodes are
+
+def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
+    """Takes in a dataframe and generates a MultiDiGraph where the nodes are
     entity names, and the rest of the dataframe columns make the node attributes
 
     Args:
@@ -645,16 +647,17 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph :
 
     Returns:
         A Networkx MultiDiGraph with nodes lacking any edges
-    '''
+    """
     G = nx.MultiDiGraph()
     # first check if df is individuals or organizations dataset
-    if 'name' in df.columns:
-        node_name = 'name'
-    else: node_name = 'full_name'
+    if "name" in df.columns:
+        node_name = "name"
+    else:
+        node_name = "full_name"
 
     for _, row in df.iterrows():
         G.add_node(row[node_name])
         for column in df.columns:
             nx.set_node_attributes(G, row[column], name=column)
-    
+
     return G
