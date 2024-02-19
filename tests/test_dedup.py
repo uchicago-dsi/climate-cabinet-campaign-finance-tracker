@@ -3,7 +3,7 @@ import pytest
 
 from utils.constants import BASE_FILEPATH
 from utils.linkage import deduplicate_perfect_matches
-print(BASE_FILEPATH)
+
 
 @pytest.fixture
 def return_data(filename):
