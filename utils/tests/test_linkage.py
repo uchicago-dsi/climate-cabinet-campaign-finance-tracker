@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from utils.linkage import (
     calculate_row_similarity,
@@ -24,13 +25,13 @@ d = {
 test_df = pd.DataFrame(data=d)
 
 
-# @pytest.fixture
-# def row_similarity_scen_1():
-#     return open_test_data_json(data)
+@pytest.fixture
+def row_similarity_scen_1():
+    return test_df
 
-# @pytest.fixture
-# def row_similarity_scen_2():
-#     return open_test_data_json(data)
+@pytest.fixture
+def row_similarity_scen_2():
+    return test_df
 
 
 def test_row_similarity_scen_1(row_similarity_scen_1):
@@ -90,6 +91,10 @@ d2 = {
     ],
 }
 test_df2 = pd.DataFrame(data=d2)
+
+@pytest.fixture
+def row_match_scen1():
+    return test_df2
 
 
 def test_row_matches(row_match_scen1):
