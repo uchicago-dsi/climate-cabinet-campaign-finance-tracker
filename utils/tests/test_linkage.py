@@ -101,7 +101,7 @@ def row_match_scen1():
 
 def test_row_matches(row_match_scen1):
     res = row_matches(
-        test_df2, np.array([0.8, 0.2]), 0.9, calculate_string_similarity
+        row_match_scen1, np.array([0.8, 0.2]), 0.9, calculate_string_similarity
     )
 
     assert res == {0: [2], 1: [], 2: [], 3: [6], 4: [], 5: [], 6: [], 7: []}
