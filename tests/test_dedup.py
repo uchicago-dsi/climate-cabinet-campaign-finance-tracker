@@ -4,20 +4,22 @@ import pytest
 from utils.constants import BASE_FILEPATH
 from utils.linkage import deduplicate_perfect_matches
 
+
 @pytest.fixture
 def return_data(filename):
     path = BASE_FILEPATH / "output" / filename
-    df = pd.read_csv(path, low_memory=False )
+    df = pd.read_csv(path, low_memory=False)
     return df
+
 
 @pytest.fixture
 def call_dedup_func():
     inds_sample = return_data("complete_individuals_table.csv")
     orgs_sample = return_data("complete_organizations_table.csv")
-    
+
     assert not orgs_sample.empty()
     assert not inds_sample.empty()
-    
+
     deduplicated_inds = deduplicate_perfect_matches(inds_sample)
     deduplicated_orgs = deduplicate_perfect_matches(orgs_sample)
 
@@ -26,6 +28,7 @@ def call_dedup_func():
     # has
 
     return deduplicated_inds, deduplicated_orgs, output_dedup_ids
+
 
 @pytest.fixture
 def confirm_dedup_uuids():
