@@ -2,8 +2,8 @@
 Module for performing record linkage on state campaign finance dataset
 """
 import os.path
-import pandas as pd
 import re
+
 import numpy as np
 import pandas as pd
 import textdistance as td
@@ -193,7 +193,7 @@ def row_matches(
 
     return index_dict
 
-  
+
 def determine_comma_role(name: str) -> str:
     """Given a string (someone's name), attempts to determine the role of the
     comma in the name and where it ought to belong.
