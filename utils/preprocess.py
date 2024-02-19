@@ -32,7 +32,9 @@ def preprocess_pipeline(
     """
     # Preprocess organizations dataframe
     organizations["name"] = (
-        organizations["name"].astype(str, skipna=True).apply(standardize_corp_names)
+        organizations["name"]
+        .astype(str, skipna=True)
+        .apply(standardize_corp_names)
     )
 
     # Preprocess individuals dataframe
@@ -44,8 +46,12 @@ def preprocess_pipeline(
     )
 
     # Standardize company names in individuals dataframe
-    individuals["company"] = individuals["company"].apply(standardize_corp_names)
-    individuals["company"] = individuals["company"].apply(cleaning_company_column)
+    individuals["company"] = individuals["company"].apply(
+        standardize_corp_names
+    )
+    individuals["company"] = individuals["company"].apply(
+        cleaning_company_column
+    )
 
     # Address functions, assuming address column is named 'address'
     individuals["Address Line 1"] = individuals["Address"].apply(
@@ -63,12 +69,20 @@ def preprocess_pipeline(
         individuals["full_name"].notnull()
     ]
     if individuals["first_name"].isnull().any():
-        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
+        name = (
+            individuals["full_name"]
+            .apply(HumanName)
+            .apply(lambda x: x.as_dict())
+        )
         first_name = name.apply(lambda x: x["first"])
         individuals["first_name"] = first_name
 
     if individuals["last_name"].isnull().any():
-        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
+        name = (
+            individuals["full_name"]
+            .apply(HumanName)
+            .apply(lambda x: x.as_dict())
+        )
         last_name = name.apply(lambda x: x["last"])
         individuals["last_name"] = last_name
 
