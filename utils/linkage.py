@@ -1,6 +1,7 @@
 """
 Module for performing record linkage on state campaign finance dataset
 """
+import math
 import os.path
 import re
 
@@ -8,7 +9,6 @@ import numpy as np
 import pandas as pd
 import textdistance as td
 import usaddress
-import math
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -199,7 +199,7 @@ def match_confidence(
     confidences: np.array(float), weights: np.array(float), weights_toggle: bool
 ) -> float:
     """Combine confidences for row matches into a final confidence
-    
+
     This is a weighted log-odds based combination of row match confidences
     originating from various record linkage methods. Weights will be applied
     to the linkage methods in order and must be of the same length.
