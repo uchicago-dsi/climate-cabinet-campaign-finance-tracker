@@ -59,7 +59,6 @@ def automated_classifier(
     for subject in subjects_dict:
         similarities = similarities_df["name"].apply(
             lambda x, sub=subject: comparison_func(x, sub)
-            
         )
         matches = similarities >= threshold
 
