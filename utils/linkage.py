@@ -1,12 +1,16 @@
+import textdistance as td
+import usaddress
+from names_dataset import NameDataset
+
 """
 Module for performing record linkage on state campaign finance dataset
 """
+import math
 import os.path
 import re
 
+import numpy as np
 import pandas as pd
-import textdistance as td
-import usaddress
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -92,6 +96,128 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
     """
 
     return float(td.jaro_winkler(string1.lower()[::-1], string2.lower()[::-1]))
+
+
+def calculate_row_similarity(
+    row1: pd.DataFrame, row2: pd.DataFrame, weights: np.array, comparison_func
+) -> float:
+    """Find weighted similarity of two rows in a dataframe
+
+    The length of the weights vector must be the same as
+    the number of selected columns.
+
+    This version is slow and not optimized, and will be
+    revised in order to make it more efficient. It
+    exists as to provide basic functionality. Once we have
+    the comparison function locked in, using .apply will
+    likely be easier and more efficient.
+    """
+
+    row_length = len(weights)
+    if not (row1.shape[1] == row2.shape[1] == row_length):
+        raise ValueError("Number of columns and weights must be the same")
+
+    similarity = np.zeros(row_length)
+
+    for i in range(row_length):
+        similarity[i] = comparison_func(
+            row1.reset_index().drop(columns="index").iloc[:, i][0],
+            row2.reset_index().drop(columns="index").iloc[:, i][0],
+        )
+
+    return sum(similarity * weights)
+
+
+def row_matches(
+    df: pd.DataFrame, weights: np.array, threshold: float, comparison_func
+) -> dict:
+    """Get weighted similarity score of two rows
+
+    Run through the rows using indices: if two rows have a comparison score
+    greater than a threshold, we assign the later row to the former. Any
+    row which is matched to any other row is not examined again. Matches are
+    stored in a dictionary object, with each index appearing no more than once.
+
+    This is not optimized. Not presently sure how to make a good test case
+    for this, will submit and ask in mentor session.
+    """
+
+    all_indices = np.array(list(df.index))
+
+    index_dict = {}
+    [index_dict.setdefault(x, []) for x in all_indices]
+
+    discard_indices = []
+
+    end = max(all_indices)
+    for i in all_indices:
+        # Skip indices that have been stored in the discard_indices list
+        if i in discard_indices:
+            continue
+
+        # Iterate through the remaining numbers
+        for j in range(i + 1, end):
+            if j in discard_indices:
+                continue
+
+            # Our conditional
+            if (
+                calculate_row_similarity(
+                    df.iloc[[i]], df.iloc[[j]], weights, comparison_func
+                )
+                > threshold
+            ):
+                # Store the other index and mark it for skipping in future iterations
+                discard_indices.append(j)
+                index_dict[i].append(j)
+
+    return index_dict
+
+
+def match_confidence(
+    confidences: np.array(float), weights: np.array(float), weights_toggle: bool
+) -> float:
+    """Combine confidences for row matches into a final confidence
+
+    This is a weighted log-odds based combination of row match confidences
+    originating from various record linkage methods. Weights will be applied
+    to the linkage methods in order and must be of the same length.
+
+    weights_toggle allows one to turn weights on and off when calling the
+    function. False cancels the use of weights.
+
+    Since log-odds have undesirable behaviors at 0 and 1, we truncate at
+    +-5, which corresponds to around half a percent probability or
+    1 - the same.
+    >>> match_confidence(np.array([.6, .9, .0001]), np.array([2,5.7,8]), True)
+    2.627759082143462e-12
+    >>> match_confidence(np.array([.6, .9, .0001]), np.array([2,5.7,8]), False)
+    0.08337802853594725
+    """
+
+    if (min(confidences) < 0) or (max(confidences) > 1):
+        raise ValueError("Probabilities must be bounded on [0, 1]")
+
+    log_odds = []
+
+    for c in confidences:
+        l_o = np.log(c / (1 - c))
+
+        if l_o > 5:
+            l_o = 5
+
+        elif l_o < -5:
+            l_o = -5
+
+        log_odds.append(l_o)
+
+    if weights_toggle:
+        log_odds = log_odds * weights
+
+    l_o_sum = np.sum(log_odds)
+
+    conf_sum = math.e ** (l_o_sum) / (1 + math.e ** (l_o_sum))
+    return conf_sum
 
 
 def determine_comma_role(name: str) -> str:
@@ -271,6 +397,54 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             string.append(key)
 
     return " ".join(string)
+
+
+def name_rank(first_name: str, last_name: str) -> list:
+    """Returns a score for the rank of a given first name and last name
+    https://github.com/philipperemy/name-dataset
+    Args:
+        first_name: any string
+        last_name: any string
+    Returns:
+        name rank for first name and last names
+        1 is the most common name, only for names in the United States
+        First element in the list corresponds to the rank of the first name
+        Second element in the list corresponds to the rank of the last name
+        Empty or non string values will return None
+        Names that are not found in the dataset will return 0
+
+    >>> name_rank("John", "Smith")
+    [5, 7]
+    >>> name_rank("Adil", "Kassim")
+    [0, 7392]
+    >>> name_rank(None, 9)
+    [None, None]
+    """
+
+    # Initialize the NameDataset class
+    nd = NameDataset()
+
+    first_name_rank = 0
+    last_name_rank = 0
+    if isinstance(first_name, str):
+        first_name_result = nd.search(first_name)
+        if first_name_result and isinstance(first_name_result, dict):
+            first_name_data = first_name_result.get("first_name")
+            if first_name_data and "rank" in first_name_data:
+                first_name_rank = first_name_data["rank"].get(
+                    "United States", 0
+                )
+    else:
+        first_name_rank = None
+    if isinstance(last_name, str):
+        last_name_result = nd.search(last_name)
+        if last_name_result and isinstance(last_name_result, dict):
+            last_name_data = last_name_result.get("last_name")
+            if last_name_data and "rank" in last_name_data:
+                last_name_rank = last_name_data["rank"].get("United States", 0)
+    else:
+        last_name_rank = None
+    return [first_name_rank, last_name_rank]
 
 
 def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
