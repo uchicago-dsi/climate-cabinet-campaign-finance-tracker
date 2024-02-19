@@ -2,7 +2,6 @@ import textdistance as td
 import usaddress
 from names_dataset import NameDataset
 
-
 """
 Module for performing record linkage on state campaign finance dataset
 """
@@ -10,8 +9,6 @@ import os.path
 import re
 
 import pandas as pd
-import textdistance as td
-import usaddress
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -278,7 +275,6 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(string)
 
 
-
 def name_rank(first_name: str, last_name: str) -> list:
     """Returns a score for the rank of a given first name and last name
     https://github.com/philipperemy/name-dataset
@@ -300,10 +296,10 @@ def name_rank(first_name: str, last_name: str) -> list:
     >>> name_rank(None, 9)
     [None, None]
     """
-    
+
     # Initialize the NameDataset class
     nd = NameDataset()
-    
+
     first_name_rank = 0
     last_name_rank = 0
     if isinstance(first_name, str):
@@ -325,7 +321,8 @@ def name_rank(first_name: str, last_name: str) -> list:
     else:
         last_name_rank = None
     return [first_name_rank, last_name_rank]
-=======
+
+
 def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
     """Saves to the "output" directory a file where each row represents a string
     matching to another string
