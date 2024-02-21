@@ -7,16 +7,13 @@ import re
 import pandas as pd
 import textdistance as td
 import usaddress
-
 from splink.duckdb.linker import DuckDBLinker
-import splink.duckdb.comparison_template_library as ctl
-import splink.duckdb.comparison_library as cl
+
+from utils.constants import COMPANY_TYPES, repo_root
 
 """
 Module for performing record linkage on state campaign finance dataset
 """
-
-from utils.constants import COMPANY_TYPES, repo_root
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -470,23 +467,34 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
 
 
 def splink_dedupe(df, settings, blocking):
+    """Given the individuals or organizations dataframes, the corresponding
+    configuration settings, and corresponding blocking rules return a
+    deduplicated dataframe
 
-      """Given a dataframe, configuration settings, and blocking rules return a deduplicated dataframe
+    Configuration settings and blocking can be found in constants.py as
+    individuals_settings, indivduals_blocking, organizations_settings,
+    organizations_blocking
+
     Args:
-        df: dataframe with potential duplicates
-        settings: model settings based on splink documentation
-        blocking: list of columns to block on
+        df: individuals or organizations table
+        settings: individuald or configuration settings
+            (based on splink documentation)
+        blocking: list of columns to block on for the table
+            (cuts dataframe into parts based on above blocks )
     Returns:
-        dataframe with matched ids of matching rows"""
-
+        dataframe with matched ids of matching rows
+    """
     linker = DuckDBLinker(df, settings)
-    linker.estimate_probability_two_random_records_match(blocking, recall=0.6) #default
+    linker.estimate_probability_two_random_records_match(
+        blocking, recall=0.6
+    )  # default
     linker.estimate_u_using_random_sampling(max_pairs=5e6)
-    
+
     for i in blocking:
-        training_session_names = linker.estimate_parameters_using_expectation_maximisation(i)
-    
+        linker.estimate_parameters_using_expectation_maximisation(i)
+
     df_predict = linker.predict()
-    df_e = df_predict.as_pandas_dataframe()
-    clusters = linker.cluster_pairwise_predictions_at_threshold(df_predict, threshold_match_probability=0.7) #default
+    clusters = linker.cluster_pairwise_predictions_at_threshold(
+        df_predict, threshold_match_probability=0.7
+    )  # default
     return clusters.as_pandas_dataframe()

@@ -3,6 +3,9 @@ Constants to be used in various parts of the project.
 """
 from pathlib import Path
 
+import splink.duckdb.comparison_library as cl
+import splink.duckdb.comparison_template_library as ctl
+
 BASE_FILEPATH = Path(__file__).resolve().parent.parent
 # returns the base_path to the directory
 
@@ -642,35 +645,29 @@ COMPANY_TYPES = {
     "PAC": "POLITICAL ACTION COMMITTEE",
 }
 
-individual_settings = {
+individuals_settings = {
     "link_type": "dedupe_only",
-    "blocking_rules_to_generate_predictions": [
-        "l.first_name = r.first_name and l.last_name = r.last_name",
-        "l.full_name - r.full_name"
-    ],
+    "blocking_rules_to_generate_predictions": ["l.full_name - r.full_name"],
     "comparisons": [
-        ctl.name_comparison("first_name"), #built in comparison function
+        ctl.name_comparison("first_name"),  # built in comparison function
         ctl.name_comparison("last_name"),
         ctl.name_comparison("full_name"),
-        ctl.forename_surname_comparison("first_name", "last_name"), #built in comparison function
         cl.exact_match("entity_type", term_frequency_adjustments=True),
-        cl.jaro_winkler_at_thresholds("state", [0.9, 0.8]), #threshold will catch typos and shortenings
+        cl.jaro_winkler_at_thresholds(
+            "state", [0.9, 0.8]
+        ),  # threshold will catch typos and shortenings
         cl.jaro_winkler_at_thresholds("party", [0.9, 0.8]),
         cl.jaro_winkler_at_thresholds("company", [0.9, 0.8]),
     ],
-    
-    #DEFAULT
+    # DEFAULT
     "retain_matching_columns": True,
     "retain_intermediate_calculation_columns": True,
-    "max_iterations": 10,
-    "em_convergence": 0.01
 }
 
-i_blocking = [
-            "l.first_name = r.first_name and l.last_name = r.last_name",
-            "l.full_name = r.full_name and l.state = r.state",
-            "l.full_name = r.full_name and l.company = r.company",
-        ]
+individuals_blocking = [
+    "l.first_name = r.first_name and l.last_name = r.last_name",
+    "l.full_name = r.full_name",
+]
 
 organizations_settings = {
     "link_type": "dedupe_only",
@@ -680,16 +677,16 @@ organizations_settings = {
     "comparisons": [
         ctl.name_comparison("name", term_frequency_adjustments=True),
         cl.exact_match("entity_type", term_frequency_adjustments=True),
-        cl.jaro_winkler_at_thresholds("state", [0.9, 0.8]), #threshold will catch typos and shortenings
+        cl.jaro_winkler_at_thresholds(
+            "state", [0.9, 0.8]
+        ),  # threshold will catch typos and shortenings
         # Add more comparisons as needed
     ],
     "retain_matching_columns": True,
     "retain_intermediate_calculation_columns": True,
-    "max_iterations": 10,
-    "em_convergence": 0.01
 }
 
-o_blocking = [
-            "l.name = r.name",
-            "l.name = r.name and l.state = r.state",
-        ]
+organizations_blocking = [
+    "l.name = r.name",
+    "l.name = r.name and l.state = r.state",
+]
