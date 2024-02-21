@@ -1,8 +1,3 @@
-"""
-Module for performing record linkage on state campaign finance dataset
-
-"""
-
 import math
 import os.path
 import re
@@ -15,6 +10,10 @@ import usaddress
 from names_dataset import NameDataset
 
 from utils.constants import COMPANY_TYPES, repo_root
+
+"""
+Module for performing record linkage on state campaign finance dataset
+"""
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -503,7 +502,9 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # now find the duplicates along all columns but the ID
     new_df = (
-        new_df.groupby(df.columns[1:].tolist(), dropna=False)["id"]
+        new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)[
+            "id"
+        ]
         .agg(list)
         .reset_index()
         .rename(columns={"id": "duplicated"})
