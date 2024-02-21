@@ -501,7 +501,9 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # now find the duplicates along all columns but the ID
     new_df = (
-        new_df.groupby(df.columns[1:].tolist(), dropna=False)["id"]
+        new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)[
+            "id"
+        ]
         .agg(list)
         .reset_index()
         .rename(columns={"id": "duplicated"})
