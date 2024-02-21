@@ -1,18 +1,18 @@
-import textdistance as td
-import usaddress
-from names_dataset import NameDataset
-
-"""
-Module for performing record linkage on state campaign finance dataset
-"""
 import math
 import os.path
 import re
 
 import numpy as np
 import pandas as pd
+import textdistance as td
+import usaddress
+from names_dataset import NameDataset
 
 from utils.constants import COMPANY_TYPES, repo_root
+
+"""
+Module for performing record linkage on state campaign finance dataset
+"""
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
