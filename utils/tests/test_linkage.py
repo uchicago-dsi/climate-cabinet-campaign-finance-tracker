@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 import pytest
+
 from utils.constants import BASE_FILEPATH
 from utils.linkage import (
     calculate_row_similarity,
     calculate_string_similarity,
-    row_matches, deduplicate_perfect_matches
+    deduplicate_perfect_matches,
+    row_matches,
 )
 
 """
@@ -107,6 +109,7 @@ def test_row_matches(row_match_scen1):
     )
 
     assert res == {0: [2], 1: [], 2: [], 3: [6], 4: [], 5: [], 6: [], 7: []}
+
 
 # Test for dedupe function
 @pytest.fixture
