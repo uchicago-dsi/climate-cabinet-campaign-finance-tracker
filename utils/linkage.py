@@ -459,13 +459,13 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
     Args:
         A pandas df containing a column called 'duplicated', where each row is a
         list of all uuids deemed a match. In each list, all uuids but the first
-        have their rows already dropped. 
+        have their rows already dropped.
 
     Returns
         None. However it outputs a file to the output directory, with 2
-        columns. The first lists all the uuids in df, and is labeled 'all_uuids' 
+        columns. The first lists all the uuids in df, and is labeled 'all_uuids'
         The 2nd shows the uuids to which each entry is mapped to, and is labeled
-        'mapped_uuids'.    
+        'mapped_uuids'.
     """
     deduped_dict = {}
     for i in range(len(df)):
