@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import textdistance as td
 import usaddress
-from splink.duckdb.linker import DuckDBLinker
 from names_dataset import NameDataset
+from splink.duckdb.linker import DuckDBLinker
 
 from utils.constants import COMPANY_TYPES, repo_root
 
