@@ -21,3 +21,4 @@ textdistance==4.6.1
 usaddress==0.5.4
 networkx~=3.1
 splink==3.9.12
+names-dataset==3.1.0
