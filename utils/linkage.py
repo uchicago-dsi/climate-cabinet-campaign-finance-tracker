@@ -449,21 +449,23 @@ def name_rank(first_name: str, last_name: str) -> list:
 
 
 def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
-    """Saves to the "output" directory a file where each row represents a string
-    matching to another string
+    """For each uuid, maps it to all other uuids for which it has been deemed a
+    match.
 
-    Given a dataframe where each row contains one string in a column and a list
-    of strings in another column, the function maps each string in the list to
-    the single string.
+    Given a dataframe where the uuids of all rows deemed similar are stored in a
+    list and all but the first row of each paired uuid is dropped, this function
+    maps the matched uuids to a single uuid.
 
     Args:
-        A pandas dataframe
+        A pandas df containing a column called 'duplicated', where each row is a
+        list of all uuids deemed a match. In each list, all uuids but the first
+        have their rows already dropped. 
 
     Returns
         None. However it outputs a file to the output directory, with 2
-        columns. The first, which indicates the duplicated UUIDs, is labeled
-        'duplicated_uuids', and the 2nd, which shows the uuids to which the
-        deduplicated entries match to, is labeled 'mapped_uuids'.
+        columns. The first lists all the uuids in df, and is labeled 'all_uuids' 
+        The 2nd shows the uuids to which each entry is mapped to, and is labeled
+        'mapped_uuids'.    
     """
     deduped_dict = {}
     for i in range(len(df)):
@@ -474,7 +476,7 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
     deduped_df = deduped_df.reset_index().rename(
-        columns={"index": "duplicated_uuids", 0: "mapped_uuids"}
+        columns={"index": "all_uuids", 0: "mapped_uuids"}
     )
     deduped_df.to_csv(
         repo_root / "output" / "deduplicated_UUIDs.csv",
