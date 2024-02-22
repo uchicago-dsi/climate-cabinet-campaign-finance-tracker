@@ -134,3 +134,19 @@ individuals, organizations, transactions = preprocess_pipeline(
 
 individuals = deduplicate_perfect_matches(individuals)
 organizations = deduplicate_perfect_matches(organizations)
+
+processed_individuals_output_path = (
+    BASE_FILEPATH / "output" / "processed_individuals_table.csv"
+)
+
+processed_organizations_output_path = (
+    BASE_FILEPATH / "output" / "processed_organizations_table.csv"
+)
+
+processed_transactions_output_path = (
+    BASE_FILEPATH / "output" / "processed_transactions_table.csv"
+)
+
+individuals.to_csv(processed_individuals_output_path)
+organizations.to_csv(processed_organizations_output_path)
+transactions.to_csv(processed_transactions_output_path)
