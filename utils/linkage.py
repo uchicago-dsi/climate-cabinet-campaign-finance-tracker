@@ -466,7 +466,9 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     raise ValueError("Can not find Address Number")
 
 
-def splink_dedupe(df, settings, blocking):
+def splink_dedupe(
+    df: pd.DataFrame, settings: dict, blocking: list
+) -> pd.DataFrame:
     """Given the individuals or organizations dataframes, the corresponding
     configuration settings, and corresponding blocking rules return a
     deduplicated dataframe
