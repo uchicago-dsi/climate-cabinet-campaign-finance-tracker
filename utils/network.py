@@ -22,7 +22,7 @@ def deduplicate_datasets(
     inds_df = deduplicate_perfect_matches(ind_df)
     orgs_df = deduplicate_perfect_matches(org_df)
 
-    # update the deduplicated uuids in transaction donor and recipient columns 
+    # update the deduplicated uuids in transaction donor and recipient columns
     # to the uuids they are mapped to
     deduped = pd.read_csv("../output/deduplicated_UUIDs.csv")
     transactions_df[["donor_id", "recipient_id"]] = transactions_df[
@@ -31,9 +31,10 @@ def deduplicate_datasets(
 
     return inds_df, orgs_df, transactions_df
 
-def name_identifier(uuid:str, orgs_df, inds_df) -> str:
-    '''Returns the name of the entity given the entity's uuid
-    
+
+def name_identifier(uuid: str, orgs_df, inds_df) -> str:
+    """Returns the name of the entity given the entity's uuid
+
     Args:
         uuid: the uuid of the entity
         orgs_df and inds_df: the dataframes from which the entities uuid
@@ -41,23 +42,24 @@ def name_identifier(uuid:str, orgs_df, inds_df) -> str:
 
     Return:
         The entity's name
-    '''
+    """
     # first, check orgs df:
-    name_in_org = orgs_df.loc[orgs_df['id']==uuid] 
-    if len(name_in_org)> 0:
-        return name_in_org.iloc[0]['name']
+    name_in_org = orgs_df.loc[orgs_df["id"] == uuid]
+    if len(name_in_org) > 0:
+        return name_in_org.iloc[0]["name"]
     # theoretically it must be in inds if not in orgs, but for the sample data
     # this might not be the case
-    name_in_ind = inds_df.loc[inds_df['id']==uuid]
-    if len(name_in_ind)> 0:
-        return name_in_ind.iloc[0]['full_name']
-    else: return None
+    name_in_ind = inds_df.loc[inds_df["id"] == uuid]
+    if len(name_in_ind) > 0:
+        return name_in_ind.iloc[0]["full_name"]
+    else:
+        return None
 
 
 def network_prep_pipeline(
     ind_df: pd.DataFrame, org_df: pd.DataFrame, transactions_df: pd.DataFrame
 ) -> tuple:
-    '''Pipeline for preparing the orgs, inds, and transactions dataframes for
+    """Pipeline for preparing the orgs, inds, and transactions dataframes for
     network linkage
 
     Args:
@@ -65,17 +67,18 @@ def network_prep_pipeline(
         regarding campaign contributions between donors and recipients
 
     Returns:
-        a tuple containing the 3 dataframes ready for network building 
-    '''
-    
+        a tuple containing the 3 dataframes ready for network building
+    """
+
     ind_df, org_df, transactions_df = deduplicate_datasets(
         ind_df, org_df, transactions_df
     )
 
     # add recipient_name to the transactions dataset
-    transactions_df['recipient_name'] = transactions_df['recipient_id'].apply(name_identifier, args=(org_df, ind_df))
+    transactions_df["recipient_name"] = transactions_df["recipient_id"].apply(
+        name_identifier, args=(org_df, ind_df)
+    )
     return ind_df, org_df, transactions_df
-
 
 
 def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
