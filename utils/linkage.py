@@ -462,9 +462,9 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
 
     Returns
         None. However it outputs a file to the output directory, with 2
-        columns. The first lists all the uuids in df, and is labeled 'all_uuids'
-        The 2nd shows the uuids to which each entry is mapped to, and is labeled
-        'mapped_uuids'.
+        columns. The first lists all the uuids in df, and is labeled
+        'original_uuids.' The 2nd shows the uuids to which each entry is mapped
+        to, and is labeled 'mapped_uuids'.
     """
     deduped_dict = {}
     for i in range(len(df)):
@@ -475,7 +475,7 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
     deduped_df = deduped_df.reset_index().rename(
-        columns={"index": "all_uuids", 0: "mapped_uuids"}
+        columns={"index": "original_uuids", 0: "mapped_uuid"}
     )
     deduped_df.to_csv(
         repo_root / "output" / "deduplicated_UUIDs.csv",
