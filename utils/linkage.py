@@ -309,7 +309,12 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     >>> get_likely_name("Jane","","Doe, Jane, Elisabeth")
     'Jane Elisabeth Doe'
     """
-    # first ensure clean input by deleting spaces:
+    # first, convert any Nans to empty strings ''
+    first_name, last_name, full_name = [
+        "" if x is np.NAN else x for x in [first_name, last_name, full_name]
+    ]
+
+    # second, ensure clean input by deleting spaces:
     first_name, last_name, full_name = list(
         map(lambda x: x.lower().strip(), [first_name, last_name, full_name])
     )
