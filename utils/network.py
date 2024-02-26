@@ -99,9 +99,31 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
     else:
         node_name = "full_name"
 
+    transact_info = [
+        "office_sought",
+        "purpose",
+        "transaction_type",
+        "recipient_id",
+        "transaction_id",
+        "recipient_type",
+        "donor_office",
+        "recipient_name",
+        "amount",
+    ]
+
     for _, row in df.iterrows():
+        # add node attributes based on the columns relevant to the entity
         G.add_node(row[node_name])
-        for column in df.columns:
-            nx.set_node_attributes(G, row[column], name=column)
+        for column in df.columns.difference(transact_info):
+            if not pd.isnull(row[column]):
+                G.nodes[row[node_name]][column] = row[column]
+
+        # link the donor node to the recipient node. add the attributes of the
+        # edge based on relevant nodes
+        for column in transact_info:
+            if not pd.isnull(row[column]):
+                G.add_edge(
+                    row[node_name], row["recipient_name"], column=row[column]
+                )
 
     return G
