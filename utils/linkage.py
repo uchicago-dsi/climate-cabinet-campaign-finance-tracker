@@ -641,7 +641,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
 def splink_dedupe(
     df: pd.DataFrame, settings: dict, blocking: list
 ) -> pd.DataFrame:
-    """Given the individuals or organizations dataframes, the corresponding
+    """Given a dataframes, the corresponding
     configuration settings, and corresponding blocking rules return a
     deduplicated dataframe
 
@@ -650,13 +650,15 @@ def splink_dedupe(
     organizations_blocking
 
     Args:
-        df: individuals or organizations table
-        settings: individuald or configuration settings
-            (based on splink documentation)
+        df: dataframe
+        settings: configuration settings
+            (based on splink documentation and dataframe columns)
         blocking: list of columns to block on for the table
-            (cuts dataframe into parts based on above blocks )
+            (cuts dataframe into parts based on columns labeled blocks)
     Returns:
-        dataframe with matched ids of matching rows
+        deduplicated version of initial dataframe with column 'matching_id'
+        that holds list of matching unique_ids
+
     """
     linker = DuckDBLinker(df, settings)
     linker.estimate_probability_two_random_records_match(
@@ -671,4 +673,24 @@ def splink_dedupe(
     clusters = linker.cluster_pairwise_predictions_at_threshold(
         df_predict, threshold_match_probability=0.7
     )  # default
-    return clusters.as_pandas_dataframe()
+    clusters_df = (
+        clusters.as_pandas_dataframe()
+    )  # dataframe where cluster_id maps unique_id to initial instance of row
+
+    match_list_df = (
+        clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
+    )
+    match_list_df.rename(
+        columns={"unique_id": "matching_list"}, inplace=True
+    )  # dataframe which matches cluster_id to a list of unique_ids
+
+    first_instance_df = clusters_df.drop_duplicates(subset="cluster_id")
+    col_names = np.append("cluster_id", df.columns)
+    first_instance_df = first_instance_df[col_names]
+
+    return pd.merge(
+        first_instance_df,
+        match_list_df[["cluster_id", "matching_list"]],
+        on="cluster_id",
+        how="left",
+    )
