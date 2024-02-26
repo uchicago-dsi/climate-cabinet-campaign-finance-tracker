@@ -309,7 +309,12 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     >>> get_likely_name("Jane","","Doe, Jane, Elisabeth")
     'Jane Elisabeth Doe'
     """
-    # first ensure clean input by deleting spaces:
+    # first, convert any Nans to empty strings ''
+    first_name, last_name, full_name = [
+        "" if x is np.NAN else x for x in [first_name, last_name, full_name]
+    ]
+
+    # second, ensure clean input by deleting spaces:
     first_name, last_name, full_name = list(
         map(lambda x: x.lower().strip(), [first_name, last_name, full_name])
     )
@@ -462,9 +467,9 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
 
     Returns
         None. However it outputs a file to the output directory, with 2
-        columns. The first lists all the uuids in df, and is labeled 'all_uuids'
-        The 2nd shows the uuids to which each entry is mapped to, and is labeled
-        'mapped_uuids'.
+        columns. The first lists all the uuids in df, and is labeled
+        'original_uuids.' The 2nd shows the uuids to which each entry is mapped
+        to, and is labeled 'mapped_uuids'.
     """
     deduped_dict = {}
     for i in range(len(df)):
@@ -475,7 +480,7 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
     deduped_df = deduped_df.reset_index().rename(
-        columns={"index": "all_uuids", 0: "mapped_uuids"}
+        columns={"index": "original_uuids", 0: "mapped_uuid"}
     )
     deduped_df.to_csv(
         repo_root / "output" / "deduplicated_UUIDs.csv",
