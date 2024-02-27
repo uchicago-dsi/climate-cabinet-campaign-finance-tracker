@@ -688,9 +688,22 @@ def splink_dedupe(
     col_names = np.append("cluster_id", df.columns)
     first_instance_df = first_instance_df[col_names]
 
-    return pd.merge(
+    deduped_df = pd.merge(
         first_instance_df,
-        match_list_df[["cluster_id", "matching_list"]],
+        match_list_df[["cluster_id"]],
         on="cluster_id",
         how="left",
     )
+
+    match_list_df.rename(
+        columns={"unique_id": "mapped_uuids", "cluster_id": "original_ids"},
+        inplace=True,
+    )
+    deduped_df.to_csv(
+        repo_root / "output" / "splink_deduplicated_UUIDs.csv",
+        index=False,
+        mode="a",
+        header=not os.path.exists("../output/splink_deduplicated_UUIDs.csv"),
+    )
+
+    return deduped_df

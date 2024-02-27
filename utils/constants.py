@@ -647,10 +647,11 @@ COMPANY_TYPES = {
 
 individuals_settings = {
     "link_type": "dedupe_only",
-    "blocking_rules_to_generate_predictions": ["l.full_name - r.full_name"],
+    "blocking_rules_to_generate_predictions": [
+        "l.first_name = r.first_name",
+        "l.last_name = r.last_name",
+    ],
     "comparisons": [
-        ctl.name_comparison("first_name"),  # built in comparison function
-        ctl.name_comparison("last_name"),
         ctl.name_comparison("full_name"),
         cl.exact_match("entity_type", term_frequency_adjustments=True),
         cl.jaro_winkler_at_thresholds(
@@ -662,11 +663,13 @@ individuals_settings = {
     # DEFAULT
     "retain_matching_columns": True,
     "retain_intermediate_calculation_columns": True,
+    "max_iterations": 10,
+    "em_convergence": 0.01,
 }
 
 individuals_blocking = [
-    "l.first_name = r.first_name and l.last_name = r.last_name",
-    "l.full_name = r.full_name",
+    "l.first_name = r.first_name",
+    "l.last_name = r.last_name",
 ]
 
 organizations_settings = {
@@ -675,7 +678,6 @@ organizations_settings = {
         "l.name = r.name",
     ],
     "comparisons": [
-        ctl.name_comparison("name", term_frequency_adjustments=True),
         cl.exact_match("entity_type", term_frequency_adjustments=True),
         cl.jaro_winkler_at_thresholds(
             "state", [0.9, 0.8]
@@ -684,9 +686,8 @@ organizations_settings = {
     ],
     "retain_matching_columns": True,
     "retain_intermediate_calculation_columns": True,
+    "max_iterations": 10,
+    "em_convergence": 0.01,
 }
 
-organizations_blocking = [
-    "l.name = r.name",
-    "l.name = r.name and l.state = r.state",
-]
+organizations_blocking = ["l.name = r.name"]
