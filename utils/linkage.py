@@ -1,5 +1,3 @@
-import re
-
 import textdistance as td
 import usaddress
 from names_dataset import NameDataset
@@ -635,61 +633,3 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
         elif address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
     raise ValueError("Can not find Address Number")
-
-
-def cleaning_company_column(company_entry: str) -> str:
-    """
-    Given a string, check if it contains a variation of self employed, unemployed,
-    or retired and return the standardized version.
-
-    Args:
-        company: string of inputted company names
-    Returns:
-        standardized for retired, self employed, and unemployed,
-        or original string if no match or empty string
-
-    >>> cleaning_company_column("Retireed")
-    'Retired'
-    >>> cleaning_company_column("self")
-    'Self Employed'
-    >>> cleaning_company_column("None")
-    'Unemployed'
-    >>> cleaning_company_column("N/A")
-    'Unemployed'
-    """
-
-    if not company_entry:
-        return company_entry
-
-    company_edited = company_entry.lower()
-
-    if company_edited == "n/a":
-        return "Unemployed"
-
-    company_edited = re.sub(r"[^\w\s]", "", company_edited)
-
-    if (
-        company_edited == "retired"
-        or company_edited == "retiree"
-        or company_edited == "retire"
-        or "retiree" in company_edited
-    ):
-        return "Retired"
-
-    elif (
-        "self employe" in company_edited
-        or "freelance" in company_edited
-        or company_edited == "self"
-        or company_edited == "independent contractor"
-    ):
-        return "Self Employed"
-    elif (
-        "unemploye" in company_edited
-        or company_edited == "none"
-        or company_edited == "not employed"
-        or company_edited == "nan"
-    ):
-        return "Unemployed"
-
-    else:
-        return company_edited
