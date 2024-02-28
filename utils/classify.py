@@ -1,5 +1,7 @@
 import pandas as pd
 
+from utils.constants import f_companies, f_org_names, c_org_names
+
 # we want to run down a list of people and, hopefully, their adresses, plus a list of
 # corporations, groups, etc, and classify them, basically just looking for matches
 
@@ -8,50 +10,6 @@ import pandas as pd
 # manual review? this should give us a feeling for how to set our threshold
 # we might also, once we have all the data, buckle down and just classify
 # some of them manually
-
-
-# several kinds of lists, applied differently, actually they should be dictionaries
-
-# corp name lists
-# employer name lists
-# etc
-
-
-# individuals compnay f names
-f_companies = [
-    "exxon",
-    "chevron",
-    "southwest gas",
-    "petroleum",
-    "koch industries",
-    "koch companies",
-    "oil & gas",
-    "marathon oil",
-    "shell oil",
-]
-
-# organizations f names
-f_org_names = [
-    "koch industries",
-    "koch pac",
-    "kochpac",
-    "southwest gas az",
-    "pinnacle west",
-    "americans for prosperity",
-    "energy transfer",
-]
-
-# organizations c names
-c_org_names = [
-    "clean energy",
-    "vote solar action",
-    "renewable",
-    "pattern energy",
-    "beyond carbon",
-    "lcv victory",
-    "league of conservation",
-]
-
 
 def matcher(df, substring, column, category):
     """ """
