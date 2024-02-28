@@ -10,41 +10,61 @@ import pandas as pd
 # some of them manually
 
 
+# several kinds of lists, applied differently, actually they should be dictionaries
+
+# corp name lists
+# employer name lists
+# etc
 
 
-#several kinds of lists, applied differently, actually they should be dictionaries
+# individuals compnay f names
+f_companies = [
+    "exxon",
+    "chevron",
+    "southwest gas",
+    "petroleum",
+    "koch industries",
+    "koch companies",
+    "oil & gas",
+    "marathon oil",
+    "shell oil",
+]
 
-#corp name lists
-#employer name lists
-#etc
+# organizations f names
+f_org_names = [
+    "koch industries",
+    "koch pac",
+    "kochpac",
+    "southwest gas az",
+    "pinnacle west",
+    "americans for prosperity",
+    "energy transfer",
+]
 
-
-#individuals compnay f names
-f_companies = ["exxon", "chevron", "southwest gas", "petroleum", "koch industries", "koch companies", "oil & gas", "marathon oil", "shell oil", ]
-
-#organizations f names
-f_org_names = ["koch industries", "koch pac", "kochpac", "southwest gas az", "pinnacle west", "americans for prosperity", "energy transfer"]
-
-#organizations c names
-c_org_names = ["clean energy", "vote solar action", "renewable", "pattern energy", "beyond carbon", "lcv victory", "league of conservation"]
-
+# organizations c names
+c_org_names = [
+    "clean energy",
+    "vote solar action",
+    "renewable",
+    "pattern energy",
+    "beyond carbon",
+    "lcv victory",
+    "league of conservation",
+]
 
 
 def matcher(df, substring, column, category):
-    """
-    """
-    
+    """ """
+
     bool_series = df[column].str.contains(substring, na=False)
-    
-    df.loc[bool_series, 'classification'] = category
-    
+
+    df.loc[bool_series, "classification"] = category
+
     return df
 
 
 def classification_pipeline(individuals_df, organizations_df):
-    """
-    
-    """
+    """ """
 
     individuals_df["classification"] = "neutral"
 
@@ -55,15 +75,11 @@ def classification_pipeline(individuals_df, organizations_df):
 
     for i in f_org_names:
         organizations_df = matcher(organizations_df, i, "name", "f")
-    
+
     for i in c_org_names:
         organizations_df = matcher(organizations_df, i, "name", "c")
-    
 
     return individuals_df, organizations_df
-
-
-
 
 
 inds_list = []
