@@ -65,12 +65,20 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         individuals["full_name"].notnull()
     ]
     if individuals["first_name"].isnull().any():
-        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
+        name = (
+            individuals["full_name"]
+            .apply(HumanName)
+            .apply(lambda x: x.as_dict())
+        )
         first_name = name.apply(lambda x: x["first"])
         individuals["first_name"] = first_name
 
     if individuals["last_name"].isnull().any():
-        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
+        name = (
+            individuals["full_name"]
+            .apply(HumanName)
+            .apply(lambda x: x.as_dict())
+        )
         last_name = name.apply(lambda x: x["last"])
         individuals["last_name"] = last_name
 
