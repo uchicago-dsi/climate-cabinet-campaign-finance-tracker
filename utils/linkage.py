@@ -673,16 +673,12 @@ def splink_dedupe(
     clusters = linker.cluster_pairwise_predictions_at_threshold(
         df_predict, threshold_match_probability=0.7
     )  # default
-    clusters_df = (
-        clusters.as_pandas_dataframe()
-    )  # dataframe where cluster_id maps unique_id to initial instance of row
+    clusters_df = clusters.as_pandas_dataframe()
 
     match_list_df = (
         clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
-    )
-    match_list_df.rename(
-        columns={"unique_id": "matching_list"}, inplace=True
-    )  # dataframe which matches cluster_id to a list of unique_ids
+    )  # dataframe where cluster_id maps unique_id to initial instance of row
+    match_list_df.rename(columns={"unique_id": "duplicated"}, inplace=True)
 
     first_instance_df = clusters_df.drop_duplicates(subset="cluster_id")
     col_names = np.append("cluster_id", df.columns)
@@ -694,16 +690,10 @@ def splink_dedupe(
         on="cluster_id",
         how="left",
     )
+    deduped_df.rename(columns={"cluster_id": "unique_id"}, inplace=True)
 
-    match_list_df.rename(
-        columns={"unique_id": "mapped_uuids", "cluster_id": "original_ids"},
-        inplace=True,
-    )
-    deduped_df.to_csv(
-        repo_root / "output" / "splink_deduplicated_UUIDs.csv",
-        index=False,
-        mode="a",
-        header=not os.path.exists("../output/splink_deduplicated_UUIDs.csv"),
-    )
+    convert_duplicates_to_dict(deduped_df)
+
+    deduped_df.drop(columns=["duplicated"])
 
     return deduped_df
