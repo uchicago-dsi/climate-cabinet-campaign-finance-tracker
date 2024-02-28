@@ -8,11 +8,13 @@ output deduplicated_individuals: all_individuals.csv
 output deduplicated_organizations: all_organizations.csv
 	python deduplication_pipeline
 
+
 output classified_individuals: all_individuals.csv
-	python classifier_pipeline
+	python classify.py classify_individuals 
 
 output classified_organizations: all_organizations.csv
-	python classifier_pipeline
+	python classify.py classify_orgs
 
+#just sketched out 
 output network_graph: all_individuals.csv all_organizations.csv all_transactions.csv
 	python network_graph_pipeline
