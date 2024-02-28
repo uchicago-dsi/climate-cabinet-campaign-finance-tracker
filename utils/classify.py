@@ -63,15 +63,24 @@ def matcher(df, substring, column, category):
     return df
 
 
-def classification_pipeline(individuals_df, organizations_df):
-    """ """
+def classify_individuals(individuals_df):
+    """
+    
+    """
 
     individuals_df["classification"] = "neutral"
 
-    organizations_df["classification"] = "neutral"
-
     for i in f_companies:
         individuals_df = matcher(individuals_df, i, "company", "f")
+
+    return individuals_df
+
+
+
+def classify_orgs(organizations_df):
+    """ """
+
+    organizations_df["classification"] = "neutral"
 
     for i in f_org_names:
         organizations_df = matcher(organizations_df, i, "name", "f")
@@ -79,7 +88,7 @@ def classification_pipeline(individuals_df, organizations_df):
     for i in c_org_names:
         organizations_df = matcher(organizations_df, i, "name", "c")
 
-    return individuals_df, organizations_df
+    return organizations_df
 
 
 inds_list = []
