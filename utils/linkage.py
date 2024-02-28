@@ -340,9 +340,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
             names[i] = determine_comma_role(names[i])
 
         names[i] = names[i].replace(".", "").split(" ")
-        names[i] = [
-            name_part for name_part in names[i] if name_part not in titles
-        ]
+        names[i] = [name_part for name_part in names[i] if name_part not in titles]
         names[i] = " ".join(names[i])
 
     # one last check to remove any pieces that might add extra whitespace
@@ -431,9 +429,7 @@ def name_rank(first_name: str, last_name: str) -> list:
         if first_name_result and isinstance(first_name_result, dict):
             first_name_data = first_name_result.get("first_name")
             if first_name_data and "rank" in first_name_data:
-                first_name_rank = first_name_data["rank"].get(
-                    "United States", 0
-                )
+                first_name_rank = first_name_data["rank"].get("United States", 0)
     else:
         first_name_rank = None
     if isinstance(last_name, str):
