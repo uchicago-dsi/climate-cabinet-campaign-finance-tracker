@@ -9,6 +9,63 @@ import pandas as pd
 # we might also, once we have all the data, buckle down and just classify
 # some of them manually
 
+
+
+
+#several kinds of lists, applied differently, actually they should be dictionaries
+
+#corp name lists
+#employer name lists
+#etc
+
+
+#individuals compnay f names
+f_companies = ["exxon", "chevron", "southwest gas", "petroleum", "koch industries", "koch companies", "oil & gas", "marathon oil", "shell oil", ]
+
+#organizations f names
+f_org_names = ["koch industries", "koch pac", "kochpac", "southwest gas az", "pinnacle west", "americans for prosperity", "energy transfer"]
+
+#organizations c names
+c_org_names = ["clean energy", "vote solar action", "renewable", "pattern energy", "beyond carbon", "lcv victory", "league of conservation"]
+
+
+
+def matcher(df, substring, column, category):
+    """
+    """
+    
+    bool_series = df[column].str.contains(substring, na=False)
+    
+    df.loc[bool_series, 'classification'] = category
+    
+    return df
+
+
+def classification_pipeline(individuals_df, organizations_df):
+    """
+    
+    """
+
+    individuals_df["classification"] = "neutral"
+
+    organizations_df["classification"] = "neutral"
+
+    for i in f_companies:
+        individuals_df = matcher(individuals_df, i, "company", "f")
+
+    for i in f_org_names:
+        organizations_df = matcher(organizations_df, i, "name", "f")
+    
+    for i in c_org_names:
+        organizations_df = matcher(organizations_df, i, "name", "c")
+    
+
+    return individuals_df, organizations_df
+
+
+
+
+
 inds_list = []
 
 # a list of individual names
