@@ -1,6 +1,6 @@
 import pandas as pd
 
-from utils.constants import f_companies, f_org_names, c_org_names
+from utils.constants import c_org_names, f_companies, f_org_names
 
 # we want to run down a list of people and, hopefully, their adresses, plus a list of
 # corporations, groups, etc, and classify them, basically just looking for matches
@@ -10,6 +10,7 @@ from utils.constants import f_companies, f_org_names, c_org_names
 # manual review? this should give us a feeling for how to set our threshold
 # we might also, once we have all the data, buckle down and just classify
 # some of them manually
+
 
 def matcher(df, substring, column, category):
     """ """
