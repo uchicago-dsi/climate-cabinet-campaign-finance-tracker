@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import pandas as pd
 from nameparser import HumanName
 
@@ -15,45 +13,29 @@ from utils.linkage import (
 )
 
 
-def preprocess_pipeline(
-    individuals: pd.DataFrame,
-    organizations: pd.DataFrame,
-    transactions: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
     """
-    Preprocesses data for record linkage
+    Given a dataframe of individual donors, preprocesses the data,
+    and return a cleaned dataframe.
 
     Args:
-        Individuals: dataframe of individual contributions
-        Organizations: dataframe of organization contributions
-        Transactions: dataframe of transactions
-    Returns:
-        preprocessed tuple of dataframes
-        first element is the individuals dataframe,
-        second element is the organizations dataframe,
-        third element is the transactions dataframe
-    """
-    # Preprocess organizations dataframe
-    organizations["name"] = (
-        organizations["name"].astype(str).apply(standardize_corp_names)
-    )
-    if "Unnamed: 0" in organizations.columns:
-        organizations.drop(columns="Unnamed: 0", inplace=True)
+        individuals: dataframe of individual contributions
 
-    # Preprocess individuals dataframe
+    Returns:
+        cleaned dataframe of individuals
+    """
     if "Unnamed: 0" in individuals.columns:
         individuals.drop(columns="Unnamed: 0", inplace=True)
 
     individuals = individuals.astype(
         {
-            "first_name": str,
-            "last_name": str,
-            "full_name": str,
+            "first_name": "string",
+            "last_name": "string",
+            "full_name": "string",
             "company": "string",
         }
     )
 
-    # Standardize company names in individuals dataframe
     individuals["company"] = (
         individuals["company"]
         .loc[individuals["company"].notnull()]
@@ -66,7 +48,6 @@ def preprocess_pipeline(
     )
 
     # Address functions, assuming address column is named 'Address'
-    # If there is an "Address" column in the first place
     if "Address" in individuals.columns:
         individuals["Address"] = individuals["Address"].astype(str)
         individuals["Address Line 1"] = individuals["Address"].apply(
@@ -84,20 +65,12 @@ def preprocess_pipeline(
         individuals["full_name"].notnull()
     ]
     if individuals["first_name"].isnull().any():
-        name = (
-            individuals["full_name"]
-            .apply(HumanName)
-            .apply(lambda x: x.as_dict())
-        )
+        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
         first_name = name.apply(lambda x: x["first"])
         individuals["first_name"] = first_name
 
     if individuals["last_name"].isnull().any():
-        name = (
-            individuals["full_name"]
-            .apply(HumanName)
-            .apply(lambda x: x.as_dict())
-        )
+        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
         last_name = name.apply(lambda x: x["last"])
         individuals["last_name"] = last_name
 
@@ -108,44 +81,89 @@ def preprocess_pipeline(
         axis=1,
     )
 
+    return individuals
+
+
+def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Given a dataframe of organization donors, preprocesses the data,
+    and return a cleaned dataframe.
+    """
+    if "Unnamed: 0" in organizations.columns:
+        organizations.drop(columns="Unnamed: 0", inplace=True)
+
+    organizations["name"] = (
+        organizations["name"]
+        .loc[organizations["name"].notnull()]
+        .apply(standardize_corp_names)
+    )
+
+    return organizations
+
+
+def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
+    """
+    Given a dataframe of transactions, preprocesses the data,
+    and return a cleaned dataframe.
+
+    Args:
+        transactions: dataframe of transactions
+
+    Returns:
+        cleaned dataframe of transactions
+    """
     if "Unnamed: 0" in transactions.columns:
         transactions.drop(columns="Unnamed: 0", inplace=True)
 
     transactions["purpose"] = transactions["purpose"].str.upper()
 
-    return individuals, organizations, transactions
+    return transactions
 
 
-organizations = pd.read_csv(
-    BASE_FILEPATH / "output" / "complete_organizations_table.csv"
-)
+def main():
+    organizations = pd.read_csv(
+        BASE_FILEPATH / "output" / "complete_organizations_table.csv"
+    )
 
-individuals = pd.read_csv(
-    BASE_FILEPATH / "output" / "complete_individuals_table.csv"
-)
+    individuals = pd.read_csv(
+        BASE_FILEPATH / "output" / "complete_individuals_table.csv"
+    )
 
-transactions = pd.read_csv(
-    BASE_FILEPATH / "output" / "complete_transactions_table.csv"
-)
+    transactions = pd.read_csv(
+        BASE_FILEPATH / "output" / "complete_transactions_table.csv"
+    )
 
-individuals, organizations, transactions = preprocess_pipeline(
-    individuals, organizations, transactions
-)
+    individuals = preprocess_individuals(individuals)
+    organizations = preprocess_organizations(organizations)
+    transactions = preprocess_transactions(transactions)
 
-individuals = deduplicate_perfect_matches(individuals)
+    # Deduplicates perfect matches and creates a new csv file
+    # in output titled "deduplicated_UUIDs.csv"
+    individuals = deduplicate_perfect_matches(individuals)
+    organizations = deduplicate_perfect_matches(organizations)
 
-processed_individuals_output_path = (
-    BASE_FILEPATH / "output" / "processed_individuals_table.csv"
-)
+    cleaned_individuals_output_path = (
+        BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
+    )
 
-processed_organizations_output_path = (
-    BASE_FILEPATH / "output" / "processed_organizations_table.csv"
-)
+    cleaned_organizations_output_path = (
+        BASE_FILEPATH / "output" / "cleaned_organizations_table.csv"
+    )
 
-processed_transactions_output_path = (
-    BASE_FILEPATH / "output" / "processed_transactions_table.csv"
-)
+    cleaned_transactions_output_path = (
+        BASE_FILEPATH / "output" / "cleaned_transactions_table.csv"
+    )
 
-individuals.to_csv(processed_individuals_output_path)
-organizations.to_csv(processed_organizations_output_path)
-transactions.to_csv(processed_transactions_output_path)
+    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+
+    transactions[["donor_id", "recipient_id"]] = transactions[
+        ["donor_id", "recipient_id"]
+    ].replace(deduped)
+
+    individuals.to_csv(cleaned_individuals_output_path)
+    organizations.to_csv(cleaned_organizations_output_path)
+    transactions.to_csv(cleaned_transactions_output_path)
+
+
+if __name__ == "__main__":
+    main()
