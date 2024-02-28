@@ -64,9 +64,7 @@ def matcher(df, substring, column, category):
 
 
 def classify_individuals(individuals_df):
-    """
-    
-    """
+    """ """
 
     individuals_df["classification"] = "neutral"
 
@@ -74,7 +72,6 @@ def classify_individuals(individuals_df):
         individuals_df = matcher(individuals_df, i, "company", "f")
 
     return individuals_df
-
 
 
 def classify_orgs(organizations_df):
