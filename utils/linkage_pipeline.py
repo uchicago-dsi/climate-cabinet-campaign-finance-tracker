@@ -1,4 +1,6 @@
 import pandas as pd
+
+# from classify import classify_wrapper
 from nameparser import HumanName
 
 from utils.constants import BASE_FILEPATH
@@ -29,9 +31,9 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     individuals = individuals.astype(
         {
-            "first_name": "string",
-            "last_name": "string",
-            "full_name": "string",
+            "first_name": str,
+            "last_name": str,
+            "full_name": str,
             "company": "string",
         }
     )
@@ -49,7 +51,9 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     # Address functions, assuming address column is named 'Address'
     if "Address" in individuals.columns:
-        individuals["Address"] = individuals["Address"].astype(str)
+        individuals["Address"] = individuals["Address"].astype(str)[
+            individuals["Address"].notnull()
+        ]
         individuals["Address Line 1"] = individuals["Address"].apply(
             get_address_line_1_from_full_address
         )
@@ -168,9 +172,9 @@ def main():
         ["donor_id", "recipient_id"]
     ].replace(deduped)
 
-    individuals.to_csv(cleaned_individuals_output_path)
-    organizations.to_csv(cleaned_organizations_output_path)
-    transactions.to_csv(cleaned_transactions_output_path)
+    individuals.to_csv(cleaned_individuals_output_path, index=False)
+    organizations.to_csv(cleaned_organizations_output_path, index=False)
+    transactions.to_csv(cleaned_transactions_output_path, index=False)
 
 
 if __name__ == "__main__":

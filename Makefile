@@ -29,3 +29,9 @@ run-notebooks:
 	jupyter lab --port=8888 --ip='*' --NotebookApp.token='' --NotebookApp.password='' \
 	--no-browser --allow-root
 
+
+#running the linkage pipeline and creating the network graph
+#still waiting on linkage_pipeline completion to get this into final shape
+
+output network_graph: all_individuals.csv all_organizations.csv all_transactions.csv
+	python linkage_pipeline.py
