@@ -1,6 +1,5 @@
 import pandas as pd
-
-# from classify import classify_wrapper
+from classify import classify_wrapper
 from nameparser import HumanName
 
 from utils.constants import BASE_FILEPATH
@@ -171,6 +170,8 @@ def main():
     transactions[["donor_id", "recipient_id"]] = transactions[
         ["donor_id", "recipient_id"]
     ].replace(deduped)
+
+    individuals, organizations = classify_wrapper(individuals, organizations)
 
     individuals.to_csv(cleaned_individuals_output_path, index=False)
     organizations.to_csv(cleaned_organizations_output_path, index=False)
