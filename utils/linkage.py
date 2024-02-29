@@ -641,8 +641,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
 def splink_dedupe(
     df: pd.DataFrame, settings: dict, blocking: list
 ) -> pd.DataFrame:
-    """Given a dataframes, the corresponding
-    configuration settings, and corresponding blocking rules return a
+    """Given a dataframe and config settings, return a
     deduplicated dataframe
 
     Configuration settings and blocking can be found in constants.py as
