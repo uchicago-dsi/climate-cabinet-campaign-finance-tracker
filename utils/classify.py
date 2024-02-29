@@ -1,13 +1,77 @@
 import pandas as pd
 
-# we want to run down a list of people and, hopefully, their adresses, plus a list of
-# corporations, groups, etc, and classify them, basically just looking for matches
+from utils.constants import c_org_names, f_companies, f_org_names
 
-# do we want to just input all the names/people (there's not many, less than 200
-# for sure),give a string similarity match score, and extract the top ten for
-# manual review? this should give us a feeling for how to set our threshold
-# we might also, once we have all the data, buckle down and just classify
-# some of them manually
+
+def classify_wrapper(individuals_df, organizations_df):
+    """Wrapper for classificaiton in linkage pipeline
+
+    Initialize the classify column in both dataframes and
+    call sub-functions classifying individuals and organizations
+
+    Args: individuals_df: cleaned and deduplicated dataframe of individuals
+    organizations_df: cleaned and deduplicated dataframe of organizations
+
+    Returns: individuals and organizations datfarames with a new
+    'classification' column containing 'neutral', 'f', or 'c'
+    """
+
+    individuals_df["classification"] = "neutral"
+    organizations_df["classification"] = "neutral"
+
+    classified_individuals = classify_individuals(individuals_df)
+    classified_orgs = classify_orgs(organizations_df)
+
+    return classified_individuals, classified_orgs
+
+
+def matcher(df, substring, column, category):
+    """Applies a label to the classification column based on substrings
+
+    We run through a given column containing strings in the dataframe. We
+    seek out rows containing substrings, and apply a certain label to
+    the classification column. We initialize using the 'neutral' label and
+    use the 'f' and 'c' labels to denote fossil fuel and clean energy
+    entities respectively.
+    """
+
+    bool_series = df[column].str.contains(substring, na=False)
+
+    df.loc[bool_series, "classification"] = category
+
+    return df
+
+
+def classify_individuals(individuals_df):
+    """Part of the classification pipeline
+
+    We apply the matcher function to the individuals dataframe
+    repeatedly, using a variety of substrings to identify the
+    employees of fossil fuel companies.
+    """
+
+    for i in f_companies:
+        individuals_df = matcher(individuals_df, i, "company", "f")
+
+    return individuals_df
+
+
+def classify_orgs(organizations_df):
+    """Part of the classification pipeline
+
+    We apply the matcher function to the organizations dataframe
+    repeatedly, using a variety of substrings to identify fossil
+    fuel and clean energy companies.
+    """
+
+    for i in f_org_names:
+        organizations_df = matcher(organizations_df, i, "name", "f")
+
+    for i in c_org_names:
+        organizations_df = matcher(organizations_df, i, "name", "c")
+
+    return organizations_df
+
 
 inds_list = []
 

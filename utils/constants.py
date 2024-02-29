@@ -645,6 +645,7 @@ COMPANY_TYPES = {
     "PAC": "POLITICAL ACTION COMMITTEE",
 }
 
+
 individuals_settings = {
     "link_type": "dedupe_only",
     "blocking_rules_to_generate_predictions": [
@@ -691,3 +692,38 @@ organizations_settings = {
 }
 
 organizations_blocking = ["l.name = r.name"]
+
+# individuals compnay f names
+f_companies = [
+    "exxon",
+    "chevron",
+    "southwest gas",
+    "petroleum",
+    "koch industries",
+    "koch companies",
+    "oil & gas",
+    "marathon oil",
+    "shell oil",
+]
+
+# organizations f names
+f_org_names = [
+    "koch industries",
+    "koch pac",
+    "kochpac",
+    "southwest gas az",
+    "pinnacle west",
+    "americans for prosperity",
+    "energy transfer",
+]
+
+# organizations c names
+c_org_names = [
+    "clean energy",
+    "vote solar action",
+    "renewable",
+    "pattern energy",
+    "beyond carbon",
+    "lcv victory",
+    "league of conservation",
+]
