@@ -50,14 +50,11 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
         "office_sought",
         "purpose",
         "transaction_type",
-        "recipient_id",
+        "year",
         "transaction_id",
-        "recipient_type",
         "donor_office",
-        "recipient_name",
         "amount",
     ]
-
     for _, row in df.iterrows():
         # add node attributes based on the columns relevant to the entity
         G.add_node(row[node_name])
@@ -67,10 +64,28 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
 
         # link the donor node to the recipient node. add the attributes of the
         # edge based on relevant nodes
+        edge_dictionary = {}
         for column in transact_info:
             if not pd.isnull(row[column]):
-                G.add_edge(
-                    row[node_name], row["recipient_name"], column=row[column]
-                )
+                edge_dictionary[column] = row[column]
+        G.add_edge(row[node_name], row["recipient_name"], **edge_dictionary)
 
+        # the added 'recipient_name' node has no attributes at this moment
+        # for the final code this line won't be necessary, as each recipient
+        # should ideally be referenced later on. For now, all added nodes for
+        # the recipient will only have one default attribute: classification
+        G.nodes[row["recipient_name"]]["classification"] = "neutral"
+
+    edge_labels = {(u, v): d["amount"] for u, v, d in G.edges(data=True)}
+    entity_colors = {"neutral": "green", "c": "blue", "f": "red"}
+    node_colors = [
+        entity_colors[G.nodes[node]["classification"]] for node in G.nodes()
+    ]
+
+    nx.draw_planar(G, with_labels=False, node_color=node_colors)
+    nx.draw_networkx_edge_labels(
+        G, pos=nx.spring_layout(G), edge_labels=edge_labels, label_pos=0.5
+    )
+
+    # nx.draw_planar(G, with_labels=False)
     return G
