@@ -68,20 +68,12 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         individuals["full_name"].notnull()
     ]
     if individuals["first_name"].isnull().any():
-        name = (
-            individuals["full_name"]
-            .apply(HumanName)
-            .apply(lambda x: x.as_dict())
-        )
+        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
         first_name = name.apply(lambda x: x["first"])
         individuals["first_name"] = first_name
 
     if individuals["last_name"].isnull().any():
-        name = (
-            individuals["full_name"]
-            .apply(HumanName)
-            .apply(lambda x: x.as_dict())
-        )
+        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
         last_name = name.apply(lambda x: x["last"])
         individuals["last_name"] = last_name
 
@@ -167,11 +159,14 @@ def main():
 
     deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
 
+    # Classifies individuals and organizations with a new 'classification'
+    # column containing 'neutral', 'f', or 'c'
+    individuals, organizations = classify_wrapper(individuals, organizations)
+
+    # Update the transactions table with the deduplicated UUIDs
     transactions[["donor_id", "recipient_id"]] = transactions[
         ["donor_id", "recipient_id"]
     ].replace(deduped)
-
-    individuals, organizations = classify_wrapper(individuals, organizations)
 
     individuals.to_csv(cleaned_individuals_output_path, index=False)
     organizations.to_csv(cleaned_organizations_output_path, index=False)
