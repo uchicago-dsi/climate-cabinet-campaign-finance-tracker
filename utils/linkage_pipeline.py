@@ -151,10 +151,27 @@ def main():
     organizations = preprocess_organizations(organizations)
     transactions = preprocess_transactions(transactions)
 
-    # Deduplicates perfect matches and creates a new csv file
-    # in output titled "deduplicated_UUIDs.csv"
+    individuals, organizations = classify_wrapper(individuals, organizations)
+
     individuals = deduplicate_perfect_matches(individuals)
     organizations = deduplicate_perfect_matches(organizations)
+
+    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+
+    individuals["unique_id"] = individuals["id"]
+    organizations["unique_id"] = organizations["id"]
+
+    organizations = splink_dedupe(
+        organizations, organizations_settings, organizations_blocking
+    )
+
+    individuals = splink_dedupe(
+        individuals, individuals_settings, individuals_blocking
+    )
+
+    transactions[["donor_id", "recipient_id"]] = transactions[
+        ["donor_id", "recipient_id"]
+    ].replace(deduped)
 
     cleaned_individuals_output_path = (
         BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
@@ -167,27 +184,6 @@ def main():
     cleaned_transactions_output_path = (
         BASE_FILEPATH / "output" / "cleaned_transactions_table.csv"
     )
-
-    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
-
-    # Splink deduplication
-    individuals["unique_id"] = individuals["id"]
-    organizations["unique_id"] = organizations["id"]
-
-    individuals = splink_dedupe(individuals, individuals_settings, individuals_blocking)
-
-    organizations = splink_dedupe(
-        organizations, organizations_settings, organizations_blocking
-    )
-
-    # Classifies individuals and organizations with a new 'classification'
-    # column containing 'neutral', 'f', or 'c'
-    individuals, organizations = classify_wrapper(individuals, organizations)
-
-    # Update the transactions table with the deduplicated UUIDs
-    transactions[["donor_id", "recipient_id"]] = transactions[
-        ["donor_id", "recipient_id"]
-    ].replace(deduped)
 
     individuals.to_csv(cleaned_individuals_output_path, index=False)
     organizations.to_csv(cleaned_organizations_output_path, index=False)
