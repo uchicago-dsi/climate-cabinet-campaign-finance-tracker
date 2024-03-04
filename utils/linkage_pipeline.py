@@ -171,9 +171,10 @@ def main():
     deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
 
     # Splink deduplication
-    individuals = splink_dedupe(
-        individuals, individuals_settings, individuals_blocking
-    )
+    individuals["unique_id"] = individuals["id"]
+    organizations["unique_id"] = organizations["id"]
+
+    individuals = splink_dedupe(individuals, individuals_settings, individuals_blocking)
 
     organizations = splink_dedupe(
         organizations, organizations_settings, organizations_blocking
