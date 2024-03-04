@@ -1,5 +1,6 @@
 import networkx as nx
 import pandas as pd
+import plotly.graph_objects as go
 
 
 def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
@@ -28,7 +29,7 @@ def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
     return None
 
 
-def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
+def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     """Takes in a dataframe and generates a MultiDiGraph where the nodes are
     entity names, and the rest of the dataframe columns make the node attributes
 
@@ -37,7 +38,7 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
         complete_organizations_table)
 
     Returns:
-        A Networkx MultiDiGraph with nodes lacking any edges
+        A Networkx MultiDiGraph with nodes and edges
     """
     G = nx.MultiDiGraph()
     # first check if df is individuals or organizations dataset
@@ -46,7 +47,7 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
     else:
         node_name = "full_name"
 
-    transact_info = [
+    edge_columns = [
         "office_sought",
         "purpose",
         "transaction_type",
@@ -55,37 +56,68 @@ def create_network_nodes(df: pd.DataFrame) -> nx.MultiDiGraph:
         "donor_office",
         "amount",
     ]
+
     for _, row in df.iterrows():
         # add node attributes based on the columns relevant to the entity
-        G.add_node(row[node_name])
-        for column in df.columns.difference(transact_info):
-            if not pd.isnull(row[column]):
-                G.nodes[row[node_name]][column] = row[column]
-
-        # link the donor node to the recipient node. add the attributes of the
-        # edge based on relevant nodes
-        edge_dictionary = {}
-        for column in transact_info:
-            if not pd.isnull(row[column]):
-                edge_dictionary[column] = row[column]
-        G.add_edge(row[node_name], row["recipient_name"], **edge_dictionary)
-
-        # the added 'recipient_name' node has no attributes at this moment
-        # for the final code this line won't be necessary, as each recipient
-        # should ideally be referenced later on. For now, all added nodes for
-        # the recipient will only have one default attribute: classification
+        G.add_node(
+            row[node_name],
+            **row[df.columns.difference(edge_columns)].dropna().to_dict(),
+        )
+        # add the recipient as a node
         G.nodes[row["recipient_name"]]["classification"] = "neutral"
 
-    edge_labels = {(u, v): d["amount"] for u, v, d in G.edges(data=True)}
-    entity_colors = {"neutral": "green", "c": "blue", "f": "red"}
-    node_colors = [
-        entity_colors[G.nodes[node]["classification"]] for node in G.nodes()
-    ]
+        # add the edge attributes between two nodes
+        edge_attributes = row[edge_columns].dropna().to_dict()
+        G.add_edge(row[node_name], row["recipient_name"], **edge_attributes)
 
-    nx.draw_planar(G, with_labels=False, node_color=node_colors)
-    nx.draw_networkx_edge_labels(
-        G, pos=nx.spring_layout(G), edge_labels=edge_labels, label_pos=0.5
+    return G
+
+
+def plot_network_graph(G: nx.MultiDiGraph):
+    """Given a networkX Graph, creates a plotly visualization of the nodes and
+    edges
+
+    Args:
+        A networkX MultiDiGraph with edges including the attribute 'amount'
+
+    Returns: None. Creates a plotly graph
+    """
+    edge_trace = go.Scatter(
+        x=[], y=[], line=dict(color="#888"), hoverinfo="text", mode="lines"
+    )
+    hovertext = []
+
+    for edge in G.edges(data=True):
+        # donor = edge[0], recipient = edge[1]
+        hovertext.append(f"Amount: {edge[2]['amount']:.2f}")
+
+    edge_trace["hovertext"] = hovertext
+
+    node_trace = go.Scatter(
+        x=[],
+        y=[],
+        text=[],
+        mode="markers",
+        hoverinfo="text",
+        marker=dict(showscale=True, colorscale="YlGnBu", size=10),
     )
 
-    # nx.draw_planar(G, with_labels=False)
-    return G
+    for node in G.nodes():
+        node_info = f"Name: {node}<br>"
+        for key, value in G.nodes[node].items():
+            node_info += f"{key}: {value}<br>"
+        node_trace["text"] += tuple([node_info])
+
+    # Define layout settings
+    layout = go.Layout(
+        title="Network Graph Indicating Campaign Contributions from 2018-2022",
+        titlefont=dict(size=16),
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(b=20, l=5, r=5, t=40),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+    )
+
+    fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
+    fig.show()
