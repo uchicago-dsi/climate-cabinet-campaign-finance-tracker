@@ -683,7 +683,7 @@ def splink_dedupe(
 
     deduped_df = pd.merge(
         first_instance_df,
-        match_list_df[["cluster_id"]],
+        match_list_df[["cluster_id", "duplicated"]],
         on="cluster_id",
         how="left",
     )
