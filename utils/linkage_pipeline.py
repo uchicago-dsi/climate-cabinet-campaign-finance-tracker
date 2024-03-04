@@ -165,7 +165,9 @@ def main():
         organizations, organizations_settings, organizations_blocking
     )
 
-    individuals = splink_dedupe(individuals, individuals_settings, individuals_blocking)
+    individuals = splink_dedupe(
+        individuals, individuals_settings, individuals_blocking
+    )
 
     transactions[["donor_id", "recipient_id"]] = transactions[
         ["donor_id", "recipient_id"]
