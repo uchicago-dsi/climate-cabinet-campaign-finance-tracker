@@ -11,11 +11,13 @@ def classify_wrapper(
     Initialize the classify column in both dataframes and
     call sub-functions classifying individuals and organizations
 
-    Args: individuals_df: cleaned and deduplicated dataframe of individuals
-    organizations_df: cleaned and deduplicated dataframe of organizations
+    Args:
+        individuals_df: cleaned and deduplicated dataframe of individuals
+        organizations_df: cleaned and deduplicated dataframe of organizations
 
-    Returns: individuals and organizations datfarames with a new
-    'classification' column containing 'neutral', 'f', or 'c'
+    Returns:
+        individuals and organizations datfarames with a new
+        'classification' column containing 'neutral', 'f', or 'c'
     """
 
     individuals_df["classification"] = "neutral"
@@ -35,6 +37,16 @@ def matcher(df: pd.DataFrame, substring: str, column: str, category: str):
     the classification column. We initialize using the 'neutral' label and
     use the 'f' and 'c' labels to denote fossil fuel and clean energy
     entities respectively.
+
+    Args:
+        df: a pandas dataframe
+        substring: the string to search for
+        column: the column name in which to search
+        category: the category to assign the row, such as 'f' 'c' or 'neutral'
+
+    Returns:
+        A pandas dataframe in which rows matching the substring conditions in
+        a certain column are marked with the appropriate category
     """
 
     bool_series = df[column].str.contains(substring, na=False)
@@ -50,6 +62,13 @@ def classify_individuals(individuals_df: pd.DataFrame):
     We apply the matcher function to the individuals dataframe
     repeatedly, using a variety of substrings to identify the
     employees of fossil fuel companies.
+
+    Args:
+        individuals_df: a dataframe containing deduplicated
+        standardized individuals data
+
+    Returns:
+        an individuals dataframe updated with the fossil fuels category
     """
 
     for i in f_companies:
@@ -64,6 +83,14 @@ def classify_orgs(organizations_df: pd.DataFrame):
     We apply the matcher function to the organizations dataframe
     repeatedly, using a variety of substrings to identify fossil
     fuel and clean energy companies.
+
+    Args:
+        organizations_df: a dataframe containing deduplicated
+        standardized organizations data
+
+    Returns:
+        an organizations dataframe updated with the fossil fuels
+        and clean energy category
     """
 
     for i in f_org_names:
