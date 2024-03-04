@@ -38,7 +38,8 @@ def matcher_scen_1():
 
 
 def test_matcher_scen_1(matcher_scen_1):
-    res = matcher(matcher_scen_1, "Fancy", "address", "f")
+    matcher(matcher_scen_1, "Fancy", "address", "f")
+    res = test_df[test_df["classification"] == "f"]["name"].values
 
     assert np.all(
         res == np.array(["bob j vonrosevich", "missy elliot", "missy eliot"])

@@ -3,7 +3,9 @@ import pandas as pd
 from utils.constants import c_org_names, f_companies, f_org_names
 
 
-def classify_wrapper(individuals_df, organizations_df):
+def classify_wrapper(
+    individuals_df: pd.DataFrame, organizations_df: pd.DataFrame
+):
     """Wrapper for classificaiton in linkage pipeline
 
     Initialize the classify column in both dataframes and
@@ -25,7 +27,7 @@ def classify_wrapper(individuals_df, organizations_df):
     return classified_individuals, classified_orgs
 
 
-def matcher(df, substring, column, category):
+def matcher(df: pd.DataFrame, substring: str, column: str, category: str):
     """Applies a label to the classification column based on substrings
 
     We run through a given column containing strings in the dataframe. We
@@ -42,7 +44,7 @@ def matcher(df, substring, column, category):
     return df
 
 
-def classify_individuals(individuals_df):
+def classify_individuals(individuals_df: pd.DataFrame):
     """Part of the classification pipeline
 
     We apply the matcher function to the individuals dataframe
@@ -56,7 +58,7 @@ def classify_individuals(individuals_df):
     return individuals_df
 
 
-def classify_orgs(organizations_df):
+def classify_orgs(organizations_df: pd.DataFrame):
     """Part of the classification pipeline
 
     We apply the matcher function to the organizations dataframe
@@ -71,11 +73,6 @@ def classify_orgs(organizations_df):
         organizations_df = matcher(organizations_df, i, "name", "c")
 
     return organizations_df
-
-
-inds_list = []
-
-# a list of individual names
 
 
 def similarity_calculator(
@@ -133,7 +130,3 @@ def automated_classifier(
         )
 
     return similarities_df
-
-    # we can use the indices and/or select manually, just add a new
-    # column to the subjects table
-    # that marks fossil fuels, green energy, or neither
