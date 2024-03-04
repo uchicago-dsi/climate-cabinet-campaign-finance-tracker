@@ -84,7 +84,7 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
         .agg(agg_functions)
         .reset_index()
     )
-
+    aggreg_df = aggreg_df.drop(["id"], axis=1)
     return aggreg_df
 
 
@@ -136,15 +136,33 @@ def plot_network_graph(G: nx.MultiDiGraph):
     Returns: None. Creates a plotly graph
     """
     edge_trace = go.Scatter(
-        x=[], y=[], line=dict(color="#888"), hoverinfo="text", mode="lines"
+        x=(),
+        y=(),
+        line=dict(color="#888", width=1.5),
+        hoverinfo="text",
+        mode="lines+markers",
     )
     hovertext = []
+    pos = nx.spring_layout(G)
 
     for edge in G.edges(data=True):
-        # donor = edge[0], recipient = edge[1]
+        source = edge[0]
+        target = edge[1]
         hovertext.append(f"Amount: {edge[2]['amount']:.2f}")
+        # Adding coordinates of source and target nodes to edge_trace
+        edge_trace["x"] += (
+            pos[source][0],
+            pos[target][0],
+            None,
+        )  # None creates a gap between line segments
+        edge_trace["y"] += (pos[source][1], pos[target][1], None)
 
     edge_trace["hovertext"] = hovertext
+
+    # Define arrow symbol for edges
+    edge_trace["marker"] = dict(
+        symbol="arrow", color="#888", size=10, angleref="previous"
+    )
 
     node_trace = go.Scatter(
         x=[],
@@ -154,13 +172,14 @@ def plot_network_graph(G: nx.MultiDiGraph):
         hoverinfo="text",
         marker=dict(showscale=True, colorscale="YlGnBu", size=10),
     )
-
     node_trace["marker"]["color"] = []
+
     for node in G.nodes():
         node_info = f"Name: {node}<br>"
         for key, value in G.nodes[node].items():
             node_info += f"{key}: {value}<br>"
         node_trace["text"] += tuple([node_info])
+        # Get the classification value for the node
         classification = G.nodes[node].get("classification", "neutral")
         # Assign a color based on the classification value
         if classification == "c":
@@ -168,18 +187,22 @@ def plot_network_graph(G: nx.MultiDiGraph):
         elif classification == "f":
             color = "red"
         else:
-            color = "green"  # Default color for unknown/neutral classification
+            color = "green"  # Default color for unknown classification
         node_trace["marker"]["color"] += tuple([color])
+
+        # Add node positions to the trace
+        node_trace["x"] += tuple([pos[node][0]])
+        node_trace["y"] += tuple([pos[node][1]])
 
     # Define layout settings
     layout = go.Layout(
         title="Network Graph Indicating Campaign Contributions from 2018-2022",
         titlefont=dict(size=16),
-        showlegend=False,
+        showlegend=True,
         hovermode="closest",
         margin=dict(b=20, l=5, r=5, t=40),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        xaxis=dict(showgrid=True, zeroline=True, showticklabels=False),
+        yaxis=dict(showgrid=True, zeroline=True, showticklabels=False),
     )
 
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
