@@ -2,7 +2,13 @@ import pandas as pd
 from classify import classify_wrapper
 from nameparser import HumanName
 
-from utils.constants import BASE_FILEPATH
+from utils.constants import (
+    BASE_FILEPATH,
+    individuals_blocking,
+    individuals_settings,
+    organizations_blocking,
+    organizations_settings,
+)
 from utils.linkage import (
     cleaning_company_column,
     deduplicate_perfect_matches,
@@ -10,6 +16,7 @@ from utils.linkage import (
     get_address_number_from_address_line_1,
     get_likely_name,
     get_street_from_address_line_1,
+    splink_dedupe,
     standardize_corp_names,
 )
 
@@ -30,9 +37,9 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     individuals = individuals.astype(
         {
-            "first_name": str,
-            "last_name": str,
-            "full_name": str,
+            "first_name": "string",
+            "last_name": "string",
+            "full_name": "string",
             "company": "string",
         }
     )
@@ -68,18 +75,22 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         individuals["full_name"].notnull()
     ]
     if individuals["first_name"].isnull().any():
-        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
-        first_name = name.apply(lambda x: x["first"])
+        first_name = individuals["full_name"].apply(
+            lambda x: HumanName(x).first if pd.notnull(x) else x
+        )
         individuals["first_name"] = first_name
 
     if individuals["last_name"].isnull().any():
-        name = individuals["full_name"].apply(HumanName).apply(lambda x: x.as_dict())
-        last_name = name.apply(lambda x: x["last"])
+        last_name = individuals["full_name"].apply(
+            lambda x: HumanName(x).last if pd.notnull(x) else x
+        )
         individuals["last_name"] = last_name
 
     individuals["full_name"] = individuals.apply(
         lambda row: get_likely_name(
-            row["first_name"], row["last_name"], row["full_name"]
+            row["first_name"] if pd.notnull(row["first_name"]) else "",
+            row["last_name"] if pd.notnull(row["last_name"]) else "",
+            row["full_name"] if pd.notnull(row["full_name"]) else "",
         ),
         axis=1,
     )
@@ -158,6 +169,15 @@ def main():
     )
 
     deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+
+    # Splink deduplication
+    individuals = splink_dedupe(
+        individuals, individuals_settings, individuals_blocking
+    )
+
+    organizations = splink_dedupe(
+        organizations, organizations_settings, organizations_blocking
+    )
 
     # Classifies individuals and organizations with a new 'classification'
     # column containing 'neutral', 'f', or 'c'

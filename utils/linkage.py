@@ -11,6 +11,7 @@ import re
 
 import numpy as np
 import pandas as pd
+from splink.duckdb.linker import DuckDBLinker
 
 from utils.constants import COMPANY_TYPES, repo_root
 
@@ -633,3 +634,63 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
         elif address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
     raise ValueError("Can not find Address Number")
+
+
+def splink_dedupe(
+    df: pd.DataFrame, settings: dict, blocking: list
+) -> pd.DataFrame:
+    """Given a dataframe and config settings, return a
+    deduplicated dataframe
+
+    Configuration settings and blocking can be found in constants.py as
+    individuals_settings, indivduals_blocking, organizations_settings,
+    organizations_blocking
+
+    Args:
+        df: dataframe
+        settings: configuration settings
+            (based on splink documentation and dataframe columns)
+        blocking: list of columns to block on for the table
+            (cuts dataframe into parts based on columns labeled blocks)
+    Returns:
+        deduplicated version of initial dataframe with column 'matching_id'
+        that holds list of matching unique_ids
+
+    """
+    linker = DuckDBLinker(df, settings)
+    linker.estimate_probability_two_random_records_match(
+        blocking, recall=0.6
+    )  # default
+    linker.estimate_u_using_random_sampling(max_pairs=5e6)
+
+    for i in blocking:
+        linker.estimate_parameters_using_expectation_maximisation(i)
+
+    df_predict = linker.predict()
+    clusters = linker.cluster_pairwise_predictions_at_threshold(
+        df_predict, threshold_match_probability=0.7
+    )  # default
+    clusters_df = clusters.as_pandas_dataframe()
+
+    match_list_df = (
+        clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
+    )  # dataframe where cluster_id maps unique_id to initial instance of row
+    match_list_df.rename(columns={"unique_id": "duplicated"}, inplace=True)
+
+    first_instance_df = clusters_df.drop_duplicates(subset="cluster_id")
+    col_names = np.append("cluster_id", df.columns)
+    first_instance_df = first_instance_df[col_names]
+
+    deduped_df = pd.merge(
+        first_instance_df,
+        match_list_df[["cluster_id"]],
+        on="cluster_id",
+        how="left",
+    )
+    deduped_df.rename(columns={"cluster_id": "unique_id"}, inplace=True)
+
+    convert_duplicates_to_dict(deduped_df)
+
+    deduped_df.drop(columns=["duplicated"])
+
+    return deduped_df
