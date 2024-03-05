@@ -341,9 +341,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
             names[i] = determine_comma_role(names[i])
 
         names[i] = names[i].replace(".", "").split(" ")
-        names[i] = [
-            name_part for name_part in names[i] if name_part not in titles
-        ]
+        names[i] = [name_part for name_part in names[i] if name_part not in titles]
         names[i] = " ".join(names[i])
 
     # one last check to remove any pieces that might add extra whitespace
@@ -432,9 +430,7 @@ def name_rank(first_name: str, last_name: str) -> list:
         if first_name_result and isinstance(first_name_result, dict):
             first_name_data = first_name_result.get("first_name")
             if first_name_data and "rank" in first_name_data:
-                first_name_rank = first_name_data["rank"].get(
-                    "United States", 0
-                )
+                first_name_rank = first_name_data["rank"].get("United States", 0)
     else:
         first_name_rank = None
     if isinstance(last_name, str):
@@ -636,9 +632,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     raise ValueError("Can not find Address Number")
 
 
-def splink_dedupe(
-    df: pd.DataFrame, settings: dict, blocking: list
-) -> pd.DataFrame:
+def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
     """Given a dataframe and config settings, return a
     deduplicated dataframe
 
@@ -689,6 +683,9 @@ def splink_dedupe(
     )
     deduped_df.rename(columns={"cluster_id": "unique_id"}, inplace=True)
 
+    deduped_df["duplicated"] = deduped_df["duplicated"].apply(
+        lambda x: x if isinstance(x, list) else [x]
+    )
     convert_duplicates_to_dict(deduped_df)
 
     deduped_df.drop(columns=["duplicated"])
