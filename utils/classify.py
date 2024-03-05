@@ -6,7 +6,7 @@ from utils.constants import c_org_names, f_companies, f_org_names
 def classify_wrapper(
     individuals_df: pd.DataFrame, organizations_df: pd.DataFrame
 ):
-    """Wrapper for classificaiton in linkage pipeline
+    """Wrapper for classification in linkage pipeline
 
     Initialize the classify column in both dataframes and
     call sub-functions classifying individuals and organizations
@@ -17,7 +17,13 @@ def classify_wrapper(
 
     Returns:
         individuals and organizations datfarames with a new
-        'classification' column containing 'neutral', 'f', or 'c'
+        'classification' column containing 'neutral', 'f', or 'c'.
+        'neutral' status is the default for all entities, and those tagged
+        as 'neutral' are entities which we could not confidently identify as
+        either fossil fuel or clean energy organizations or affiliates.
+        Classification is very conservative, and we are very confident that
+        entities classified as one group or another are related to them.
+
     """
 
     individuals_df["classification"] = "neutral"
@@ -59,9 +65,8 @@ def matcher(df: pd.DataFrame, substring: str, column: str, category: str):
 def classify_individuals(individuals_df: pd.DataFrame):
     """Part of the classification pipeline
 
-    We apply the matcher function to the individuals dataframe
-    repeatedly, using a variety of substrings to identify the
-    employees of fossil fuel companies.
+    We check if individuals work for a known fossil fuel company
+    and categorize them using the matcher() function.
 
     Args:
         individuals_df: a dataframe containing deduplicated
