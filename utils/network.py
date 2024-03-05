@@ -2,16 +2,6 @@ import networkx as nx
 import pandas as pd
 import plotly.graph_objects as go
 
-from utils.constants import BASE_FILEPATH
-
-inds_path = BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
-orgs_path = BASE_FILEPATH / "output" / "cleaned_organizations_table.csv"
-transactions_path = BASE_FILEPATH / "output" / "cleaned_transactions_table"
-
-inds_df = pd.read_csv(inds_path, low_memory=False)
-orgs_df = pd.read_csv(orgs_path, low_memory=False)
-transactions_df = pd.read_csv(transactions_path, low_memory=False)
-
 
 def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
     """Returns the name of the entity given the entity's uuid
