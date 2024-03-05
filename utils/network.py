@@ -203,6 +203,7 @@ def plot_network_graph(G: nx.MultiDiGraph):
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
     fig.show()
 
+
 def construct_network_graph(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
 ):
