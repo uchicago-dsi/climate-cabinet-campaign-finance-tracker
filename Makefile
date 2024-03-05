@@ -19,11 +19,6 @@ project_dir := "$(current_abs_path)"
 build-only:
 	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
 
-	# these are called directives
-	# run-pipeline:
-	#	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
-	# 	docker run -e python pipeline.py
-
 run-interactive:
 	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
 	docker run -it -v $(current_abs_path):/project -t $(project_image_name) /bin/bash
