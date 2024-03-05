@@ -1,6 +1,6 @@
 import pandas as pd
 
-from utils.constants import c_org_names, f_companies, f_org_names
+from constants import c_org_names, f_companies, f_org_names
 
 
 def classify_wrapper(

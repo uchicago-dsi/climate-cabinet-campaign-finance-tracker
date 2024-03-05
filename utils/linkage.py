@@ -9,7 +9,7 @@ import usaddress
 from names_dataset import NameDataset
 from splink.duckdb.linker import DuckDBLinker
 
-from utils.constants import COMPANY_TYPES, repo_root
+from constants import COMPANY_TYPES, repo_root
 
 """
 Module for performing record linkage on state campaign finance dataset
@@ -176,7 +176,7 @@ def row_matches(
 
 
 def match_confidence(
-    confidences: np.array(float), weights: np.array(float), weights_toggle: bool
+    confidences, weights, weights_toggle: bool
 ) -> float:
     """Combine confidences for row matches into a final confidence
 
@@ -692,7 +692,7 @@ def splink_dedupe(
 
     deduped_df = pd.merge(
         first_instance_df,
-        match_list_df[["cluster_id"]],
+        match_list_df[["cluster_id", "duplicated"]],
         on="cluster_id",
         how="left",
     )

@@ -33,5 +33,5 @@ run-notebooks:
 #running the linkage pipeline and creating the network graph
 #still waiting on linkage_pipeline completion to get this into final shape
 
-output network_graph: all_individuals.csv all_organizations.csv all_transactions.csv
-	python linkage_pipeline.py
+output run-linkage-pipeline:
+	python utils/linkage_pipeline.py

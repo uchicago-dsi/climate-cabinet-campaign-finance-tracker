@@ -609,8 +609,6 @@ state_abbreviations = [
     " WY ",
 ]
 
-# utils/linkage.py constants
-
 COMPANY_TYPES = {
     "CORP": "CORPORATION",
     "CO": "CORPORATION",
