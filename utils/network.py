@@ -2,6 +2,16 @@ import networkx as nx
 import pandas as pd
 import plotly.graph_objects as go
 
+from utils.constants import BASE_FILEPATH
+
+inds_path = BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
+orgs_path = BASE_FILEPATH / "output" / "cleaned_organizations_table.csv"
+transactions_path = BASE_FILEPATH / "output" / "cleaned_transactions_table"
+
+inds_df = pd.read_csv(inds_path, low_memory=False)
+orgs_df = pd.read_csv(orgs_path, low_memory=False)
+transactions_df = pd.read_csv(transactions_path, low_memory=False)
+
 
 def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
     """Returns the name of the entity given the entity's uuid
@@ -112,7 +122,7 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
             **row[df.columns.difference(edge_columns)].dropna().to_dict(),
         )
         # add the recipient as a node
-        G.nodes[row["recipient_name"]]["classification"] = "neutral"
+        G.add_node(row["recipient_name"], classification = "neutral")
 
         # add the edge attributes between two nodes
         edge_attributes = row[edge_columns].dropna().to_dict()
@@ -236,11 +246,14 @@ def main():
         year2. Ex: 2018, 2023"
     )
 
-    assert len(text == 2)
+    assert len(text == 2), (
+        "Wrong input for range of years. Format should be"
+        + " year1, year2. Ex: 1998,2023"
+    )
+
     start_year, end_year = text.split(",")
     construct_network_graph(
-        start_year,
-        end_year,
+        start_year, end_year, [inds_df, orgs_df, transactions_path]
     )
 
 
