@@ -207,3 +207,49 @@ def plot_network_graph(G: nx.MultiDiGraph):
 
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
     fig.show()
+
+
+# create pipeline
+
+
+def construct_network_graph(
+    start_year: int, end_year: int, dfs: list[pd.DataFrame]
+):
+    """Runs the network construction pipeline starting from 3 dataframes
+
+    Args:
+        start_year & end_year: the range of the desired data
+
+    Returns:
+    """
+    inds_df, orgs_df, transactions_df = dfs
+    transactions_df = transactions_df.loc[
+        (transactions_df.year >= start_year)
+        & (transactions_df.year <= end_year)
+    ]
+
+    aggreg_df = combine_datasets_for_network_graph(
+        [inds_df, orgs_df, transactions_df]
+    )
+    G = create_network_graph(aggreg_df)
+    plot_network_graph(G)
+    nx.write_adjlist(G, "Network Graph Node Data")
+
+
+def main():
+    """"""
+    text = input(
+        "Provide a range of desired years to extract data. Format is year1, \
+        year2. Ex: 2018, 2023"
+    )
+
+    assert len(text == 2)
+    start_year, end_year = text.split(",")
+    construct_network_graph(
+        start_year,
+        end_year,
+    )
+
+
+if __name__ == "__main__":
+    construct_network_graph(1998, 2023)
