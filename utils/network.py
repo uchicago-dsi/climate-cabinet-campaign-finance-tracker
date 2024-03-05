@@ -122,7 +122,7 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
             **row[df.columns.difference(edge_columns)].dropna().to_dict(),
         )
         # add the recipient as a node
-        G.add_node(row["recipient_name"], classification = "neutral")
+        G.add_node(row["recipient_name"], classification="neutral")
 
         # add the edge attributes between two nodes
         edge_attributes = row[edge_columns].dropna().to_dict()
@@ -237,25 +237,3 @@ def construct_network_graph(
     G = create_network_graph(aggreg_df)
     plot_network_graph(G)
     nx.write_adjlist(G, "Network Graph Node Data")
-
-
-def main():
-    """"""
-    text = input(
-        "Provide a range of desired years to extract data. Format is year1, \
-        year2. Ex: 2018, 2023"
-    )
-
-    assert len(text == 2), (
-        "Wrong input for range of years. Format should be"
-        + " year1, year2. Ex: 1998,2023"
-    )
-
-    start_year, end_year = text.split(",")
-    construct_network_graph(
-        start_year, end_year, [inds_df, orgs_df, transactions_path]
-    )
-
-
-if __name__ == "__main__":
-    construct_network_graph(1998, 2023)
