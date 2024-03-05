@@ -727,3 +727,31 @@ c_org_names = [
     "lcv victory",
     "league of conservation",
 ]
+
+suffixes = [
+    "sr",
+    "jr",
+    "i",
+    "ii",
+    "iii",
+    "iv",
+    "v",
+    "vi",
+    "vii",
+    "viii",
+    "ix",
+    "x",
+]
+
+titles = [
+    "mr",
+    "ms",
+    "mrs",
+    "miss",
+    "prof",
+    "dr",
+    "doctor",
+    "sir",
+    "madam",
+    "professor",
+]
