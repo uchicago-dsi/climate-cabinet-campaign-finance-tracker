@@ -14,13 +14,10 @@ def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
         The entity's name
     """
     for df in dfs:
-        # first, check orgs df:
         if "name" in df.columns:
             name_in_org = df.loc[df["id"] == uuid]
             if len(name_in_org) > 0:
                 return name_in_org.iloc[0]["name"]
-        # theoretically it must be in inds if not in orgs, but for the sample
-        # data this might not be the case
 
         if "full_name" in df.columns:
             name_in_ind = df.loc[df["id"] == uuid]
@@ -30,20 +27,18 @@ def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
 
 
 def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
-    """Combines the 3 dataframes into a single dataframe to create the graph
+    """Combines the 3 dataframes into a single dataframe to create a graph
 
-    Given the inds, orgs, and transactions dataframes, the func first finds the
-    recipient_id in the transaction dataframe in either the org or inds
-    dataframes and adds the name of the recipient to the transaction df. Then,
-    the inds and orgs dfs are merged with the transaction df and concatenated
-    with the contributions amount aggregated, making a final dataframe of the
-    merged transactions and entity dataframes.
+    Given 3 dataframes, the func adds a 'recipient_name' column in the
+    transactions df, merges the dfs together to record transaction info between
+    entities, then concatenates the dfs into a final df of the merged
+    transactions and entity dfs.
 
     Args:
         list of dataframes in the order: [inds_df, orgs_df, transactions_df]
-        Transactions dataframe with at least column: 'recipient_id'
-        Individuals dataframe with at least column: 'full_name'
-        Organizations dataframe with at least column: 'name'
+        Transactions dataframe with column: 'recipient_id'
+        Individuals dataframe with column: 'full_name'
+        Organizations dataframe with column: 'name'
 
     Returns
         A merged dataframe with aggregate contribution amounts between entitites
@@ -56,7 +51,7 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
         name_identifier, args=([orgs_df, inds_df],)
     )
 
-    # next, merge the inds_df and orgs_df with the transactions_df
+    # next, merge the inds_df and orgs_df ids with the transactions_df donor_id
     inds_trans_df = pd.merge(
         inds_df, transactions_df, how="left", left_on="id", right_on="donor_id"
     )
@@ -208,10 +203,6 @@ def plot_network_graph(G: nx.MultiDiGraph):
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
     fig.show()
 
-
-# create pipeline
-
-
 def construct_network_graph(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
 ):
@@ -219,6 +210,7 @@ def construct_network_graph(
 
     Args:
         start_year & end_year: the range of the desired data
+        dfs: dataframes in the order: inds_df, orgs_df, transactions_df
 
     Returns:
     """
