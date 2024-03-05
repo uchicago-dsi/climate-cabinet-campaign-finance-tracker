@@ -6,10 +6,9 @@ import numpy as np
 import pandas as pd
 import textdistance as td
 import usaddress
+from constants import COMPANY_TYPES, repo_root
 from names_dataset import NameDataset
 from splink.duckdb.linker import DuckDBLinker
-
-from constants import COMPANY_TYPES, repo_root
 
 """
 Module for performing record linkage on state campaign finance dataset
@@ -175,9 +174,7 @@ def row_matches(
     return index_dict
 
 
-def match_confidence(
-    confidences, weights, weights_toggle: bool
-) -> float:
+def match_confidence(confidences, weights, weights_toggle: bool) -> float:
     """Combine confidences for row matches into a final confidence
 
     This is a weighted log-odds based combination of row match confidences
