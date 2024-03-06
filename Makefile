@@ -33,5 +33,6 @@ run-notebooks:
 #running the linkage pipeline and creating the network graph
 #still waiting on linkage_pipeline completion to get this into final shape
 
-output run-linkage-pipeline:
-	python utils/linkage_pipeline.py
+run-linkage-pipeline:
+	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
+	docker run -v $(current_abs_path):/project -t $(project_image_name) python utils/linkage_pipeline.py
