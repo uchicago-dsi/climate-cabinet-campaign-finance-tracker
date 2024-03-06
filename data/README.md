@@ -2,12 +2,6 @@
 
 This directory contains information for use in this project. 
 
-## Makefile and Final Pipeline
-- This folder is empty by default. In order to run the Makefile, download the complete_data.zip file from the Climate Cabinet Data Clinic Google Drive using this link: https://drive.google.com/file/d/1zbjt7iBU0NAWSBcUyEsjvuumn3VgI4z9/view?usp=sharing
-
- - After downloading this .zip, unzip it to find three files: complete_individuals.csv, complete_organizations.csv, and complete_transactions.csv. Upload these files into the data folder and ensure that their names are correct. Once they are in place, you may run the Makefile. 
-
-
 ## Arizona Campaign Finance Data
 
 ### Summary
