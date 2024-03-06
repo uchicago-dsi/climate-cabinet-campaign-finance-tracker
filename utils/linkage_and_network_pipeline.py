@@ -89,13 +89,13 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     individuals["full_name"] = individuals.apply(
         lambda row: get_likely_name(
-            row["first_name"] if pd.notnull(row["first_name"]) else "",
-            row["last_name"] if pd.notnull(row["last_name"]) else "",
-            row["full_name"] if pd.notnull(row["full_name"]) else "",
+            row["first_name"], row["last_name"], row["full_name"]
         ),
         axis=1,
     )
 
+    # Ensure that columns with values are prioritized and appear first
+    # important for splink implementation
     individuals["sort_priority"] = (
         ~individuals["first_name"].isna()
         & ~individuals["last_name"].isna()
