@@ -297,7 +297,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
 def cleaning_company_column(company_entry: str) -> str:
     """
-    Given a string, check if it contains a variation of self employed, 
+    Given a string, check if it contains a variation of self employed,
     unemployed, or retired and return the standardized version.
 
     Args:
