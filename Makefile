@@ -30,7 +30,8 @@ run-notebooks:
 	--no-browser --allow-root
 
 
-output_network_graph: 
-    python linkage_pipeline.py
+#running the linkage pipeline and creating the network graph
+#still waiting on linkage_pipeline completion to get this into final shape
 
-.PHONY: output_network_graph
+output network_graph: all_individuals.csv all_organizations.csv all_transactions.csv
+	python linkage_pipeline.py

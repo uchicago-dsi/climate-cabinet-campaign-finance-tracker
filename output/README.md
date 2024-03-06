@@ -1,6 +1,3 @@
 # Output README
 ---
-
-## Makefile and Final Pipeline
-
-- This folder is empty by default. The output of the Makefile process will be output into this folder, consisting of a NetworkX Graph object and a txt file containing graph metrics. 
+'deduplicated_UUIDs.csv' : Following record linkage work in the record_linkage pipeline, this file stores all the original uuids, and indicates the uuids to which the deduplicated uuids have been matched to.

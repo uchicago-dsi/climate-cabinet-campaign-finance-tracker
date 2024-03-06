@@ -44,9 +44,9 @@ If you prefer to develop inside a container with VS Code then do the following s
 6. For future reference, the above pipeline also stores the information mapping given id to our database id (generated via uuid) in a csv file in the format of (state)IDMap.csv (example: ArizonaIDMap.csv) in the output folder
 
 ### Record Linkage and Network Pipeline
-1. Download the complete_data.zip file from the Climate Cabinet Data Clinic Google Drive using this link: https://drive.google.com/file/d/1zbjt7iBU0NAWSBcUyEsjvuumn3VgI4z9/view?usp=sharing. After downloading this .zip, unzip it to find three files: complete_individuals.csv, complete_organizations.csv, and complete_transactions.csv. Upload these files into the data folder and ensure that their names are correct. They must follow this format: repo_root / "output" / "file"
-2. Run the pipeline by calling ```make run-linkage-pipeline```. This pipeline will perform conservative record linkage, attempt to classify entities as neutral, fossil fuels, or clean energy, and create a NetworkX Graph object. 
-3. The pipeline will output a NetworkX Graph object and a txt file containing graph metrics into the output folder. 
+1. Save the standardized tables "complete_individuals_table.csv", "complete_organizations_table.csv", and "complete_transactions_table.csv" (collected from the above pipeline or data from the project's Google Drive) in the following format: repo_root / "output" / "file"
+2. **UPDATE:** Run the pipeline by calling ```make run-linkage-pipeline```. This pipeline will perform conservative record linkage, attempt to classify entities as neutral, fossil fuels, or clean energy, convert the standardized tables into a NetworkX Graph, and show an interactive network visual.
+3. The pipeline will output the deduplicated tables saved as "cleaned_individuals_table.csv", "cleaned_organizations_table.csv", and "cleaned_transactions_table.csv". A mapping file, "deduplicated_UUIDs" tracks the UUIDs designated as duplicates. The pipeline will also output "Network Graph Node Data", which is the NetworkX Graph object converted into an adjecency list.
 
 ## Repository Structure
 
