@@ -306,4 +306,3 @@ def construct_network_graph(
     G = create_network_graph(aggreg_df)
     network_metrics(G)
     plot_network_graph(G)
-    nx.write_adjlist(G, "Network Graph Node Data")
