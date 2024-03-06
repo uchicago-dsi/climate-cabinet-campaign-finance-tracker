@@ -283,15 +283,16 @@ def network_metrics(net_graph: nx.Graph) -> None:
 def construct_network_graph(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
 ):
-    """Runs the network construction pipeline starting from 3 dataframes
+    """Runs the network construction pipeline starting from 3 dataframes and
+    creates a network metrics file, plots a network graph, and creates a file
+    with a network adjacency matrix
 
     Args:
         start_year & end_year: the range of the desired data
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
 
     Returns:
-        creates a network metrics file, plots a network graph,
-        and creates a file with a network adjacency matrix
+        None; however, will create 2 txt files
     """
     inds_df, orgs_df, transactions_df = dfs
     transactions_df = transactions_df.loc[
