@@ -1,11 +1,12 @@
+import math
 import os.path
 import re
 
 import numpy as np
 import pandas as pd
+import textdistance as td
 import usaddress
 from constants import COMPANY_TYPES, repo_root, suffixes, titles
-from names_dataset import NameDataset
 from splink.duckdb.linker import DuckDBLinker
 
 """

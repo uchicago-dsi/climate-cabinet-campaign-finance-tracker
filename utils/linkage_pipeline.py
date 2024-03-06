@@ -1,10 +1,5 @@
-import pandas as pd
-from nameparser import HumanName
-import os
-from pathlib import Path
 import networkx as nx
-
-from network import *
+import pandas as pd
 from classify import classify_wrapper
 from constants import (
     BASE_FILEPATH,
@@ -23,6 +18,8 @@ from linkage import (
     splink_dedupe,
     standardize_corp_names,
 )
+from nameparser import HumanName
+from network import combine_datasets_for_network_graph, create_network_graph
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
@@ -139,30 +136,23 @@ def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
 
 
 def main():
+    # organizations = pd.read_csv(BASE_FILEPATH / "data" / "orgs_mini.csv")
+
+    # individuals = pd.read_csv(BASE_FILEPATH / "data" / "inds_mini.csv")
+
+    # transactions = pd.read_csv(BASE_FILEPATH / "data" / "trans_mini.csv")
 
     organizations = pd.read_csv(
-        BASE_FILEPATH / "data" / "orgs_mini.csv"
+        BASE_FILEPATH / "data" / "complete_organizations.csv"
     )
 
     individuals = pd.read_csv(
-        BASE_FILEPATH / "data" / "inds_mini.csv"
+        BASE_FILEPATH / "data" / "complete_individuals.csv"
     )
 
     transactions = pd.read_csv(
-        BASE_FILEPATH / "data" / "trans_mini.csv"
+        BASE_FILEPATH / "data" / "complete_transactions.csv"
     )
-
-    # organizations = pd.read_csv(
-    #     BASE_FILEPATH / "data" / "complete_organizations.csv"
-    # )
-
-    # individuals = pd.read_csv(
-    #     BASE_FILEPATH / "data" / "complete_individuals.csv"
-    # )
-
-    # transactions = pd.read_csv(
-    #     BASE_FILEPATH / "data" / "complete_transactions.csv"
-    # )
 
     individuals = preprocess_individuals(individuals)
     organizations = preprocess_organizations(organizations)
@@ -178,13 +168,15 @@ def main():
     individuals["unique_id"] = individuals["id"]
     organizations["unique_id"] = organizations["id"]
 
-    # organizations = splink_dedupe(
-    #     organizations, organizations_settings, organizations_blocking
-    # )
+    individuals = individuals.drop(columns=[])
 
-    # individuals = splink_dedupe(
-    #     individuals, individuals_settings, individuals_blocking
-    # )
+    organizations = splink_dedupe(
+        organizations, organizations_settings, organizations_blocking
+    )
+
+    individuals = splink_dedupe(
+        individuals, individuals_settings, individuals_blocking
+    )
 
     transactions[["donor_id", "recipient_id"]] = transactions[
         ["donor_id", "recipient_id"]
@@ -208,18 +200,17 @@ def main():
 
     print("deduplication complete, initiating aggregation")
 
-    aggreg_df = combine_datasets_for_network_graph([individuals, organizations, transactions])
+    aggreg_df = combine_datasets_for_network_graph(
+        [individuals, organizations, transactions]
+    )
 
     print("aggregation complete, initiating graphing")
 
-    
-
     g = create_network_graph(aggreg_df)
 
-    g_output_path = (BASE_FILEPATH / "output" / "g.gml")
+    g_output_path = BASE_FILEPATH / "output" / "g.gml"
 
     nx.write_graphml(g, g_output_path)
-
 
     # construct_network_graph(2000, 2024, [individuals, organizations, transactions])
 
