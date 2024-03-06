@@ -374,7 +374,7 @@ def standardize_corp_names(company_name: str) -> str:
 
     """
 
-    company_name_split = company_name.title().split(" ")
+    company_name_split = company_name.upper().split(" ")
 
     for i in range(len(company_name_split)):
         if company_name_split[i] in list(COMPANY_TYPES.keys()):
