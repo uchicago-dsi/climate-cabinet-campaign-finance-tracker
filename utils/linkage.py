@@ -1,12 +1,10 @@
-import math
 import os.path
 import re
 
 import numpy as np
 import pandas as pd
-import textdistance as td
 import usaddress
-from constants import COMPANY_TYPES, repo_root
+from constants import COMPANY_TYPES, repo_root, suffixes, titles
 from names_dataset import NameDataset
 from splink.duckdb.linker import DuckDBLinker
 
@@ -20,10 +18,14 @@ def get_address_line_1_from_full_address(address: str) -> str:
 
     Address line 1 usually includes street address or PO Box information.
 
+    Uses the usaddress libray which splits an address string into components,
+    and labels each component.
+    https://usaddress.readthedocs.io/en/latest/
+
     Args:
         address: raw string representing full address
     Returns:
-        address_line_1
+        address_line_1 as a string
 
     Sample Usage:
     >>> get_address_line_1_from_full_address('6727 W. Corrine Dr.  Peoria,AZ 85381')
@@ -41,7 +43,7 @@ def get_address_line_1_from_full_address(address: str) -> str:
 
     address_tuples = usaddress.parse(
         address
-    )  # takes a string address and put them into value,key pairs as tuples
+    )  # takes a string address and put them into value, key pairs as tuples
     line1_components = []
     for value, key in address_tuples:
         if key == "PlaceName":
@@ -244,20 +246,7 @@ def determine_comma_role(name: str) -> str:
     >>> determine_comma_role("DOe, Jane")
     ' Jane Doe'
     """
-    suffixes = [
-        "sr",
-        "jr",
-        "i",
-        "ii",
-        "iii",
-        "iv",
-        "v",
-        "vi",
-        "vii",
-        "viii",
-        "ix",
-        "x",
-    ]
+
     name_parts = name.lower().split(",")
     # if the comma is just in the end as a typo:
     if len(name_parts[1]) == 0:
@@ -323,18 +312,6 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
 
     # some names have titles or professions associated with the name. We need to
     # remove those from the name.
-    titles = [
-        "mr",
-        "ms",
-        "mrs",
-        "miss",
-        "prof",
-        "dr",
-        "doctor",
-        "sir",
-        "madam",
-        "professor",
-    ]
     names = [first_name, last_name, full_name]
 
     for i in range(len(names)):
@@ -360,10 +337,14 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
 def get_street_from_address_line_1(address_line_1: str) -> str:
     """Given an address line 1, return the street name
 
+    Uses the usaddress libray which splits an address string into components,
+    and labels each component.
+    https://usaddress.readthedocs.io/en/latest/
+
     Args:
-        address_line_1: either street information or PO box
+        address_line_1: either street information or PO box as a string
     Returns:
-        street name
+        street name as a string
     Raises:
         ValueError: if string is malformed and no street can be reasonably
             found.
@@ -400,54 +381,6 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
             string.append(key)
 
     return " ".join(string)
-
-
-def name_rank(first_name: str, last_name: str) -> list:
-    """Returns a score for the rank of a given first name and last name
-    https://github.com/philipperemy/name-dataset
-    Args:
-        first_name: any string
-        last_name: any string
-    Returns:
-        name rank for first name and last names
-        1 is the most common name, only for names in the United States
-        First element in the list corresponds to the rank of the first name
-        Second element in the list corresponds to the rank of the last name
-        Empty or non string values will return None
-        Names that are not found in the dataset will return 0
-
-    >>> name_rank("John", "Smith")
-    [5, 7]
-    >>> name_rank("Adil", "Kassim")
-    [0, 7392]
-    >>> name_rank(None, 9)
-    [None, None]
-    """
-
-    # Initialize the NameDataset class
-    nd = NameDataset()
-
-    first_name_rank = 0
-    last_name_rank = 0
-    if isinstance(first_name, str):
-        first_name_result = nd.search(first_name)
-        if first_name_result and isinstance(first_name_result, dict):
-            first_name_data = first_name_result.get("first_name")
-            if first_name_data and "rank" in first_name_data:
-                first_name_rank = first_name_data["rank"].get(
-                    "United States", 0
-                )
-    else:
-        first_name_rank = None
-    if isinstance(last_name, str):
-        last_name_result = nd.search(last_name)
-        if last_name_result and isinstance(last_name_result, dict):
-            last_name_data = last_name_result.get("last_name")
-            if last_name_data and "rank" in last_name_data:
-                last_name_rank = last_name_data["rank"].get("United States", 0)
-    else:
-        last_name_rank = None
-    return [first_name_rank, last_name_rank]
 
 
 def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
@@ -534,6 +467,7 @@ def cleaning_company_column(company_entry: str) -> str:
         standardized for retired, self employed, and unemployed,
         or original string if no match or empty string
 
+    Sample Usage:
     >>> cleaning_company_column("Retireed")
     'Retired'
     >>> cleaning_company_column("self")
@@ -589,6 +523,7 @@ def standardize_corp_names(company_name: str) -> str:
     Returns:
         standardized company name
 
+    Sample Usage:
     >>> standardize_corp_names('MI BEER WINE WHOLESALERS ASSOC')
     'MI BEER WINE WHOLESALERS ASSOCIATION'
 
@@ -613,6 +548,10 @@ def standardize_corp_names(company_name: str) -> str:
 
 def get_address_number_from_address_line_1(address_line_1: str) -> str:
     """Given an address line 1, return the building number or po box
+
+    Uses the usaddress libray which splits an address string into components,
+    and labels each component.
+    https://usaddress.readthedocs.io/en/latest/
 
     Args:
         address_line_1: either street information or PO box
@@ -651,6 +590,11 @@ def splink_dedupe(
     Configuration settings and blocking can be found in constants.py as
     individuals_settings, indivduals_blocking, organizations_settings,
     organizations_blocking
+
+    Uses the splink library which employs probabilistic matching for
+    record linkage
+    https://moj-analytical-services.github.io/splink/index.html
+
 
     Args:
         df: dataframe
