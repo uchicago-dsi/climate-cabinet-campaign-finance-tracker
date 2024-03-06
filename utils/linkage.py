@@ -1,10 +1,8 @@
-import math
 import os.path
 import re
 
 import numpy as np
 import pandas as pd
-import textdistance as td
 import usaddress
 from splink.duckdb.linker import DuckDBLinker
 
