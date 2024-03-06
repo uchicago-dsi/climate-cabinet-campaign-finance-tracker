@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-def name_identifier(uuid: str, dfs: list) -> str:
+def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
     """Returns the name of the entity given the entity's uuid
 
     Args:
@@ -26,7 +26,7 @@ def name_identifier(uuid: str, dfs: list) -> str:
     return None
 
 
-def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
+def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     """Combines the 3 dataframes into a single dataframe to create a graph
 
     Given 3 dataframes, the func adds a 'recipient_name' column in the
@@ -204,7 +204,9 @@ def plot_network_graph(G: nx.MultiDiGraph):
     fig.show()
 
 
-def construct_network_graph(start_year: int, end_year: int, dfs: list):
+def construct_network_graph(
+    start_year: int, end_year: int, dfs: list[pd.DataFrame]
+):
     """Runs the network construction pipeline starting from 3 dataframes
 
     Args:
