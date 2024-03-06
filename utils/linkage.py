@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 import textdistance as td
 import usaddress
-from constants import COMPANY_TYPES, repo_root, suffixes, titles
 from splink.duckdb.linker import DuckDBLinker
+
+from utils.constants import COMPANY_TYPES, repo_root, suffixes, titles
 
 """
 Module for performing record linkage on state campaign finance dataset

@@ -1,8 +1,10 @@
 import networkx as nx
 import pandas as pd
-from classify import classify_wrapper
-from constants import BASE_FILEPATH
-from linkage import (
+from nameparser import HumanName
+
+from utils.classify import classify_wrapper
+from utils.constants import BASE_FILEPATH
+from utils.linkage import (
     cleaning_company_column,
     deduplicate_perfect_matches,
     get_address_line_1_from_full_address,
@@ -11,8 +13,7 @@ from linkage import (
     get_street_from_address_line_1,
     standardize_corp_names,
 )
-from nameparser import HumanName
-from network import combine_datasets_for_network_graph, create_network_graph
+from utils.network import combine_datasets_for_network_graph, create_network_graph
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
