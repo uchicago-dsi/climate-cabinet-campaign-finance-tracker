@@ -19,6 +19,7 @@ from utils.linkage import (
     splink_dedupe,
     standardize_corp_names,
 )
+from utils.network import construct_network_graph
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
@@ -95,6 +96,18 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         axis=1,
     )
 
+    individuals["sort_priority"] = (
+        ~individuals["first_name"].isna()
+        & ~individuals["last_name"].isna()
+        & ~individuals["company"].isna()
+    ) * 2 + (~individuals["party"].isna())
+
+    individuals = individuals.sort_values(
+        by="sort_priority", ascending=False
+    ).drop(columns=["sort_priority"])
+
+    individuals["unique_id"] = individuals["id"]
+
     return individuals
 
 
@@ -111,6 +124,8 @@ def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
         .loc[organizations["name"].notnull()]
         .apply(standardize_corp_names)
     )
+
+    organizations["unique_id"] = organizations["id"]
 
     return organizations
 
@@ -131,6 +146,11 @@ def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
 
     transactions["purpose"] = transactions["purpose"].str.upper()
 
+    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+    transactions[["donor_id", "recipient_id"]] = transactions[
+        ["donor_id", "recipient_id"]
+    ].replace(deduped)
+
     return transactions
 
 
@@ -149,17 +169,13 @@ def main():
 
     individuals = preprocess_individuals(individuals)
     organizations = preprocess_organizations(organizations)
-    transactions = preprocess_transactions(transactions)
 
     individuals, organizations = classify_wrapper(individuals, organizations)
 
     individuals = deduplicate_perfect_matches(individuals)
     organizations = deduplicate_perfect_matches(organizations)
 
-    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
-
-    individuals["unique_id"] = individuals["id"]
-    organizations["unique_id"] = organizations["id"]
+    transactions = preprocess_transactions(transactions)
 
     organizations = splink_dedupe(
         organizations, organizations_settings, organizations_blocking
@@ -168,10 +184,6 @@ def main():
     individuals = splink_dedupe(
         individuals, individuals_settings, individuals_blocking
     )
-
-    transactions[["donor_id", "recipient_id"]] = transactions[
-        ["donor_id", "recipient_id"]
-    ].replace(deduped)
 
     cleaned_individuals_output_path = (
         BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
@@ -188,6 +200,10 @@ def main():
     individuals.to_csv(cleaned_individuals_output_path, index=False)
     organizations.to_csv(cleaned_organizations_output_path, index=False)
     transactions.to_csv(cleaned_transactions_output_path, index=False)
+
+    construct_network_graph(
+        2018, 2024, [individuals, organizations, transactions]
+    )
 
 
 if __name__ == "__main__":
