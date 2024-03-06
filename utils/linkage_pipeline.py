@@ -1,15 +1,7 @@
 import networkx as nx
 import pandas as pd
-from nameparser import HumanName
-
 from classify import classify_wrapper
-from constants import (
-    BASE_FILEPATH,
-    individuals_blocking,
-    individuals_settings,
-    organizations_blocking,
-    organizations_settings,
-)
+from constants import BASE_FILEPATH
 from linkage import (
     cleaning_company_column,
     deduplicate_perfect_matches,
@@ -17,9 +9,9 @@ from linkage import (
     get_address_number_from_address_line_1,
     get_likely_name,
     get_street_from_address_line_1,
-    splink_dedupe,
     standardize_corp_names,
 )
+from nameparser import HumanName
 from network import combine_datasets_for_network_graph, create_network_graph
 
 
