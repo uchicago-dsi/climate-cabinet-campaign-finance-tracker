@@ -21,9 +21,9 @@ from utils.linkage import (
     standardize_corp_names,
 )
 from utils.network import (
-    create_network_graph,
     combine_datasets_for_network_graph,
     construct_network_graph,
+    create_network_graph,
 )
 
 
@@ -107,9 +107,9 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         & ~individuals["company"].isna()
     ) * 2 + (~individuals["party"].isna())
 
-    individuals = individuals.sort_values(by="sort_priority", ascending=False).drop(
-        columns=["sort_priority"]
-    )
+    individuals = individuals.sort_values(
+        by="sort_priority", ascending=False
+    ).drop(columns=["sort_priority"])
 
     individuals["unique_id"] = individuals["id"]
 
@@ -164,7 +164,9 @@ def main():
         BASE_FILEPATH / "data" / "complete_organizations_table.csv"
     )
 
-    individuals = pd.read_csv(BASE_FILEPATH / "data" / "complete_individuals_table.csv")
+    individuals = pd.read_csv(
+        BASE_FILEPATH / "data" / "complete_individuals_table.csv"
+    )
 
     transactions = pd.read_csv(
         BASE_FILEPATH / "data" / "complete_transactions_table.csv"
@@ -182,7 +184,9 @@ def main():
         organizations, organizations_settings, organizations_blocking
     )
 
-    individuals = splink_dedupe(individuals, individuals_settings, individuals_blocking)
+    individuals = splink_dedupe(
+        individuals, individuals_settings, individuals_blocking
+    )
 
     transactions = preprocess_transactions(transactions)
 
@@ -209,7 +213,9 @@ def main():
     g_output_path = BASE_FILEPATH / "output" / "g.gml"
     nx.write_graphml(g, g_output_path)
 
-    construct_network_graph(2018, 2023, [individuals, organizations, transactions])
+    construct_network_graph(
+        2018, 2023, [individuals, organizations, transactions]
+    )
 
 
 if __name__ == "__main__":
