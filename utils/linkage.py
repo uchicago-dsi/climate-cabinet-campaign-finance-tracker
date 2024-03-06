@@ -472,12 +472,15 @@ def splink_dedupe(
 
     deduped_df = pd.merge(
         first_instance_df,
-        match_list_df[["cluster_id"]],
+        match_list_df[["cluster_id", "duplicated"]],
         on="cluster_id",
         how="left",
     )
     deduped_df = deduped_df.rename(columns={"cluster_id": "unique_id"})
 
+    deduped_df["duplicated"] = deduped_df["duplicated"].apply(
+        lambda x: x if isinstance(x, list) else [x]
+    )
     convert_duplicates_to_dict(deduped_df)
 
     deduped_df = deduped_df.drop(columns=["duplicated"])
