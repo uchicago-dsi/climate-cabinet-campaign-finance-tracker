@@ -290,6 +290,8 @@ def construct_network_graph(
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
 
     Returns:
+        creates a network metrics file, plots a network graph,
+        and creates a file with a network adjacency matrix
     """
     inds_df, orgs_df, transactions_df = dfs
     transactions_df = transactions_df.loc[
