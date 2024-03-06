@@ -1,3 +1,4 @@
+import networkx as nx
 import pandas as pd
 from nameparser import HumanName
 
@@ -19,7 +20,11 @@ from utils.linkage import (
     splink_dedupe,
     standardize_corp_names,
 )
-from utils.network import construct_network_graph
+from utils.network import (
+    create_network_graph,
+    combine_datasets_for_network_graph,
+    construct_network_graph,
+)
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
@@ -102,9 +107,9 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         & ~individuals["company"].isna()
     ) * 2 + (~individuals["party"].isna())
 
-    individuals = individuals.sort_values(
-        by="sort_priority", ascending=False
-    ).drop(columns=["sort_priority"])
+    individuals = individuals.sort_values(by="sort_priority", ascending=False).drop(
+        columns=["sort_priority"]
+    )
 
     individuals["unique_id"] = individuals["id"]
 
@@ -159,9 +164,7 @@ def main():
         BASE_FILEPATH / "data" / "complete_organizations_table.csv"
     )
 
-    individuals = pd.read_csv(
-        BASE_FILEPATH / "data" / "complete_individuals_table.csv"
-    )
+    individuals = pd.read_csv(BASE_FILEPATH / "data" / "complete_individuals_table.csv")
 
     transactions = pd.read_csv(
         BASE_FILEPATH / "data" / "complete_transactions_table.csv"
@@ -175,15 +178,13 @@ def main():
     individuals = deduplicate_perfect_matches(individuals)
     organizations = deduplicate_perfect_matches(organizations)
 
-    transactions = preprocess_transactions(transactions)
-
     organizations = splink_dedupe(
         organizations, organizations_settings, organizations_blocking
     )
 
-    individuals = splink_dedupe(
-        individuals, individuals_settings, individuals_blocking
-    )
+    individuals = splink_dedupe(individuals, individuals_settings, individuals_blocking)
+
+    transactions = preprocess_transactions(transactions)
 
     cleaned_individuals_output_path = (
         BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
@@ -201,9 +202,14 @@ def main():
     organizations.to_csv(cleaned_organizations_output_path, index=False)
     transactions.to_csv(cleaned_transactions_output_path, index=False)
 
-    construct_network_graph(
-        2018, 2023, [individuals, organizations, transactions]
+    aggreg_df = combine_datasets_for_network_graph(
+        [individuals, organizations, transactions]
     )
+    g = create_network_graph(aggreg_df)
+    g_output_path = BASE_FILEPATH / "output" / "g.gml"
+    nx.write_graphml(g, g_output_path)
+
+    construct_network_graph(2018, 2023, [individuals, organizations, transactions])
 
 
 if __name__ == "__main__":

@@ -33,5 +33,6 @@ run-notebooks:
 #running the linkage pipeline and creating the network graph
 #still waiting on linkage_pipeline completion to get this into final shape
 
-output network_graph: all_individuals.csv all_organizations.csv all_transactions.csv
-	python linkage_pipeline.py
+run-linkage-and-network-pipeline:
+	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
+	docker run -v $(current_abs_path):/project -t $(project_image_name) python utils/linkage_pipeline.py
