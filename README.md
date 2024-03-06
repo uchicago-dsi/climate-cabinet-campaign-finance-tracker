@@ -44,8 +44,8 @@ If you prefer to develop inside a container with VS Code then do the following s
 6. For future reference, the above pipeline also stores the information mapping given id to our database id (generated via uuid) in a csv file in the format of (state)IDMap.csv (example: ArizonaIDMap.csv) in the output folder
 
 ### Record Linkage and Network Pipeline
-1. Save the standardized tables "complete_individuals_table.csv", "complete_organizations_table.csv", and "complete_transactions_table.csv" (collected from the above pipeline or data from the project's Google Drive) in the following format: repo_root / "output" / "file"
-2. **UPDATE:** Run the pipeline by calling ```make run-linkage-and-network_pipeline```. This pipeline will perform conservative record linkage, attempt to classify entities as neutral, fossil fuels, or clean energy, convert the standardized tables into a NetworkX Graph, and show an interactive network visual.
+1. Save the standardized tables "complete_individuals.csv", "complete_organizations.csv", and "complete_transactions.csv" (collected from the above pipeline or data from the project's Google Drive at https://drive.google.com/file/d/1Jx-ElbzeW5g5byyRB6jQe2JesLep3AaH/view?usp=sharing) in the following format: repo_root / "data" / "file"
+2. Run the pipeline by calling ```make run-linkage-and-network_pipeline```. This pipeline will perform conservative record linkage, attempt to classify entities as neutral, fossil fuels, or clean energy, convert the standardized tables into a NetworkX Graph, and show an interactive network visual.
 3. The pipeline will output the deduplicated tables saved as "cleaned_individuals_table.csv", "cleaned_organizations_table.csv", and "cleaned_transactions_table.csv". A mapping file, "deduplicated_UUIDs" tracks the UUIDs designated as duplicates. The pipeline will also output "Network Graph Node Data", 
   which is the NetworkX Graph object converted into an adjecency list. Finally the pipeline will create a file called 'network_metrics.txt' which holds the summary statistics we extrapolated from the network including measures of centrality, connectedness, and communites.
 

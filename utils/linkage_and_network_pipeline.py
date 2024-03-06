@@ -161,15 +161,15 @@ def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     organizations = pd.read_csv(
-        BASE_FILEPATH / "data" / "complete_organizations_table.csv"
+        BASE_FILEPATH / "data" / "complete_organizations.csv"
     )
 
     individuals = pd.read_csv(
-        BASE_FILEPATH / "data" / "complete_individuals_table.csv"
+        BASE_FILEPATH / "data" / "complete_individuals.csv"
     )
 
     transactions = pd.read_csv(
-        BASE_FILEPATH / "data" / "complete_transactions_table.csv"
+        BASE_FILEPATH / "data" / "complete_transactions.csv"
     )
 
     individuals = preprocess_individuals(individuals)
