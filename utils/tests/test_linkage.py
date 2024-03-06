@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-
 from constants import BASE_FILEPATH
 from linkage import deduplicate_perfect_matches
 
