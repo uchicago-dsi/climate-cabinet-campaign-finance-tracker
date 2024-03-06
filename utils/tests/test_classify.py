@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-from classify import matcher
+
+from utils.classify import matcher
 
 d = {
     "name": [
