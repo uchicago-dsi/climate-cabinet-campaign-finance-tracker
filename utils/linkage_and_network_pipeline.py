@@ -202,7 +202,7 @@ def main():
     transactions.to_csv(cleaned_transactions_output_path, index=False)
 
     construct_network_graph(
-        2018, 2024, [individuals, organizations, transactions]
+        2018, 2023, [individuals, organizations, transactions]
     )
 
 
