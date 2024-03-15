@@ -3,9 +3,7 @@ import pandas as pd
 from utils.constants import c_org_names, f_companies, f_org_names
 
 
-def classify_wrapper(
-    individuals_df: pd.DataFrame, organizations_df: pd.DataFrame
-):
+def classify_wrapper(individuals_df: pd.DataFrame, organizations_df: pd.DataFrame):
     """Wrapper for classification in linkage pipeline
 
     Initialize the classify column in both dataframes and
@@ -25,7 +23,6 @@ def classify_wrapper(
         entities classified as one group or another are related to them.
 
     """
-
     individuals_df["classification"] = "neutral"
     organizations_df["classification"] = "neutral"
 
@@ -54,7 +51,6 @@ def matcher(df: pd.DataFrame, substring: str, column: str, category: str):
         A pandas dataframe in which rows matching the substring conditions in
         a certain column are marked with the appropriate category
     """
-
     bool_series = df[column].str.contains(substring, na=False)
 
     df.loc[bool_series, "classification"] = category
@@ -75,7 +71,6 @@ def classify_individuals(individuals_df: pd.DataFrame):
     Returns:
         an individuals dataframe updated with the fossil fuels category
     """
-
     for i in f_companies:
         individuals_df = matcher(individuals_df, i, "company", "f")
 
@@ -97,7 +92,6 @@ def classify_orgs(organizations_df: pd.DataFrame):
         an organizations dataframe updated with the fossil fuels
         and clean energy category
     """
-
     for i in f_org_names:
         organizations_df = matcher(organizations_df, i, "name", "f")
 

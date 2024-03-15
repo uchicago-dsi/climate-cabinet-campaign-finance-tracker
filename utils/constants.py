@@ -1,6 +1,5 @@
-"""
-Constants to be used in various parts of the project.
-"""
+"""Constants to be used in various parts of the project."""
+
 from pathlib import Path
 
 import splink.duckdb.comparison_library as cl
@@ -21,9 +20,7 @@ AZ_INDIVIDUALS_FILEPATH = (
     BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
 )
 
-AZ_ORGANIZATIONS_FILEPATH = (
-    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
-)
+AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

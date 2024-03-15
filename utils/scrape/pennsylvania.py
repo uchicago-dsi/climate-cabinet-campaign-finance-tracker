@@ -10,7 +10,7 @@ from utils.constants import repo_root
 def download_PA_data(
     start_year: int, end_year: int, output_directory: Path = None
 ) -> None:
-    """downloads PA datasets from specified years to a local directory
+    """Downloads PA datasets from specified years to a local directory
 
     Args:
         start_year: The first year in the range of desired years to extract data

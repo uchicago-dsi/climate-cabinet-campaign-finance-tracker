@@ -1,19 +1,21 @@
 import functools
 import warnings
+from typing import Callable
 
 import pandas as pd
 
 
-def deprecated(func):
+def deprecated(func: Callable) -> Callable:
     """This is a decorator which can be used to mark functions
     as deprecated. It will result in a warning being emitted
-    when the function is used."""
+    when the function is used.
+    """
 
     @functools.wraps(func)
     def new_func(*args, **kwargs):
         warnings.simplefilter("always", DeprecationWarning)  # turn off filter
         warnings.warn(
-            "Call to deprecated function {}.".format(func.__name__),
+            f"Call to deprecated function {func.__name__}.",
             category=DeprecationWarning,
             stacklevel=2,
         )
@@ -25,15 +27,13 @@ def deprecated(func):
 
 @deprecated
 def datasets_col_consistent(df_lst: list):
-    """
-    Checks if a list of MN DataFrames have the same columns/features
+    """Checks if a list of MN DataFrames have the same columns/features
 
     Args:
         df_lst (list): a list of MN DataFrames whose columns will be checked
     Returns:
         Nothing, print out the checking result for column consistency
     """
-
     previous_columns = df_lst[0].columns
     consistent_col_count = 1
 
@@ -48,15 +48,13 @@ def datasets_col_consistent(df_lst: list):
 
 @deprecated
 def preprocess_candidate_df(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocesses all MN candidate-recipient contribution dfs.
+    """Preprocesses all MN candidate-recipient contribution dfs.
 
     Args:
         df (DataFrame): the MN DataFrames to preprocess
     Returns:
         DataFrame: Preprocessed MN contribution df with candidate recipients
     """
-
     df_copy = df.copy(deep=True)
     column_mapping = {
         "CandRegNumb": "RegNumb",
@@ -74,15 +72,13 @@ def preprocess_candidate_df(df: pd.DataFrame) -> pd.DataFrame:
 
 @deprecated
 def preprocess_noncandidate_df(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocesses the MN non-candidate-recipient contribution df.
+    """Preprocesses the MN non-candidate-recipient contribution df.
 
     Args:
         df (DataFrame): the MN DataFrames to preprocess
     Returns:
         DataFrame: Preprocessed contribution df with non-candidate recipients
     """
-
     df_copy = df.copy(deep=True)
     columns_to_keep = [
         "PCFRegNumb",
@@ -111,15 +107,13 @@ def preprocess_noncandidate_df(df: pd.DataFrame) -> pd.DataFrame:
 
 @deprecated
 def preprocess_contribution_df(df_lst: list) -> pd.DataFrame:
-    """
-    Preprocesses separate dfs into a complete contribution df for MN
+    """Preprocesses separate dfs into a complete contribution df for MN
 
     Args:
         df_lst (list): a list of MN DataFrames to merge and adjust columns
     Returns:
         DataFrame: the merged and preprocessed contribution df
     """
-
     contribution_df = pd.concat(df_lst, ignore_index=True)
     contribution_df["Date"] = pd.to_datetime(contribution_df["Date"])
     contribution_df["Year"] = contribution_df["Date"].dt.year
@@ -151,8 +145,7 @@ def preprocess_contribution_df(df_lst: list) -> pd.DataFrame:
 
 @deprecated
 def drop_nonclassifiable(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drop contributions with zero transaction amount or no donor registration
+    """Drop contributions with zero transaction amount or no donor registration
     number, or no donor name
 
     Args:
@@ -160,7 +153,6 @@ def drop_nonclassifiable(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame: the contribution df without non-classifiable data
     """
-
     df = df[df["TotalAmount"] != 0]
     df = df.dropna(subset=["RegNumb", "DonorName"], how="any")
     df = df.reset_index(drop=True)
@@ -170,15 +162,13 @@ def drop_nonclassifiable(df: pd.DataFrame) -> pd.DataFrame:
 
 @deprecated
 def preprocess_expenditure(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocesses MN independent expenditure dataset into a DataFrame.
+    """Preprocesses MN independent expenditure dataset into a DataFrame.
 
     Args:
         df (DataFrame): the MN independent expenditure DataFrames to preprocess
     Returns:
         DataFrame: Preprocessed MN general expenditure DataFrames
     """
-
     df_copy = df.copy(deep=True)
     columns_to_keep = [
         "Spender Reg Num",
@@ -216,8 +206,7 @@ def preprocess_expenditure(df: pd.DataFrame) -> pd.DataFrame:
 
 @deprecated
 def drop_nonclassifiable_expenditure(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drop contributions with zero transaction amount or no spender registration
+    """Drop contributions with zero transaction amount or no spender registration
     number and name
 
     Args:
@@ -225,7 +214,6 @@ def drop_nonclassifiable_expenditure(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame: the expenditure df without non-classifiable data
     """
-
     df = df[df["Amount"] != 0]
     df = df.dropna(subset=["SpenderRegNum", "SpenderName"], how="any")
     df = df.reset_index(drop=True)

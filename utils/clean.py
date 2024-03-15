@@ -4,9 +4,7 @@ import pandas as pd
 
 
 class StateCleaner(ABC):
-    """
-    This abstract class is the one that all the state cleaners will be built on
-    """
+    """This abstract class is the one that all the state cleaners will be built on"""
 
     @property
     def entity_name_dictionary(self) -> dict:
@@ -15,8 +13,7 @@ class StateCleaner(ABC):
 
     @abstractmethod
     def preprocess(self, directory: str = None) -> list[pd.DataFrame]:
-        """
-        Preprocesses the state data and returns a dataframe
+        """Preprocesses the state data and returns a dataframe
 
         Reads in the state's data, makes any necessary bug fixes, and
         combines the data into a list of DataFrames, discards data not in schema
@@ -85,8 +82,7 @@ class StateCleaner(ABC):
     def create_tables(
         self, data: list[pd.DataFrame]
     ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """
-        Creates the Individuals, Organizations, and Transactions tables from
+        """Creates the Individuals, Organizations, and Transactions tables from
         the dataframe list outputted from standardize
 
         Inputs:
@@ -99,8 +95,7 @@ class StateCleaner(ABC):
 
     @abstractmethod
     def clean_state(self) -> (pd.DataFrame, pd.DataFrame, list[pd.DataFrame]):
-        """
-        Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
+        """Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
 
         Returns: use preprocess, clean, standardize, and create_tables methods
         to output (individuals_table, organizations_table, transactions_table)
@@ -115,5 +110,4 @@ class StateCleaner(ABC):
         Organizations, and list of Transactions tables in the order:
         [ind->ind, ind->org, org->ind, org->org] tables in a tuple
         """
-
         pass

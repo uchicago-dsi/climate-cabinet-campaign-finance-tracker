@@ -45,8 +45,7 @@ def get_year_range() -> list:
 
 
 def capture_data(year_lst: list) -> (list, list):
-    """
-    Makes a request and saves the urls directly to the MI  data
+    """Makes a request and saves the urls directly to the MI  data
 
     Inputs: year_lst: list of years to capture data from
 
@@ -85,8 +84,7 @@ def capture_data(year_lst: list) -> (list, list):
 
 
 def make_request(url: str) -> None:
-    """
-    Make a request and download the campaign contributions zip files
+    """Make a request and download the campaign contributions zip files
 
     Inputs: url (str): URL to the MI campaign zip file
 
@@ -106,8 +104,7 @@ def make_request(url: str) -> None:
 
 
 def unzip_file(zip_file: BytesIO, directory: str) -> None:
-    """
-    Unzips the zip file and reads the file into the directory
+    """Unzips the zip file and reads the file into the directory
 
     Inputs: zipfile (io.BytesIO): An in-memory ZIP file as a BytesIO stream
             directory (str): directory for the files to be saved
@@ -126,8 +123,7 @@ def unzip_file(zip_file: BytesIO, directory: str) -> None:
 
 
 def create_directory() -> None:
-    """
-    Creates the directory for the MI contributions data
+    """Creates the directory for the MI contributions data
 
     Inputs: FILEPATH (str): filepath to the directory
     """
@@ -147,9 +143,7 @@ def create_directory() -> None:
 
 
 def main() -> None:
-    """
-    Runs the main function and scrapes and downloads the MI campaign data
-    """
+    """Runs the main function and scrapes and downloads the MI campaign data"""
     scrape_and_download_mi_data()
 
 

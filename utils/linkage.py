@@ -98,7 +98,6 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
     >>> similar_score > different_score
     True
     """
-
     return float(td.jaro_winkler(string1.lower()[::-1], string2.lower()[::-1]))
 
 
@@ -116,7 +115,6 @@ def calculate_row_similarity(
     the comparison function locked in, using .apply will
     likely be easier and more efficient.
     """
-
     row_length = len(weights)
     if not (row1.shape[1] == row2.shape[1] == row_length):
         raise ValueError("Number of columns and weights must be the same")
@@ -145,7 +143,6 @@ def row_matches(
     This is not optimized. Not presently sure how to make a good test case
     for this, will submit and ask in mentor session.
     """
-
     all_indices = np.array(list(df.index))
 
     index_dict = {}
@@ -196,7 +193,6 @@ def match_confidence(confidences, weights, weights_toggle: bool) -> float:
     >>> match_confidence(np.array([.6, .9, .0001]), np.array([2,5.7,8]), False)
     0.08337802853594725
     """
-
     if (min(confidences) < 0) or (max(confidences) > 1):
         raise ValueError("Probabilities must be bounded on [0, 1]")
 
@@ -248,7 +244,6 @@ def determine_comma_role(name: str) -> str:
     >>> determine_comma_role("DOe, Jane")
     ' Jane Doe'
     """
-
     name_parts = name.lower().split(",")
     # if the comma is just in the end as a typo:
     if len(name_parts[1]) == 0:
@@ -299,9 +294,9 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     'Jane Elisabeth Doe'
     """
     # first, convert any Nans to empty strings ''
-    first_name, last_name, full_name = [
+    first_name, last_name, full_name = (
         "" if x is np.NAN else x for x in [first_name, last_name, full_name]
-    ]
+    )
 
     # second, ensure clean input by deleting spaces:
     first_name, last_name, full_name = list(
@@ -322,9 +317,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
             names[i] = determine_comma_role(names[i])
 
         names[i] = names[i].replace(".", "").split(" ")
-        names[i] = [
-            name_part for name_part in names[i] if name_part not in titles
-        ]
+        names[i] = [name_part for name_part in names[i] if name_part not in titles]
         names[i] = " ".join(names[i])
 
     # one last check to remove any pieces that might add extra whitespace
@@ -398,7 +391,7 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
         list of all uuids deemed a match. In each list, all uuids but the first
         have their rows already dropped.
 
-    Returns
+    Returns:
         None. However it outputs a file to the output directory, with 2
         columns. The first lists all the uuids in df, and is labeled
         'original_uuids.' The 2nd shows the uuids to which each entry is mapped
@@ -441,9 +434,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # now find the duplicates along all columns but the ID
     new_df = (
-        new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)[
-            "id"
-        ]
+        new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)["id"]
         .agg(list)
         .reset_index()
         .rename(columns={"id": "duplicated"})
@@ -459,8 +450,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def cleaning_company_column(company_entry: str) -> str:
-    """
-    Given a string, check if it contains a variation of self employed, unemployed,
+    """Given a string, check if it contains a variation of self employed, unemployed,
     or retired and return the standardized version.
 
     Args:
@@ -479,7 +469,6 @@ def cleaning_company_column(company_entry: str) -> str:
     >>> cleaning_company_column("N/A")
     'Unemployed'
     """
-
     if not company_entry:
         return company_entry
 
@@ -536,7 +525,6 @@ def standardize_corp_names(company_name: str) -> str:
     'STEPHANIES CHANGEMAKER FUND'
 
     """
-
     company_name_split = company_name.upper().split(" ")
 
     for i in range(len(company_name_split)):
@@ -572,7 +560,6 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     ... )
     '1415'
     """
-
     address_line_1_components = usaddress.parse(address_line_1)
 
     for i in range(len(address_line_1_components)):
@@ -583,9 +570,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     raise ValueError("Can not find Address Number")
 
 
-def splink_dedupe(
-    df: pd.DataFrame, settings: dict, blocking: list
-) -> pd.DataFrame:
+def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
     """Given a dataframe and config settings, return a
     deduplicated dataframe
 
@@ -604,6 +589,7 @@ def splink_dedupe(
             (based on splink documentation and dataframe columns)
         blocking: list of columns to block on for the table
             (cuts dataframe into parts based on columns labeled blocks)
+
     Returns:
         deduplicated version of initial dataframe with column 'matching_id'
         that holds list of matching unique_ids

@@ -17,8 +17,7 @@ from utils.network import combine_datasets_for_network_graph, create_network_gra
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
-    """
-    Given a dataframe of individual donors, preprocesses the data,
+    """Given a dataframe of individual donors, preprocesses the data,
     and return a cleaned dataframe.
 
     Args:
@@ -94,8 +93,7 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
-    """
-    Given a dataframe of organization donors, preprocesses the data,
+    """Given a dataframe of organization donors, preprocesses the data,
     and return a cleaned dataframe.
     """
     if "Unnamed: 0" in organizations.columns:
@@ -111,8 +109,7 @@ def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
-    """
-    Given a dataframe of transactions, preprocesses the data,
+    """Given a dataframe of transactions, preprocesses the data,
     and return a cleaned dataframe.
 
     Args:

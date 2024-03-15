@@ -70,9 +70,7 @@ def pre_process_contributor_dataset(df: pd.DataFrame):
     Returns:
         a pandas dataframe whose columns are appropriately formatted.
     """
-    df["TOTAL_CONT_AMT"] = (
-        df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
-    )
+    df["TOTAL_CONT_AMT"] = df["CONT_AMT_1"] + df["CONT_AMT_2"] + df["CONT_AMT_3"]
     df["DONOR"] = df["DONOR"].astype("str")
     df["DONOR"] = df["DONOR"].str.upper()
     df["DONOR_TYPE"] = df["DONOR"].apply(classify_contributor)
@@ -172,9 +170,7 @@ def pre_process_expense_dataset(df: pd.DataFrame):
         inplace=True,
     )
     if "EXPENSE_REPORTER_ID" in df.columns:
-        df.drop(
-            columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True
-        )
+        df.drop(columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}, inplace=True)
     df["PURPOSE"] = df["PURPOSE"].apply(lambda x: str(x).upper())
     df["RECIPIENT"] = df["RECIPIENT"].apply(lambda x: str(x).upper())
 
@@ -182,7 +178,7 @@ def pre_process_expense_dataset(df: pd.DataFrame):
 
 
 def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
-    """initializes the PA data appropriately based on whether the data contains
+    """Initializes the PA data appropriately based on whether the data contains
     filer, contributor, or expense information
 
     Args:
@@ -194,7 +190,6 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
         a pandas dataframe whose columns are appropriately formatted, and
         any dirty rows with inconsistent columns names dropped.
     """
-
     df = pd.read_csv(
         data_filepath,
         names=assign_col_names(data_filepath, year),
@@ -229,7 +224,7 @@ def initialize_PA_dataset(data_filepath: str, year: int) -> pd.DataFrame:
 
 
 def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
-    """given a dataframe, retrieves the top n recipients of that year based on
+    """Given a dataframe, retrieves the top n recipients of that year based on
     contributions and returns a table
     Args:
         df: a pandas DataFrame with a contributions column
@@ -237,8 +232,10 @@ def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
         num_recipients: an integer specifying how many recipients are desired.
         If this value is larger than the possible amount of recipients, then all
         recipients are returned instead.
+
     Returns:
-        A pandas table (object)"""
+    A pandas table (object)
+    """
     recipients = (
         df.groupby(["RECIPIENT"])
         .agg({"TOTAL_CONT_AMT": sum})
@@ -253,7 +250,7 @@ def top_n_recipients(df: pd.DataFrame, num_recipients: int) -> object:
 
 
 def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
-    """given a dataframe, retrieves the top n contributors of that year based on
+    """Given a dataframe, retrieves the top n contributors of that year based on
     contributions and returns a table
 
     Args:
@@ -262,9 +259,10 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
         num_contributors: an integer specifying how many contributors are
         desired. If this value is larger than the possible amount of
         contributors, then all contributors are returned instead.
-    Returns:
-        a pandas table (object)"""
 
+    Returns:
+    a pandas table (object)
+    """
     contributors = (
         df.groupby(["DONOR"])
         .agg({"TOTAL_CONT_AMT": sum})
@@ -280,13 +278,14 @@ def top_n_contributors(df: pd.DataFrame, num_contributors: int) -> object:
 def merge_same_year_datasets(
     cont_file: pd.DataFrame, filer_file: pd.DataFrame
 ) -> pd.DataFrame:
-    """merges the contributor and filer datasets from the same year using the
+    """Merges the contributor and filer datasets from the same year using the
     unique filerID
     Args:
         cont_file: The contributor dataset
 
         filer_file: the filer dataset from the same year as the cont_file.
-    Returns
+
+    Returns:
         The merged pandas dataframe
     """
     merged_df = pd.merge(cont_file, filer_file, how="left", on="RECIPIENT_ID")
@@ -294,7 +293,7 @@ def merge_same_year_datasets(
 
 
 def merge_all_datasets(datasets: list) -> pd.DataFrame:
-    """concatenates datasets from different years into one super dataset
+    """Concatenates datasets from different years into one super dataset
     Args:
         datasets: a list of datasets
 
@@ -305,7 +304,7 @@ def merge_all_datasets(datasets: list) -> pd.DataFrame:
 
 
 def group_filerType_Party(dataset: pd.DataFrame) -> object:
-    """takes a dataset and returns a grouped table highlighting the kinds
+    """Takes a dataset and returns a grouped table highlighting the kinds
     of people who file the campaign reports (FilerType Key -> 1:Candidate,
     2:Committee, 3:Lobbyist.) and their political party affiliation
 
@@ -314,14 +313,13 @@ def group_filerType_Party(dataset: pd.DataFrame) -> object:
         dataset.
 
     Returns:
-        A table object"""
-    return dataset.groupby(["RECIPIENT_TYPE", "PARTY"]).agg(
-        {"TOTAL_CONT_AMT": sum}
-    )
+    A table object
+    """
+    return dataset.groupby(["RECIPIENT_TYPE", "PARTY"]).agg({"TOTAL_CONT_AMT": sum})
 
 
 def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
-    """returns a table and plots a bargraph of data highlighting the amount of
+    """Returns a table and plots a bargraph of data highlighting the amount of
     contributions each statewide race received over the years
 
     Args:
@@ -329,8 +327,8 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
         values from the contributor and filer datasets.
 
     Return:
-        A table object"""
-
+    A table object
+    """
     recep_per_office = merged_dataset.replace(
         {"RECIPIENT_OFFICE": const.PA_OFFICE_ABBREV_DICT}
     )
@@ -354,13 +352,14 @@ def plot_recipients_by_office(merged_dataset: pd.DataFrame) -> object:
 
 
 def compare_cont_by_donorType(merged_dataset: pd.DataFrame) -> object:
-    """returns a table and plots a barplot highlighting the annual contributions
+    """Returns a table and plots a barplot highlighting the annual contributions
     campaign finance report-filers received based on whether they are candidates
     , committees, or lobbyists.
 
     Args:
         merged_dataset: A (merged) pandas DataFrame containing columns from both
         the filer and contributor datasets.
+
     Return:
         A pandas DataFrame
     """

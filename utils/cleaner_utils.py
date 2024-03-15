@@ -30,7 +30,6 @@ def remove_nonstandard(col: pd.Series) -> pd.Series:
 
     returns: modified column of a pandas dataframe
     """
-
     col = col.str.replace(r"<[^<>]*>", " ", regex=True)
     # removes html tags
 

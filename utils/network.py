@@ -40,10 +40,9 @@ def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
         Individuals dataframe with column: 'full_name'
         Organizations dataframe with column: 'name'
 
-    Returns
+    Returns:
         A merged dataframe with aggregate contribution amounts between entitites
     """
-
     inds_df, orgs_df, transactions_df = dfs
 
     # first update the transactions df to have a recipient name tied to id
@@ -73,9 +72,7 @@ def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
         col: "sum" if col == "amount" else "first" for col in attribute_cols
     }
     aggreg_df = (
-        merged_df.groupby(
-            ["donor_id", "recipient_id", "full_name", "recipient_name"]
-        )
+        merged_df.groupby(["donor_id", "recipient_id", "full_name", "recipient_name"])
         .agg(agg_functions)
         .reset_index()
     )
@@ -215,13 +212,10 @@ def construct_network_graph(start_year: int, end_year: int, dfs: list):
     """
     inds_df, orgs_df, transactions_df = dfs
     transactions_df = transactions_df.loc[
-        (transactions_df.year >= start_year)
-        & (transactions_df.year <= end_year)
+        (transactions_df.year >= start_year) & (transactions_df.year <= end_year)
     ]
 
-    aggreg_df = combine_datasets_for_network_graph(
-        [inds_df, orgs_df, transactions_df]
-    )
+    aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
     G = create_network_graph(aggreg_df)
     plot_network_graph(G)
     nx.write_adjlist(G, "Network Graph Node Data")

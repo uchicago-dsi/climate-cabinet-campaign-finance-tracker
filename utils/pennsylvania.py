@@ -208,9 +208,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 | (df.RECIPIENT_TYPE == "Candidate")
                 | (df.RECIPIENT_TYPE == "Lobbyist")
             )
-        ][
-            ["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]
-        ].rename(
+        ][["RECIPIENT", "RECIPIENT_ID", "RECIPIENT_PARTY", "RECIPIENT_TYPE"]].rename(
             columns={
                 "RECIPIENT": "full_name",
                 "RECIPIENT_ID": "id",
@@ -223,16 +221,12 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         all_individuals = all_individuals.drop_duplicates()
 
         new_cols = ["first_name", "last_name", "company"]
-        all_individuals = all_individuals.assign(
-            **{col: None for col in new_cols}
-        )
+        all_individuals = all_individuals.assign(**{col: None for col in new_cols})
         all_individuals["state"] = "PA"
 
         return all_individuals
 
-    def make_organizations_table(
-        self, organizations_df: pd.DataFrame
-    ) -> pd.DataFrame:
+    def make_organizations_table(self, organizations_df: pd.DataFrame) -> pd.DataFrame:
         """This function isolates donors and recipients who are classified as
         committees or organizations and returns a dataframe with strictly
         committee/organization information pertinent to the StateCleaner schema.
@@ -271,9 +265,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
                 "RECIPIENT_TYPE": "entity_type",
             }
         )
-        all_organizations = pd.concat(
-            [donor_organizations, recipient_organizations]
-        )
+        all_organizations = pd.concat([donor_organizations, recipient_organizations])
         all_organizations = all_organizations.drop_duplicates()
         all_organizations["state"] = "PA"
 
@@ -298,7 +290,6 @@ class PennsylvaniaCleaner(clean.StateCleaner):
             a list of pandas dataframe with 4 dataframes detailing the 4
             aformentioned transaction types.
         """
-
         df = organizations_df.copy()
         column_names = list(organizations_df.columns.str.lower())
         df.columns = column_names
@@ -346,10 +337,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # Organizations -> Individuals
         org_to_ind = df.loc[
             (
-                (
-                    (df.donor_type == "Committee")
-                    | (df.donor_type == "Organization")
-                )
+                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
                 & (
                     (df.recipient_type == "Candidate")
                     | (df.recipient_type == "Lobbyist")
@@ -360,10 +348,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # Organizations -> Organizations:
         org_to_org = df.loc[
             (
-                (
-                    (df.donor_type == "Committee")
-                    | (df.donor_type == "Organization")
-                )
+                ((df.donor_type == "Committee") | (df.donor_type == "Organization"))
                 & (
                     (df.recipient_type == "Committee")
                     | (df.recipient_type == "Organization")
@@ -407,10 +392,10 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # now generate new IDs for entities that don't have any, and update
         # mapped_dict:
         df[col1] = df[col1].apply(
-            (lambda x: str(uuid.uuid4()) if not type(x) is str else x)
+            lambda x: str(uuid.uuid4()) if type(x) is not str else x
         )
         df[col2] = df[col2].apply(
-            (lambda x: str(uuid.uuid4()) if not type(x) is str else x)
+            lambda x: str(uuid.uuid4()) if type(x) is not str else x
         )
 
         return mapped_dict, df
@@ -549,26 +534,27 @@ class PennsylvaniaCleaner(clean.StateCleaner):
     def merge_contrib_filer_datasets(
         self, cont_file: pd.DataFrame, filer_file: pd.DataFrame
     ) -> pd.DataFrame:
-        """merges the contributor and filer datasets from the same year using
+        """Merges the contributor and filer datasets from the same year using
         the unique filerID.
+
         Args:
             cont_file: The contributor dataset
 
             filer_file: the filer dataset from the same year as the contributor
             file.
-        Returns
+
+        Returns:
             The merged pandas dataframe
         """
-        merged_df = pd.merge(
-            cont_file, filer_file, how="left", on="RECIPIENT_ID"
-        )
+        merged_df = pd.merge(cont_file, filer_file, how="left", on="RECIPIENT_ID")
         return merged_df
 
     def merge_expend_filer_datasets(
         self, expend_file: pd.DataFrame, filer_file: pd.DataFrame
     ) -> pd.DataFrame:
-        """merges the expenditure and filer datasets from the same year using
+        """Merges the expenditure and filer datasets from the same year using
         the unique filerID.
+
         Args:
             expend_file: The expenditure dataset
 
@@ -643,9 +629,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         # contributors dataset
         na_free = df.dropna(subset="DONOR_TYPE")
         only_na = df[~df.index.isin(na_free.index)]
-        only_na["DONOR_TYPE"] = only_na["DONOR"].apply(
-            self.classify_contributor
-        )
+        only_na["DONOR_TYPE"] = only_na["DONOR"].apply(self.classify_contributor)
         df = pd.concat([na_free, only_na])
 
         columns = df.columns.to_list()

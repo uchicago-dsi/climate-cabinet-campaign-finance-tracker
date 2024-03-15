@@ -71,7 +71,6 @@ def plot_year_contribution_types(
 
     Return: None
     """
-
     contribution_type_by_year = (
         all_year_contribution_dataframe.groupby("doc_stmnt_year")["contribtype"]
         .value_counts()
@@ -121,9 +120,9 @@ def plot_committee_types_by_year(
         .value_counts()
         .reset_index()
     )
-    contribution_committee_type_by_year[
-        "com_type_full"
-    ] = contribution_committee_type_by_year["com_type"].map(committee_names)
+    contribution_committee_type_by_year["com_type_full"] = (
+        contribution_committee_type_by_year["com_type"].map(committee_names)
+    )
 
     fig = px.bar(
         contribution_committee_type_by_year,
@@ -168,9 +167,9 @@ def plot_expenditure_committee_types_by_year(
         .value_counts()
         .reset_index()
     )
-    expenditure_committee_type_by_year[
-        "com_type_full"
-    ] = expenditure_committee_type_by_year["com_type"].map(committee_names)
+    expenditure_committee_type_by_year["com_type_full"] = (
+        expenditure_committee_type_by_year["com_type"].map(committee_names)
+    )
 
     fig = px.bar(
         expenditure_committee_type_by_year,
@@ -202,9 +201,7 @@ def plot_year_schedule_types(
     Return: None
     """
     expenditure_schedule_types_by_year = (
-        all_year_expenditure_dataframe.groupby("doc_stmnt_year")[
-            "schedule_desc"
-        ]
+        all_year_expenditure_dataframe.groupby("doc_stmnt_year")["schedule_desc"]
         .value_counts()
         .reset_index()
     )
