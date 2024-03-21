@@ -1,3 +1,5 @@
+"""State cleaner implementation for Minnesota"""
+
 import uuid
 
 import numpy as np
@@ -17,23 +19,24 @@ from utils.constants import (
 
 
 class MinnesotaCleaner(StateCleaner):
-    def entity_name_dictionary(self) -> dict:
-        self.entity_name_dictionary = {
-            "I": "Individual",
-            "L": "Lobbyist",
-            "B": "Company",
-            "PCF": "Committee",
-            "C": "Committee",
-            "F": "Committee",
-            "H": "Committee",
-            "S": "Committee",
-            "U": "Committee",
-            "PTU": "Party",
-            "P": "Party",
-            "O": "Other",
-        }
+    """State cleaner implementation for Minnesota"""
 
-        return self.entity_name_dictionary
+    name = "Minnesota"
+    stable_id_across_years = False
+    entity_name_dictionary = {
+        "I": "Individual",
+        "L": "Lobbyist",
+        "B": "Company",
+        "PCF": "Committee",
+        "C": "Committee",
+        "F": "Committee",
+        "H": "Committee",
+        "S": "Committee",
+        "U": "Committee",
+        "PTU": "Party",
+        "P": "Party",
+        "O": "Other",
+    }
 
     def preprocess_candidate_contribution(self, df: pd.DataFrame) -> pd.DataFrame:
         """Helper function to preprocess MN candidate-recipient contribution df
@@ -132,8 +135,7 @@ class MinnesotaCleaner(StateCleaner):
         return df1
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
-        """Preprocesses MN data and returns a list of a single dataframe combining
-        both contributions and expenditures
+        """Preprocesses MN data and return a list of entity and transactin data
 
         Inputs:
             filepaths_list (list): list of absolute filepaths of contribution
@@ -175,18 +177,20 @@ class MinnesotaCleaner(StateCleaner):
         return [combined_df]
 
     def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
-        """Cleans MN data by converting dtyes to match database schema and dropping
-        non-classfiable rows (not represent minimal viable transactions)
+        """Converts dtyes to match database schema and drops bad rows
+
+        Bad rows lack needed information for a transaction (donor, recipient,
+        amount).
 
         Inputs:
             data: a list of 1 DataFrame outputted from the preprocess method
 
         Returns: a list of 1 cleaned MN DataFrame
         """
-        df = data[0]
-        df["date"] = pd.to_datetime(df["date"], format="mixed")
-        df["year"] = df["date"].dt.year
-        df = df.drop(columns=["date"])
+        data = data[0]
+        data["date"] = pd.to_datetime(data["date"], format="mixed")
+        data["year"] = data["date"].dt.year
+        data = data.drop(columns=["date"])
         type_mapping = {
             "state": "str",
             "recipient_id": "str",
@@ -206,14 +210,14 @@ class MinnesotaCleaner(StateCleaner):
             "inkind_amount": "float64",
         }
 
-        df = df.astype(type_mapping)
+        data = data.astype(type_mapping)
         # non-classfiable rows of no transaction amount, no donor/recipient info
-        df = df[df["amount"] != 0]
-        df = df.dropna(subset=["recipient_id", "donor_id"], how="any")
-        df = df.drop(columns=["inkind_amount"])
-        df = df.reset_index(drop=True)
+        data = data[data["amount"] != 0]
+        data = data.dropna(subset=["recipient_id", "donor_id"], how="any")
+        data = data.drop(columns=["inkind_amount"])
+        data = data.reset_index(drop=True)
 
-        return [df]
+        return [data]
 
     def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
         """Standardizes the dataframe into the necessary format for the schema
@@ -227,23 +231,25 @@ class MinnesotaCleaner(StateCleaner):
 
         Returns: A list of 1 standarized DataFrame matching database schema
         """
-        df = data[0].copy()  # Create a copy to avoid modifying the original DataFrame
-        df["company"] = None  # MN dataset has no company information
-        df["party"] = None  # MN dataset has no party information
-        df["transaction_id"] = None
-        df["office_sought"] = df["office_sought"].replace(MN_RACE_MAP)
+        data = data[0].copy()  # Create a copy to avoid modifying the original DataFrame
+        data["company"] = None  # MN dataset has no company information
+        data["party"] = None  # MN dataset has no party information
+        data["transaction_id"] = None
+        data["office_sought"] = data["office_sought"].replace(MN_RACE_MAP)
 
         # Standardize entity names to match other states in the database schema
-        entity_map = self.entity_name_dictionary()
-        df["recipient_type"] = df["recipient_type"].map(entity_map)
-        df["donor_type"] = df["donor_type"].map(entity_map)
+        entity_map = self.entity_name_dictionary
+        data["recipient_type"] = data["recipient_type"].map(entity_map)
+        data["donor_type"] = data["donor_type"].map(entity_map)
         id_mapping = {}
 
         # Standardize entity names to match othe states in database schema
-        df["recipient_type"] = df["recipient_type"].replace(self.entity_name_dictionary)
-        df["donor_type"] = df["donor_type"].replace(self.entity_name_dictionary)
+        data["recipient_type"] = data["recipient_type"].replace(
+            self.entity_name_dictionary
+        )
+        data["donor_type"] = data["donor_type"].replace(self.entity_name_dictionary)
         id_mapping = {}
-        for index, row in df.iterrows():
+        for index, row in data.iterrows():
             recipient_uuid = str(uuid.uuid4())
             donor_uuid = str(uuid.uuid4())
             transaction_uuid = str(uuid.uuid4())
@@ -265,7 +271,7 @@ class MinnesotaCleaner(StateCleaner):
                     recipient_uuid,
                 )
 
-                df.at[index, "recipient_id"] = recipient_uuid
+                data.loc[index, "recipient_id"] = recipient_uuid
 
             # MN has partial donor id, generate uuid, map them to original id
             if row["donor_id"]:
@@ -281,9 +287,9 @@ class MinnesotaCleaner(StateCleaner):
                     donor_uuid,
                 )
 
-                df.at[index, "donor_id"] = donor_uuid
+                data.loc[index, "donor_id"] = donor_uuid
 
-            df.at[index, "transaction_id"] = transaction_uuid
+            data.loc[index, "transaction_id"] = transaction_uuid
 
         # Convert id_mapping to DataFrame and save to CSV
         id_mapping_df = pd.DataFrame.from_dict(
@@ -299,13 +305,12 @@ class MinnesotaCleaner(StateCleaner):
         )
         id_mapping_df.to_csv("MNIDMap.csv", index=False)
 
-        return [df]
+        return [data]
 
     def create_tables(
         self, data: list[pd.DataFrame]
-    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """Creates the Individuals, Organizations, and Transactions tables from
-        the dataframe list outputted from the standardize function
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Creates the Individuals, Organizations, and Transactions tables
 
         Inputs:
             data: a list of 1 dataframe outputted from the standardize method
@@ -313,11 +318,11 @@ class MinnesotaCleaner(StateCleaner):
         Returns: (individuals_table, organizations_table, transactions_table)
             tuple containing the tables as defined in database schema
         """
-        df = data[0]
+        all_data = data[0]
         # Create individual table from both recipient and donor entries
         ind_recipient_df = pd.DataFrame(
-            data=df[
-                df["recipient_type"].isin(["Individual", "Lobbyist"])
+            data=all_data[
+                all_data["recipient_type"].isin(["Individual", "Lobbyist"])
             ].drop_duplicates(subset="recipient_id"),
             columns=[
                 "recipient_id",
@@ -340,9 +345,9 @@ class MinnesotaCleaner(StateCleaner):
             }
         )
         ind_donor_df = pd.DataFrame(
-            data=df[df["donor_type"].isin(["Individual", "Lobbyist"])].drop_duplicates(
-                subset="donor_id"
-            ),
+            data=all_data[
+                all_data["donor_type"].isin(["Individual", "Lobbyist"])
+            ].drop_duplicates(subset="donor_id"),
             columns=[
                 "donor_id",
                 "donor_first_name",
@@ -367,8 +372,8 @@ class MinnesotaCleaner(StateCleaner):
 
         # Create organization table from both recipient and donor entries
         org_recipient_df = pd.DataFrame(
-            data=df[
-                ~df["recipient_type"].isin(["Individual", "Lobbyist"])
+            data=all_data[
+                ~all_data["recipient_type"].isin(["Individual", "Lobbyist"])
             ].drop_duplicates(subset="recipient_id"),
             columns=[
                 "recipient_id",
@@ -385,9 +390,9 @@ class MinnesotaCleaner(StateCleaner):
             }
         )
         org_donor_df = pd.DataFrame(
-            data=df[~df["donor_type"].isin(["Individual", "Lobbyist"])].drop_duplicates(
-                subset="donor_id"
-            ),
+            data=all_data[
+                ~all_data["donor_type"].isin(["Individual", "Lobbyist"])
+            ].drop_duplicates(subset="donor_id"),
             columns=["donor_id", "donor_full_name", "state", "donor_type"],
         )
         org_donor_df = org_donor_df.rename(
@@ -400,7 +405,7 @@ class MinnesotaCleaner(StateCleaner):
         org_df = pd.concat([org_recipient_df, org_donor_df], ignore_index=True)
 
         tran_df = pd.DataFrame(
-            data=df.drop_duplicates(subset="transaction_id"),
+            data=all_data.drop_duplicates(subset="transaction_id"),
             columns=[
                 "transaction_id",
                 "donor_id",
@@ -417,7 +422,9 @@ class MinnesotaCleaner(StateCleaner):
 
         return (ind_df, org_df, tran_df)
 
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    def clean_state(  # noqa: D102
+        self,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         preprocessed_df = self.preprocess(MN_FILEPATHS_LST)
         cleaned_df = self.clean(preprocessed_df)
         standardized_df = self.standardize(cleaned_df)
