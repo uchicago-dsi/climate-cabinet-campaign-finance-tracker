@@ -1,6 +1,5 @@
 """State cleaner implementation for Michigan"""
 
-import os
 import uuid
 
 import numpy as np

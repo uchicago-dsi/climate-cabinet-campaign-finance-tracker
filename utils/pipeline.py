@@ -1,3 +1,5 @@
+"""Merge raw state campaign finance into standardized schema"""
+
 import pandas as pd
 
 from utils.arizona import ArizonaCleaner
