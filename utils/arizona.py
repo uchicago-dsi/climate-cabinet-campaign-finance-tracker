@@ -34,9 +34,11 @@ def az_name_clean(df: pd.DataFrame) -> pd.DataFrame:
     df_working = df.copy()
 
     df_working["candidate"] = df.apply(
-        lambda row: row["committee_name"]
-        if (row["candidate"] == ("" or None or "" or """"""))
-        else row["candidate"],
+        lambda row: (
+            row["committee_name"]
+            if (row["candidate"] == ("" or None or "" or """"""))
+            else row["candidate"]
+        ),
         axis=1,
     )
 
@@ -214,7 +216,8 @@ def az_donor_recipient_director(row: pd.Series) -> pd.Series:
     returns: adjusted row of the transactions dataframe
 
     """
-    if row["TransactionTypeDispositionId"] == 2:
+    base_transactor_giving_money_flag = 2
+    if row["TransactionTypeDispositionId"] == base_transactor_giving_money_flag:
         row["donor_id"], row["recipient_id"] = (
             row["recipient_id"],
             row["donor_id"],
@@ -312,9 +315,7 @@ def az_id_table(
 
 
 class ArizonaCleaner(StateCleaner):
-    """This class is based on the StateCleaner abstract class,
-    and cleans Arizona data
-    """
+    """Based on the StateCleaner abstract class and cleans Arizona data"""
 
     def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Calls the other methods in order
@@ -351,7 +352,8 @@ class ArizonaCleaner(StateCleaner):
 
         return (az_individuals, az_organizations, az_transactions)
 
-    def get_filepaths(self):
+    def get_filepaths(self) -> list[str]:
+        """Returns paths to relevant Arizona data"""
         return [
             AZ_INDIVIDUALS_FILEPATH,
             AZ_ORGANIZATIONS_FILEPATH,
@@ -385,8 +387,7 @@ class ArizonaCleaner(StateCleaner):
         self,
         data: list[pd.DataFrame],
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Creates the Individuals, Organizations, and Transactions tables from
-        the dataframe list outputted from standardize
+        """Creates the Individuals, Organizations, and Transactions tables
 
         Inputs: data: a list of 3 dataframes as outputted from the standardize method.
 
@@ -463,7 +464,7 @@ class ArizonaCleaner(StateCleaner):
         """
         transactions, entities = data
 
-        merged_df = pd.merge(entities, transactions, on="retrieved_id", how="inner")
+        merged_df = entities.merge(transactions, on="retrieved_id", how="inner")
 
         # Filter rows in the first dataframe based on the common 'ids'
         entities = entities[entities["retrieved_id"].isin(merged_df["retrieved_id"])]
@@ -482,7 +483,8 @@ class ArizonaCleaner(StateCleaner):
 
         transactions = transactions.apply(az_transactor_sorter, axis=1)
 
-        merged_df = pd.merge(
+        # TODO: what is going on here?
+        merged_df = pd.merge(  # noqa: PD015
             transactions["base_transactor_id"],
             entities[["retrieved_id", "office_name"]],
             how="left",
@@ -490,7 +492,7 @@ class ArizonaCleaner(StateCleaner):
             right_on="retrieved_id",
         )
 
-        office_sought = merged_df.where(pd.notnull(merged_df), None)["office_name"]
+        office_sought = merged_df.where(pd.notna(merged_df), None)["office_name"]
 
         transactions["office_sought"] = office_sought
 
