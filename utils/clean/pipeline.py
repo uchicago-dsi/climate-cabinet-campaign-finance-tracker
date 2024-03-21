@@ -3,19 +3,34 @@
 import pandas as pd
 
 from utils.clean.arizona import ArizonaCleaner
+from utils.clean.clean import StateCleaner
 from utils.clean.michigan import MichiganCleaner
 from utils.clean.minnesota import MinnesotaCleaner
 from utils.clean.pennsylvania import PennsylvaniaCleaner
 from utils.constants import BASE_FILEPATH
 
-state_cleaners = [
+ALL_STATE_CLEANERS = [
     ArizonaCleaner(),
     MichiganCleaner(),
     MinnesotaCleaner(),
     PennsylvaniaCleaner(),
 ]
 
-if __name__ == "__main__":
+
+def clean_and_merge_state_data(
+    state_cleaners: list[StateCleaner] = None,
+) -> list[pd.DataFrame]:
+    """From raw datafiles, clean, merge, and reformat data from specified states.
+
+    Args:
+        state_cleaners: List of state cleaners to merge data from. If None,
+            will default to all state_cleaners
+
+    Returns:
+        list of individuals, organizations, and transactions tables
+    """
+    if state_cleaners is None:
+        state_cleaners = ALL_STATE_CLEANERS
     single_state_individuals_tables = []
     single_state_organizations_tables = []
     single_state_transactions_tables = []
@@ -33,7 +48,14 @@ if __name__ == "__main__":
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
     complete_transactions_table = pd.concat(single_state_transactions_tables)
+    return (
+        complete_individuals_table,
+        complete_organizations_table,
+        complete_transactions_table,
+    )
 
+
+if __name__ == "__main__":
     individuals_output_path = (
         BASE_FILEPATH / "output" / "complete_individuals_table.csv"
     )
@@ -43,7 +65,11 @@ if __name__ == "__main__":
     transactions_output_path = (
         BASE_FILEPATH / "output" / "complete_transactions_table.csv"
     )
-
+    (
+        complete_individuals_table,
+        complete_organizations_table,
+        complete_transactions_table,
+    ) = clean_and_merge_state_data()
     complete_individuals_table.to_csv(individuals_output_path)
     complete_organizations_table.to_csv(organizations_output_path)
     complete_transactions_table.to_csv(transactions_output_path)
