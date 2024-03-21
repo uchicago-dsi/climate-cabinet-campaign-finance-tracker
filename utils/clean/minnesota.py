@@ -5,8 +5,8 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from utils.clean import StateCleaner
-from utils.constants import (
+from utils.clean.clean import StateCleaner
+from utils.clean.constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
     MN_CANDIDATE_CONTRIBUTION_MAP,
     MN_FILEPATHS_LST,

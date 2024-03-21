@@ -1,3 +1,5 @@
+"""Abstract base class for state cleaning workflow"""
+
 from abc import ABC, abstractmethod
 
 import pandas as pd
@@ -5,6 +7,16 @@ import pandas as pd
 
 class StateCleaner(ABC):
     """This abstract class is the one that all the state cleaners will be built on"""
+
+    @property
+    def name(self) -> str:
+        """Name of the state"""
+        return self._name
+
+    @property
+    def stable_id_across_years(self) -> bool:
+        """True if state maintains provided entity ids across years"""
+        return self._stable_id_across_years
 
     @property
     def entity_name_dictionary(self) -> dict:
@@ -65,8 +77,9 @@ class StateCleaner(ABC):
 
     def standardize_entity_names(self, entity: pd.DataFrame) -> pd.DataFrame:
         """Creates a new 'standard_entity_type' column from 'raw_entity_type'
+
         Args:
-            entity_table: an entity dataframe containing 'raw_entity_type'
+            entity: an entity dataframe containing 'raw_entity_type'
 
         Returns: entity_table with 'standard_entity_type created from the
             entity_name_dictionary
@@ -81,9 +94,8 @@ class StateCleaner(ABC):
     @abstractmethod
     def create_tables(
         self, data: list[pd.DataFrame]
-    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """Creates the Individuals, Organizations, and Transactions tables from
-        the dataframe list outputted from standardize
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Creates the Individuals, Organizations, and Transactions tables
 
         Inputs:
             data: a list of 1 or 3 dataframes as output from standardize method.
@@ -94,7 +106,7 @@ class StateCleaner(ABC):
         pass
 
     @abstractmethod
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, list[pd.DataFrame]):
+    def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, list[pd.DataFrame]]:
         """Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
 
         Returns: use preprocess, clean, standardize, and create_tables methods

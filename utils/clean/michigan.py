@@ -5,9 +5,8 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from utils.clean import StateCleaner
-from utils.constants import (
-    BASE_FILEPATH,
+from utils.clean.clean import StateCleaner
+from utils.clean.constants import (
     MI_CON_FILEPATH,
     MI_CONT_DROP_COLS,
     MI_CONTRIBUTION_COLUMNS,
@@ -17,6 +16,7 @@ from utils.constants import (
     MICHIGAN_CONTRIBUTION_COLS_RENAME,
     MICHIGAN_CONTRIBUTION_COLS_REORDER,
 )
+from utils.constants import BASE_FILEPATH
 
 
 def read_expenditure_data(filepath: str, columns: list[str]) -> pd.DataFrame:

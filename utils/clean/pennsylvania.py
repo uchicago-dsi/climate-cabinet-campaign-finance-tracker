@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils import clean
-from utils import constants as const
-from utils.constants import repo_root
+from utils.clean import clean
+from utils.clean import constants as const
+from utils.constants import BASE_FILEPATH
 
 
 def assign_PA_column_names(file_name: str, year: int) -> list:
@@ -46,7 +46,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
 
     def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Return tables of proper schema"""
-        PA_directory = repo_root / "data" / "raw" / "PA"
+        PA_directory = BASE_FILEPATH / "data" / "raw" / "PA"
         pre_processed_dfs = self.preprocess(PA_directory)
         clean_dfs = self.clean(pre_processed_dfs)
         standardized_dfs = self.standardize(clean_dfs)
@@ -68,7 +68,7 @@ class PennsylvaniaCleaner(clean.StateCleaner):
         """
         contributor_datasets, filer_datasets, expense_datasets = [], [], []
         if directory is None:
-            directory = repo_root / "data" / "raw" / "PA"
+            directory = BASE_FILEPATH / "data" / "raw" / "PA"
         else:
             directory = Path(directory)
         for year_directory in directory.iterdir():

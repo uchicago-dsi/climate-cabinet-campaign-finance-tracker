@@ -1,12 +1,9 @@
 """Constants to be used in various parts of the project."""
 
-from pathlib import Path
-
 import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
 
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
-# returns the base_path to the directory
+from utils.constants import BASE_FILEPATH
 
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
@@ -57,23 +54,19 @@ MI_CONTRIBUTION_COLUMNS = [
     "extra_desc",
 ]
 
-# MN State Cleaner Constants:
-here = Path(__file__).resolve()
-repo_root = here.parent.parent
-
 MN_FILEPATHS_LST = [
-    repo_root / "data" / "raw" / "MN" / "AG.csv",
-    repo_root / "data" / "raw" / "MN" / "AP.csv",
-    repo_root / "data" / "raw" / "MN" / "DC.csv",
-    repo_root / "data" / "raw" / "MN" / "GC.csv",
-    repo_root / "data" / "raw" / "MN" / "House.csv",
-    repo_root / "data" / "raw" / "MN" / "SA.csv",
-    repo_root / "data" / "raw" / "MN" / "SC.csv",
-    repo_root / "data" / "raw" / "MN" / "Senate.csv",
-    repo_root / "data" / "raw" / "MN" / "SS.csv",
-    repo_root / "data" / "raw" / "MN" / "ST.csv",
-    repo_root / "data" / "raw" / "MN" / "non_candidate_con.csv",
-    repo_root / "data" / "raw" / "MN" / "independent_exp.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "AG.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "AP.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "DC.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "GC.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "House.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "SA.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "SC.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "Senate.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "SS.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "ST.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "non_candidate_con.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "independent_exp.csv",
 ]
 
 MN_CANDIDATE_CONTRIBUTION_COL = [
@@ -211,6 +204,9 @@ MI_EXP_DROP_COLS = [
 
 
 # PA EDA constants:
+
+PA_SCHEMA_CHANGE_YEAR = 2022
+
 
 PA_CONT_COLS_NAMES_PRE2022: list = [
     "RECIPIENT_ID",

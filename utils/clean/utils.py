@@ -1,3 +1,5 @@
+"""Utilities for cleaning state campaign finance data"""
+
 import re
 from datetime import datetime
 

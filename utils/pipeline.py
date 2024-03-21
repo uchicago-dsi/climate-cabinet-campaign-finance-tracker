@@ -2,11 +2,11 @@
 
 import pandas as pd
 
-from utils.arizona import ArizonaCleaner
+from utils.clean.arizona import ArizonaCleaner
+from utils.clean.michigan import MichiganCleaner
+from utils.clean.minnesota import MinnesotaCleaner
+from utils.clean.pennsylvania import PennsylvaniaCleaner
 from utils.constants import BASE_FILEPATH
-from utils.michigan import MichiganCleaner
-from utils.minnesota import MinnesotaCleaner
-from utils.pennsylvania import PennsylvaniaCleaner
 
 state_cleaners = [
     ArizonaCleaner(),
