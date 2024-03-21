@@ -325,9 +325,9 @@ class MichiganCleaner(StateCleaner):
                 dataframe cleaned in place
         """
         merged_expenditure_dataframe[["amount", "supp_opp"]] = (
-            merged_expenditure_dataframe[["amount", "supp_opp"]].apply(
-                pd.to_numeric, errors="coerce"
-            )
+            merged_expenditure_dataframe[
+                ["amount", "supp_opp"]
+            ].apply(pd.to_numeric, errors="coerce")
         )
         merged_expenditure_dataframe["cfr_com_id"] = (
             merged_expenditure_dataframe["cfr_com_id"]
