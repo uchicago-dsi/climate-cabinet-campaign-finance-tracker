@@ -32,12 +32,13 @@ So, to get candidate income, look at page 20, Political party all transactions i
 
 """
 
-import pandas as pd
-import requests
 from pathlib import Path
 from typing import Any
 
-from utils.constants import HEADERS, AZ_pages_dict, repo_root
+import pandas as pd
+import requests
+
+from utils.constants import HEADERS, MAX_TIMEOUT, AZ_pages_dict, repo_root
 
 BASE_URL = "https://seethemoney.az.gov/Reporting"
 BASE_ENDPOINT = "GetNEWTableData"
@@ -171,7 +172,7 @@ def scrape_wrapper(page: int, start_year: int, end_year: int) -> pd.DataFrame:
     return raw_table
 
 
-def get_keys_from_value(d: dict, val: Any) -> str:
+def get_keys_from_value(d: dict, val: Any) -> str: # noqa ANN401
     """Returns first key from dict with value 'val'"""
     return [k for k, v in d.items() if v == val][0]
 
@@ -276,6 +277,7 @@ def scrape(
         params=params,
         headers=headers,
         data=data,
+        timeout=MAX_TIMEOUT
     )
 
 
@@ -337,7 +339,18 @@ def detailed_parametrize(
 
     Args:
         entity_id: the unique id given to eahc entity in the
-        Refer to parameterize() for other arguments.
+        page: encodes the page to be scraped, such as
+            Candidates, Individual Contributions, etc. Refer to the
+            AZ_pages_dict dictionary for details.
+        start_year: earliest year to include scraped data, inclusive
+        end_year: last year to include scraped data, inclusive
+        table_page: the numbered page to be accessed. Only necessary
+            to iterate on this if accessing large quantities of Individual
+            Contributions data, as all other data will be captured whole by
+            the default table_length
+        table_length: the length of the table to be scraped. The default
+            setting should scrape the entirety of the desired data unless
+            looking at Individual Contributions
     """
     default_parameters = parametrize(
         page, start_year, end_year, table_page, table_length
@@ -371,7 +384,7 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
         lst = []
 
         for i in range(20):
-            lst.append(info_df[it : it + 20].values[i][0])
+            lst.append(info_df[it : it + 20].to_numpy()[i][0])
         l2.append(lst)
 
     dat = pd.DataFrame(l2)

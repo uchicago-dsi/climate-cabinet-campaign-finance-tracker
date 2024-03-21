@@ -1,3 +1,5 @@
+"""Buidling, visualizing, and analyzing networks"""
+
 import networkx as nx
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,8 +10,8 @@ def name_identifier(uuid: str, dfs: list) -> str:
 
     Args:
         uuid: the uuid of the entity
-        List of dfs: dataframes that have a uuid column, and an 'name' or
-        'full_name' column
+        dfs: dataframes that have a uuid column, and an 'name' or
+            'full_name' column
     Return:
         The entity's name
     """
@@ -26,7 +28,7 @@ def name_identifier(uuid: str, dfs: list) -> str:
     return None
 
 
-def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
+def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     """Combines the 3 dataframes into a single dataframe to create a graph
 
     Given 3 dataframes, the func adds a 'recipient_name' column in the
@@ -35,7 +37,7 @@ def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
     transactions and entity dfs.
 
     Args:
-        list of dataframes in the order: [inds_df, orgs_df, transactions_df]
+        dfs: list of dataframes in the order: [inds_df, orgs_df, transactions_df]
         Transactions dataframe with column: 'recipient_id'
         Individuals dataframe with column: 'full_name'
         Organizations dataframe with column: 'name'
@@ -51,12 +53,12 @@ def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
     )
 
     # next, merge the inds_df and orgs_df ids with the transactions_df donor_id
-    inds_trans_df = pd.merge(
-        inds_df, transactions_df, how="left", left_on="id", right_on="donor_id"
+    inds_trans_df = inds_df.merge(
+        transactions_df, how="left", left_on="id", right_on="donor_id"
     )
     inds_trans_df = inds_trans_df.dropna(subset=["amount"])
-    orgs_trans_df = pd.merge(
-        orgs_df, transactions_df, how="left", left_on="id", right_on="donor_id"
+    orgs_trans_df = orgs_df.merge(
+        transactions_df, how="left", left_on="id", right_on="donor_id"
     )
     orgs_trans_df = orgs_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_trans_df.rename(columns={"name": "full_name"})
@@ -81,8 +83,7 @@ def combine_datasets_for_network_graph(dfs: list) -> pd.DataFrame:
 
 
 def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
-    """Takes in a dataframe and generates a MultiDiGraph where the nodes are
-    entity names, and the rest of the dataframe columns make the node attributes
+    """Creates network with entities as nodes, transactions as edges
 
     Args:
         df: a pandas dataframe with merged information from the inds, orgs, &
@@ -118,19 +119,18 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
-def plot_network_graph(G: nx.MultiDiGraph):
-    """Given a networkX Graph, creates a plotly visualization of the nodes and
-    edges
+def plot_network_graph(G: nx.MultiDiGraph) -> None:
+    """Creates a plotly visualization of the nodes and edges
 
     Args:
-        A networkX MultiDiGraph with edges including the attribute 'amount'
+        G: A networkX MultiDiGraph with edges including the attribute 'amount'
 
     Returns: None. Creates a plotly graph
     """
     edge_trace = go.Scatter(
         x=(),
         y=(),
-        line=dict(color="#888", width=1.5),
+        line={"color": "#888", "width": 1.5},
         hoverinfo="text",
         mode="lines+markers",
     )
@@ -152,9 +152,12 @@ def plot_network_graph(G: nx.MultiDiGraph):
     edge_trace["hovertext"] = hovertext
 
     # Define arrow symbol for edges
-    edge_trace["marker"] = dict(
-        symbol="arrow", color="#888", size=10, angleref="previous"
-    )
+    edge_trace["marker"] = {
+        "symbol": "arrow",
+        "color": "#888",
+        "size": 10,
+        "angleref": "previous",
+    }
 
     node_trace = go.Scatter(
         x=[],
@@ -162,7 +165,7 @@ def plot_network_graph(G: nx.MultiDiGraph):
         text=[],
         mode="markers",
         hoverinfo="text",
-        marker=dict(showscale=True, colorscale="YlGnBu", size=10),
+        marker={"showscale": True, "colorscale": "YlGnBu", "size": 10},
     )
     node_trace["marker"]["color"] = []
 
@@ -170,7 +173,7 @@ def plot_network_graph(G: nx.MultiDiGraph):
         node_info = f"Name: {node}<br>"
         for key, value in G.nodes[node].items():
             node_info += f"{key}: {value}<br>"
-        node_trace["text"] += tuple([node_info])
+        node_trace["text"] += ([node_info],)
         # Get the classification value for the node
         classification = G.nodes[node].get("classification", "neutral")
         # Assign a color based on the classification value
@@ -180,35 +183,34 @@ def plot_network_graph(G: nx.MultiDiGraph):
             color = "red"
         else:
             color = "green"  # Default color for unknown classification
-        node_trace["marker"]["color"] += tuple([color])
+        node_trace["marker"]["color"] += ([color],)
 
         # Add node positions to the trace
-        node_trace["x"] += tuple([pos[node][0]])
-        node_trace["y"] += tuple([pos[node][1]])
+        node_trace["x"] += ([pos[node][0]],)
+        node_trace["y"] += ([pos[node][1]],)
 
     # Define layout settings
     layout = go.Layout(
         title="Network Graph Indicating Campaign Contributions from 2018-2022",
-        titlefont=dict(size=16),
+        titlefont={"size": 16},
         showlegend=True,
         hovermode="closest",
-        margin=dict(b=20, l=5, r=5, t=40),
-        xaxis=dict(showgrid=True, zeroline=True, showticklabels=False),
-        yaxis=dict(showgrid=True, zeroline=True, showticklabels=False),
+        margin={"b": 20, "l": 5, "r": 5, "t": 40},
+        xaxis={"showgrid": True, "zeroline": True, "showticklabels": False},
+        yaxis={"showgrid": True, "zeroline": True, "showticklabels": False},
     )
 
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
     fig.show()
 
 
-def construct_network_graph(start_year: int, end_year: int, dfs: list):
+def construct_network_graph(start_year: int, end_year: int, dfs: list) -> None:
     """Runs the network construction pipeline starting from 3 dataframes
 
     Args:
-        start_year & end_year: the range of the desired data
+        start_year: the end range of the desired data
+        end_year: the end range of the desired data
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
-
-    Returns:
     """
     inds_df, orgs_df, transactions_df = dfs
     transactions_df = transactions_df.loc[

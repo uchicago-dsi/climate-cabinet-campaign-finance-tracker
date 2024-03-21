@@ -1,3 +1,5 @@
+"""Module for running linkage pipeline"""
+
 import networkx as nx
 import pandas as pd
 from nameparser import HumanName
@@ -17,8 +19,7 @@ from utils.network import combine_datasets_for_network_graph, create_network_gra
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
-    """Given a dataframe of individual donors, preprocesses the data,
-    and return a cleaned dataframe.
+    """Preprocess and clean a dataframe of individuals
 
     Args:
         individuals: dataframe of individual contributions
@@ -27,7 +28,7 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         cleaned dataframe of individuals
     """
     if "Unnamed: 0" in individuals.columns:
-        individuals.drop(columns="Unnamed: 0", inplace=True)
+        individuals = individuals.drop(columns="Unnamed: 0")
 
     individuals = individuals.astype(
         {
@@ -40,19 +41,19 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     individuals["company"] = (
         individuals["company"]
-        .loc[individuals["company"].notnull()]
+        .loc[individuals["company"].notna()]
         .apply(standardize_corp_names)
     )
     individuals["company"] = (
         individuals["company"]
-        .loc[individuals["company"].notnull()]
+        .loc[individuals["company"].notna()]
         .apply(cleaning_company_column)
     )
 
     # Address functions, assuming address column is named 'Address'
     if "Address" in individuals.columns:
         individuals["Address"] = individuals["Address"].astype(str)[
-            individuals["Address"].notnull()
+            individuals["Address"].notna()
         ]
         individuals["Address Line 1"] = individuals["Address"].apply(
             get_address_line_1_from_full_address
@@ -66,25 +67,25 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     # Check if first name or last names are empty, if so, extract from full name column
     individuals["full_name"] = individuals["full_name"].astype(str)[
-        individuals["full_name"].notnull()
+        individuals["full_name"].notna()
     ]
-    if individuals["first_name"].isnull().any():
+    if individuals["first_name"].isna().any():
         first_name = individuals["full_name"].apply(
-            lambda x: HumanName(x).first if pd.notnull(x) else x
+            lambda x: HumanName(x).first if pd.notna(x) else x
         )
         individuals["first_name"] = first_name
 
-    if individuals["last_name"].isnull().any():
+    if individuals["last_name"].isna().any():
         last_name = individuals["full_name"].apply(
-            lambda x: HumanName(x).last if pd.notnull(x) else x
+            lambda x: HumanName(x).last if pd.notna(x) else x
         )
         individuals["last_name"] = last_name
 
     individuals["full_name"] = individuals.apply(
         lambda row: get_likely_name(
-            row["first_name"] if pd.notnull(row["first_name"]) else "",
-            row["last_name"] if pd.notnull(row["last_name"]) else "",
-            row["full_name"] if pd.notnull(row["full_name"]) else "",
+            row["first_name"] if pd.notna(row["first_name"]) else "",
+            row["last_name"] if pd.notna(row["last_name"]) else "",
+            row["full_name"] if pd.notna(row["full_name"]) else "",
         ),
         axis=1,
     )
@@ -93,15 +94,17 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
-    """Given a dataframe of organization donors, preprocesses the data,
-    and return a cleaned dataframe.
+    """Preprocess and clean an organizations dataframe
+
+    Args:
+        organizations: dataframe with organization details
     """
     if "Unnamed: 0" in organizations.columns:
-        organizations.drop(columns="Unnamed: 0", inplace=True)
+        organizations = organizations.drop(columns="Unnamed: 0")
 
     organizations["name"] = (
         organizations["name"]
-        .loc[organizations["name"].notnull()]
+        .loc[organizations["name"].notna()]
         .apply(standardize_corp_names)
     )
 
@@ -109,8 +112,7 @@ def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
-    """Given a dataframe of transactions, preprocesses the data,
-    and return a cleaned dataframe.
+    """Preprocess and clean an transactions dataframe
 
     Args:
         transactions: dataframe of transactions
@@ -119,47 +121,42 @@ def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
         cleaned dataframe of transactions
     """
     if "Unnamed: 0" in transactions.columns:
-        transactions.drop(columns="Unnamed: 0", inplace=True)
+        transactions = transactions.drop(columns="Unnamed: 0")
 
     transactions["purpose"] = transactions["purpose"].str.upper()
 
     return transactions
 
 
-def main():
-    organizations = pd.read_csv(BASE_FILEPATH / "data" / "orgs_mini.csv")
+def clean_data_and_build_network(
+    individuals_table: pd.DataFrame,
+    organizations_table: pd.DataFrame,
+    transactions_table: pd.DataFrame,
+) -> None:
+    """Clean data, link duplicates, classify nodes and create a network
 
-    individuals = pd.read_csv(BASE_FILEPATH / "data" / "inds_mini.csv")
+    Args:
+        individuals_table: standardized individuals table
+        organizations_table: standardized organizations table
+        transactions_table: standardized transactions table
+    """
+    individuals_table = preprocess_individuals(individuals_table)
+    organizations_table = preprocess_organizations(organizations_table)
+    transactions_table = preprocess_transactions(transactions_table)
 
-    transactions = pd.read_csv(BASE_FILEPATH / "data" / "trans_mini.csv")
+    individuals_table, organizations_table = classify_wrapper(
+        individuals_table, organizations_table
+    )
 
-    # organizations = pd.read_csv(
-    #     BASE_FILEPATH / "data" / "complete_organizations.csv"
-    # )
-
-    # individuals = pd.read_csv(
-    #     BASE_FILEPATH / "data" / "complete_individuals.csv"
-    # )
-
-    # transactions = pd.read_csv(
-    #     BASE_FILEPATH / "data" / "complete_transactions.csv"
-    # )
-
-    individuals = preprocess_individuals(individuals)
-    organizations = preprocess_organizations(organizations)
-    transactions = preprocess_transactions(transactions)
-
-    individuals, organizations = classify_wrapper(individuals, organizations)
-
-    individuals = deduplicate_perfect_matches(individuals)
-    organizations = deduplicate_perfect_matches(organizations)
+    individuals_table = deduplicate_perfect_matches(individuals_table)
+    organizations_table = deduplicate_perfect_matches(organizations_table)
 
     deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
 
-    individuals["unique_id"] = individuals["id"]
-    organizations["unique_id"] = organizations["id"]
+    individuals_table["unique_id"] = individuals_table["id"]
+    organizations_table["unique_id"] = organizations_table["id"]
 
-    individuals = individuals.drop(columns=[])
+    individuals_table = individuals_table.drop(columns=[])
 
     # organizations = splink_dedupe(
     #     organizations, organizations_settings, organizations_blocking
@@ -169,7 +166,7 @@ def main():
     #     individuals, individuals_settings, individuals_blocking
     # )
 
-    transactions[["donor_id", "recipient_id"]] = transactions[
+    transactions_table[["donor_id", "recipient_id"]] = transactions_table[
         ["donor_id", "recipient_id"]
     ].replace(deduped)
 
@@ -185,14 +182,14 @@ def main():
         BASE_FILEPATH / "output" / "cleaned_transactions_table.csv"
     )
 
-    individuals.to_csv(cleaned_individuals_output_path, index=False)
-    organizations.to_csv(cleaned_organizations_output_path, index=False)
-    transactions.to_csv(cleaned_transactions_output_path, index=False)
+    individuals_table.to_csv(cleaned_individuals_output_path, index=False)
+    organizations_table.to_csv(cleaned_organizations_output_path, index=False)
+    transactions_table.to_csv(cleaned_transactions_output_path, index=False)
 
     print("deduplication complete, initiating aggregation")
 
     aggreg_df = combine_datasets_for_network_graph(
-        [individuals, organizations, transactions]
+        [individuals_table, organizations_table, transactions_table]
     )
 
     print("aggregation complete, initiating graphing")
@@ -207,4 +204,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    organizations_table = pd.read_csv(BASE_FILEPATH / "data" / "orgs_mini.csv")
+    individuals_table = pd.read_csv(BASE_FILEPATH / "data" / "inds_mini.csv")
+    transactions_table = pd.read_csv(BASE_FILEPATH / "data" / "trans_mini.csv")
+
+    clean_data_and_build_network(
+        individuals_table, organizations_table, transactions_table
+    )

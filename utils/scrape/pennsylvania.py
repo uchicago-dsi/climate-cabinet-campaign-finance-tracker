@@ -1,4 +1,6 @@
+"""This modules provides functions to scrape Pennsylvannia campaign finance data"""
 import zipfile
+from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
 
@@ -30,8 +32,8 @@ def download_PA_data(
     for year in range(start_year, end_year + 1):
         link = f"{pa_url}{year}.zip"
 
-        response = requests.get(link)
-        if response.status_code != 200:
+        response = requests.get(link, timeout=10)
+        if response.status_code != HTTPStatus.OK:
             print(f"Pennsylvania data from {year} returned {response.reason}")
 
         year_directory = output_directory / str(year)
@@ -44,16 +46,6 @@ def download_PA_data(
                 zippedfiles.extract(zippedfile, output_directory)
             else:
                 zippedfiles.extract(zippedfile, year_directory)
-
-
-def main():
-    """"""
-    text = input(
-        "Provide a range of desired years to extract data. Format is \
-                 year1, year2. Ex: 2018, 2023"
-    )
-    years = text.split(",")
-    download_PA_data(years[0], years[1])
 
 
 if __name__ == "__main__":

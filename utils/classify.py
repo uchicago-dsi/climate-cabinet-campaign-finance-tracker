@@ -1,9 +1,13 @@
+"""Code for classifying entities as fossil fuel, clean energy, or neither"""
+
 import pandas as pd
 
 from utils.constants import c_org_names, f_companies, f_org_names
 
 
-def classify_wrapper(individuals_df: pd.DataFrame, organizations_df: pd.DataFrame):
+def classify_wrapper(
+    individuals_df: pd.DataFrame, organizations_df: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Wrapper for classification in linkage pipeline
 
     Initialize the classify column in both dataframes and
@@ -32,7 +36,9 @@ def classify_wrapper(individuals_df: pd.DataFrame, organizations_df: pd.DataFram
     return classified_individuals, classified_orgs
 
 
-def matcher(df: pd.DataFrame, substring: str, column: str, category: str):
+def matcher(
+    df: pd.DataFrame, substring: str, column: str, category: str
+) -> pd.DataFrame:
     """Applies a label to the classification column based on substrings
 
     We run through a given column containing strings in the dataframe. We
@@ -58,7 +64,7 @@ def matcher(df: pd.DataFrame, substring: str, column: str, category: str):
     return df
 
 
-def classify_individuals(individuals_df: pd.DataFrame):
+def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
     """Part of the classification pipeline
 
     We check if individuals work for a known fossil fuel company
@@ -77,7 +83,7 @@ def classify_individuals(individuals_df: pd.DataFrame):
     return individuals_df
 
 
-def classify_orgs(organizations_df: pd.DataFrame):
+def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
     """Part of the classification pipeline
 
     We apply the matcher function to the organizations dataframe

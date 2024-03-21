@@ -1,6 +1,8 @@
+"""Module for performing record linkage on state campaign finance dataset"""
+
 import math
-import os.path
 import re
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -8,11 +10,7 @@ import textdistance as td
 import usaddress
 from splink.duckdb.linker import DuckDBLinker
 
-from utils.constants import COMPANY_TYPES, repo_root, suffixes, titles
-
-"""
-Module for performing record linkage on state campaign finance dataset
-"""
+from utils.constants import BASE_FILEPATH, COMPANY_TYPES, suffixes, titles
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -102,7 +100,7 @@ def calculate_string_similarity(string1: str, string2: str) -> float:
 
 
 def calculate_row_similarity(
-    row1: pd.DataFrame, row2: pd.DataFrame, weights: np.array, comparison_func
+    row1: pd.DataFrame, row2: pd.DataFrame, weights: np.array, comparison_func: Callable
 ) -> float:
     """Find weighted similarity of two rows in a dataframe
 
@@ -131,7 +129,7 @@ def calculate_row_similarity(
 
 
 def row_matches(
-    df: pd.DataFrame, weights: np.array, threshold: float, comparison_func
+    df: pd.DataFrame, weights: np.array, threshold: float, comparison_func: Callable
 ) -> dict:
     """Get weighted similarity score of two rows
 
@@ -175,7 +173,9 @@ def row_matches(
     return index_dict
 
 
-def match_confidence(confidences, weights, weights_toggle: bool) -> float:
+def match_confidence(
+    confidences: np.ndarray, weights: np.ndarray, weights_toggle: bool
+) -> float:
     """Combine confidences for row matches into a final confidence
 
     This is a weighted log-odds based combination of row match confidences
@@ -197,17 +197,18 @@ def match_confidence(confidences, weights, weights_toggle: bool) -> float:
         raise ValueError("Probabilities must be bounded on [0, 1]")
 
     log_odds = []
+    max_logit = 5
 
     for c in confidences:
-        l_o = np.log(c / (1 - c))
+        logit = np.log(c / (1 - c))
 
-        if l_o > 5:
-            l_o = 5
+        if logit > max_logit:
+            logit = max
 
-        elif l_o < -5:
-            l_o = -5
+        elif logit < -max_logit:
+            logit = -max_logit
 
-        log_odds.append(l_o)
+        log_odds.append(logit)
 
     if weights_toggle:
         log_odds = log_odds * weights
@@ -219,8 +220,7 @@ def match_confidence(confidences, weights, weights_toggle: bool) -> float:
 
 
 def determine_comma_role(name: str) -> str:
-    """Given a string (someone's name), attempts to determine the role of the
-    comma in the name and where it ought to belong.
+    """Given a name, determine purpose of comma ("last, first", "first last, jr.", etc)
 
     Some assumptions are made:
         * If a suffix is included in the name and the name is not just the last
@@ -299,8 +299,8 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     )
 
     # second, ensure clean input by deleting spaces:
-    first_name, last_name, full_name = list(
-        map(lambda x: x.lower().strip(), [first_name, last_name, full_name])
+    first_name, last_name, full_name = (
+        x.lower().strip() for x in [first_name, last_name, full_name]
     )
 
     # if data is clean:
@@ -378,18 +378,17 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(string)
 
 
-def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
-    """For each uuid, maps it to all other uuids for which it has been deemed a
-    match.
+def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
+    """Map each uuid to all other uuids for which it has been deemed a match
 
     Given a dataframe where the uuids of all rows deemed similar are stored in a
     list and all but the first row of each paired uuid is dropped, this function
     maps the matched uuids to a single uuid.
 
     Args:
-        A pandas df containing a column called 'duplicated', where each row is a
-        list of all uuids deemed a match. In each list, all uuids but the first
-        have their rows already dropped.
+        df_with_matches: A pandas df containing a column called 'duplicated',
+            where each row is a list of all uuids deemed a match. In each list,
+            all uuids but the first have their rows already dropped.
 
     Returns:
         None. However it outputs a file to the output directory, with 2
@@ -398,10 +397,10 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
         to, and is labeled 'mapped_uuids'.
     """
     deduped_dict = {}
-    for i in range(len(df)):
-        deduped_uudis = df.iloc[i]["duplicated"]
+    for i in range(len(df_with_matches)):
+        deduped_uudis = df_with_matches.iloc[i]["duplicated"]
         for j in range(len(deduped_uudis)):
-            deduped_dict.update({deduped_uudis[j]: df.iloc[i]["id"]})
+            deduped_dict.update({deduped_uudis[j]: df_with_matches.iloc[i]["id"]})
 
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
@@ -409,10 +408,9 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
         columns={"index": "original_uuids", 0: "mapped_uuid"}
     )
     deduped_df.to_csv(
-        repo_root / "output" / "deduplicated_UUIDs.csv",
+        BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv",
         index=False,
         mode="a",
-        header=not os.path.exists("../output/deduplicated_UUIDs.csv"),
     )
 
 
@@ -425,7 +423,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     first selected UUID.
 
     Args:
-        a pandas dataframe containing contribution data
+        df: a pandas dataframe containing contribution data
     Returns:
         a deduplicated pandas dataframe containing contribution data
     """
@@ -450,11 +448,10 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def cleaning_company_column(company_entry: str) -> str:
-    """Given a string, check if it contains a variation of self employed, unemployed,
-    or retired and return the standardized version.
+    """Check if string contains abbreviation of common employment state
 
     Args:
-        company: string of inputted company names
+        company_entry: string of inputted company names
     Returns:
         standardized for retired, self employed, and unemployed,
         or original string if no match or empty string
@@ -571,8 +568,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
 
 
 def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
-    """Given a dataframe and config settings, return a
-    deduplicated dataframe
+    """Use splink to deduplicate dataframe based on settings
 
     Configuration settings and blocking can be found in constants.py as
     individuals_settings, indivduals_blocking, organizations_settings,
@@ -593,7 +589,6 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
     Returns:
         deduplicated version of initial dataframe with column 'matching_id'
         that holds list of matching unique_ids
-
     """
     linker = DuckDBLinker(df, settings)
     linker.estimate_probability_two_random_records_match(
@@ -613,19 +608,18 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
     match_list_df = (
         clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
     )  # dataframe where cluster_id maps unique_id to initial instance of row
-    match_list_df.rename(columns={"unique_id": "duplicated"}, inplace=True)
+    match_list_df = match_list_df.rename(columns={"unique_id": "duplicated"})
 
     first_instance_df = clusters_df.drop_duplicates(subset="cluster_id")
     col_names = np.append("cluster_id", df.columns)
     first_instance_df = first_instance_df[col_names]
 
-    deduped_df = pd.merge(
-        first_instance_df,
+    deduped_df = first_instance_df.merge(
         match_list_df[["cluster_id", "duplicated"]],
         on="cluster_id",
         how="left",
     )
-    deduped_df.rename(columns={"cluster_id": "unique_id"}, inplace=True)
+    deduped_df = deduped_df.rename(columns={"cluster_id": "unique_id"})
 
     convert_duplicates_to_dict(deduped_df)
 
