@@ -83,3 +83,6 @@ Student Email: adilk@uchicago.edu
 
 Student Name: Nayna Pashilkar
 Student Email: npashilkar@uchicago.edu
+
+Student Name: Bhavya Pandey    
+Student Email: bhavyapandey@uchicago.edu
