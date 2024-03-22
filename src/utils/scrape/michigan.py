@@ -1,13 +1,17 @@
+"""This modules provides functions to scrape Pennsylvannia campaign finance data"""
+
 import datetime
-import os
 import shutil
+from http import HTTPStatus
 from io import BytesIO
+from pathlib import Path
 from zipfile import ZipFile
 
 import requests
 from bs4 import BeautifulSoup
 
-from utils.constants import HEADERS, MI_CON_FILEPATH, MI_EXP_FILEPATH
+from utils.clean.constants import MI_CON_FILEPATH, MI_EXP_FILEPATH
+from utils.scrape.constants import HEADERS, MAX_TIMEOUT
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
@@ -39,14 +43,13 @@ def get_year_range() -> list:
     Returns: year_range (lst): Range of years to pull
     """
     current_year = datetime.now().year
-    year_range = [year for year in range(2018, current_year + 1)]
+    year_range = list(range(2018, current_year + 1))
 
     return year_range
 
 
-def capture_data(year_lst: list) -> (list, list):
-    """
-    Makes a request and saves the urls directly to the MI  data
+def capture_data(year_lst: list) -> tuple[list, list]:
+    """Makes a request and saves the urls directly to the MI  data
 
     Inputs: year_lst: list of years to capture data from
 
@@ -56,8 +59,8 @@ def capture_data(year_lst: list) -> (list, list):
     contribution_urls = []
     expenditure_urls = []
 
-    response = requests.get(MI_SOS_URL, headers=HEADERS)
-    if response.status_code == 200:
+    response = requests.get(MI_SOS_URL, headers=HEADERS, timeout=MAX_TIMEOUT)
+    if response.status_code == HTTPStatus.OK:
         # create beautiful soup object to parse the table for contributions
         soup = BeautifulSoup(response.content, "html.parser")
 
@@ -85,19 +88,18 @@ def capture_data(year_lst: list) -> (list, list):
 
 
 def make_request(url: str) -> None:
-    """
-    Make a request and download the campaign contributions zip files
+    """Make a request and download the campaign contributions zip files
 
     Inputs: url (str): URL to the MI campaign zip file
 
     Returns: zip_file (io.BytesIO): An in-memory ZIP file as a BytesIO stream
     """
-    response = requests.get(url, headers=HEADERS)
+    response = requests.get(url, headers=HEADERS, timeout=MAX_TIMEOUT)
 
-    if response.status_code == 200 and "contribution" in url:
+    if response.status_code == HTTPStatus.OK and "contribution" in url:
         zip_file = BytesIO(response.content)
         unzip_file(zip_file, MI_CON_FILEPATH)
-    elif response.status_code == 200 and "expenditure" in url:
+    elif response.status_code == HTTPStatus.OK and "expenditure" in url:
         zip_file = BytesIO(response.content)
         unzip_file(zip_file, MI_EXP_FILEPATH)
 
@@ -106,8 +108,7 @@ def make_request(url: str) -> None:
 
 
 def unzip_file(zip_file: BytesIO, directory: str) -> None:
-    """
-    Unzips the zip file and reads the file into the directory
+    """Unzips the zip file and reads the file into the directory
 
     Inputs: zipfile (io.BytesIO): An in-memory ZIP file as a BytesIO stream
             directory (str): directory for the files to be saved
@@ -118,40 +119,32 @@ def unzip_file(zip_file: BytesIO, directory: str) -> None:
         file_name = zip_reference.namelist()[0]
         with zip_reference.open(file_name) as target_zip_file:
             content = target_zip_file.read()
-            target_zip_file_path = os.path.join(directory, file_name)
-            with open(target_zip_file_path, "wb") as f:
+            target_zip_file_path = Path(directory) / file_name
+            with target_zip_file_path.open("wb") as f:
                 f.write(content)
 
     print(f"Extracted and saved: {file_name}")
 
 
 def create_directory() -> None:
-    """
-    Creates the directory for the MI contributions data
+    """Creates the directory for the MI contributions data
 
     Inputs: FILEPATH (str): filepath to the directory
     """
     FILEPATHS = [MI_CON_FILEPATH, MI_EXP_FILEPATH]
 
     for path in FILEPATHS:
-        if os.path.exists(path):
+        if path.exists():
             # remove existing MI campaign data
             shutil.rmtree(path)
             print(f"Deleted existing directory: {path}")
 
-            os.makedirs(path)
+            path.mkdir(parents=True)
             print(f"Created directory: {path}")
         else:
-            os.makedirs(path)
+            path.mkdir(parents=True)
             print(f"Created directory: {path}")
-
-
-def main() -> None:
-    """
-    Runs the main function and scrapes and downloads the MI campaign data
-    """
-    scrape_and_download_mi_data()
 
 
 if __name__ == "__main__":
-    main()
+    scrape_and_download_mi_data()

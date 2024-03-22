@@ -31,4 +31,8 @@ run-notebooks:
 
 run-linkage-and-network-pipeline:
 	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
-	docker run -v $(current_abs_path):/project -t $(project_image_name) python utils/linkage_and_network_pipeline.py
+	docker run -v $(current_abs_path):/project -t $(project_image_name) python src/utils/linkage_and_network_pipeline.py
+
+run-cleaning-pipeline:
+	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
+	docker run -v $(current_abs_path):/project -t $(project_image_name) cd /project/src & python -m utils.clean.pipeline

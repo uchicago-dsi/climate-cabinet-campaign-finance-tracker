@@ -1,6 +1,7 @@
+"""Tests for linkage.py"""
+
 import pandas as pd
 import pytest
-
 from utils.constants import BASE_FILEPATH
 from utils.linkage import deduplicate_perfect_matches
 
@@ -13,8 +14,8 @@ Module for testing functions in linkage.py
 @pytest.fixture
 def return_data(filename):
     path = BASE_FILEPATH / "output" / filename
-    df = pd.read_csv(path, low_memory=False)
-    return df
+    sample_df = pd.read_csv(path, low_memory=False)
+    return sample_df
 
 
 @pytest.fixture

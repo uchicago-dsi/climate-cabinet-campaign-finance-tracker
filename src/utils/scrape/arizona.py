@@ -1,5 +1,4 @@
-"""
-This module provides functions to scrape Arizona Campaign Finance data.
+"""This module provides functions to scrape Arizona Campaign Finance data.
 
 Arizona has relational database with an endpoint `GetNEWTableData` that seems most
 relevant and has what would usually be multiple different endpoints separated by
@@ -33,11 +32,14 @@ So, to get candidate income, look at page 20, Political party all transactions i
 
 """
 
+from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import requests
 
-from utils.constants import HEADERS, AZ_pages_dict, repo_root
+from utils.constants import BASE_FILEPATH
+from utils.scrape.constants import HEADERS, MAX_TIMEOUT, AZ_pages_dict
 
 BASE_URL = "https://seethemoney.az.gov/Reporting"
 BASE_ENDPOINT = "GetNEWTableData"
@@ -66,33 +68,33 @@ AZ_HEADER = HEADERS.update(
         "Sec-Fetch-Site": "same-origin",
     }
 )
+BASIC_TYPE_PAGE = 10
 NAME_INFO_PAGE = 11
-AZ_valid_detailed_pages = [v for v in AZ_pages_dict.values() if v >= 20]
+MAX_DETAILED_PAGE = 20
+AZ_valid_detailed_pages = [v for v in AZ_pages_dict.values() if v >= MAX_DETAILED_PAGE]
 all_transactions_pages = [24, 36, 42, 54, 62, 72, 80, 90]
 
 
-def scrape_and_download_az_data(start_year, end_year, output_directory=None):
+def scrape_and_download_az_data(
+    start_year: int, end_year: int, output_directory: Path = None
+) -> None:
     """Collect and download all arizona data within range"""
     if output_directory is None:
-        output_directory = repo_root / "data" / "raw" / "AZ2"
+        output_directory = BASE_FILEPATH / "data" / "raw" / "AZ2"
         output_directory.mkdir(parents=True, exist_ok=True)
     for page in AZ_pages_dict:
         formatted_page = page.replace("/", "-").replace(" ", "-")
         if AZ_pages_dict[page] not in all_transactions_pages:
             continue
-        transaction_data, filer_data = scrape_az_page_data(
-            page, start_year, end_year
-        )
-        transaction_data.to_csv(
-            output_directory / f"{formatted_page}-transactions.csv"
-        )
+        transaction_data, filer_data = scrape_az_page_data(page, start_year, end_year)
+        transaction_data.to_csv(output_directory / f"{formatted_page}-transactions.csv")
         filer_data.to_csv(output_directory / f"{formatted_page}-details.csv")
 
 
 def scrape_az_page_data(
     page: str,
-    start_year=2023,
-    end_year=2023,
+    start_year: int = 2023,
+    end_year: int = 2023,
 ) -> pd.DataFrame:
     """Scrape data from arizona database at https://seethemoney.az.gov/
 
@@ -116,9 +118,9 @@ def scrape_az_page_data(
     page = AZ_pages_dict[page]
 
     # page is a basic type, showing entity information
-    if page < 10:
+    if page < BASIC_TYPE_PAGE:
         return scrape_wrapper(page, start_year, end_year)
-    elif page == 11:
+    elif page == NAME_INFO_PAGE:
         raise ValueError("'Name' endpoint unimplemented")
     # page is detailed, showing transaction information. Get relevant entity
     # information first and then get transaction details for each entity
@@ -143,7 +145,7 @@ def get_base_page_code(page: int) -> int:
     return int(str(page)[0]) - 1
 
 
-def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
+def scrape_wrapper(page: int, start_year: int, end_year: int) -> pd.DataFrame:
     """Create parameters and scrape an aggregate table
 
     This function is called by az_wrapper() to create the parameters and
@@ -153,24 +155,25 @@ def scrape_wrapper(page, start_year, end_year, *args: int) -> pd.DataFrame:
     Args:
         page: the one-digit number representing one of the eight
             basic pages in the arizona dataset, such as Candidates, PAC,
-    Individual Contributions, etc. Refer to AZ_pages_dict
-    start_year: earliest year to include scraped data, inclusive
-    end_year: last year to include scraped data, inclusive
+            Individual Contributions, etc. Refer to AZ_pages_dict
+        start_year: earliest year to include scraped data, inclusive
+        end_year: last year to include scraped data, inclusive
 
     Returns: a pandas dataframe containing the table data for
     the selected timeframe
     """
-    assert page < 10
+    if page < BASIC_TYPE_PAGE:
+        raise ValueError(f"Page should be less than 10, was {page}")
     params = parametrize(page, start_year, end_year)
     res = scrape(BASE_ENDPOINT, params)
     results = res.json()
-    df = pd.DataFrame(data=results["data"])
-    df = df.reset_index().drop(columns={"index"})
+    raw_table = pd.DataFrame(data=results["data"])
+    raw_table = raw_table.reset_index().drop(columns={"index"})
 
-    return df
+    return raw_table
 
 
-def get_keys_from_value(d: dict, val) -> str:
+def get_keys_from_value(d: dict, val: Any) -> str:  # noqa ANN401
     """Returns first key from dict with value 'val'"""
     return [k for k, v in d.items() if v == val][0]
 
@@ -275,15 +278,16 @@ def scrape(
         params=params,
         headers=headers,
         data=data,
+        timeout=MAX_TIMEOUT,
     )
 
 
 def parametrize(
-    page=1,
-    start_year=2023,
-    end_year=2025,
-    table_page=1,
-    table_length=500000,
+    page: int = 1,
+    start_year: int = 2023,
+    end_year: int = 2025,
+    table_page: int = 1,
+    table_length: int = 500000,
 ) -> dict:
     """Input parameters for scrape and return as dict
 
@@ -322,12 +326,12 @@ def parametrize(
 
 
 def detailed_parametrize(
-    entity_id,
-    page=1,
-    start_year=2023,
-    end_year=2025,
-    table_page=1,
-    table_length=500000,
+    entity_id: str,
+    page: int = 1,
+    start_year: int = 2023,
+    end_year: int = 2025,
+    table_page: int = 1,
+    table_length: int = 500000,
 ) -> dict:
     """Input parameters for detailed_scrape and return as dict
 
@@ -336,7 +340,18 @@ def detailed_parametrize(
 
     Args:
         entity_id: the unique id given to eahc entity in the
-        Refer to parameterize() for other arguments.
+        page: encodes the page to be scraped, such as
+            Candidates, Individual Contributions, etc. Refer to the
+            AZ_pages_dict dictionary for details.
+        start_year: earliest year to include scraped data, inclusive
+        end_year: last year to include scraped data, inclusive
+        table_page: the numbered page to be accessed. Only necessary
+            to iterate on this if accessing large quantities of Individual
+            Contributions data, as all other data will be captured whole by
+            the default table_length
+        table_length: the length of the table to be scraped. The default
+            setting should scrape the entirety of the desired data unless
+            looking at Individual Contributions
     """
     default_parameters = parametrize(
         page, start_year, end_year, table_page, table_length
@@ -353,7 +368,7 @@ def detailed_parametrize(
 
 
 def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
-    """processes detailed entity information
+    """Processes detailed entity information
 
     This function takes in the concatenated dataframes
     of detailed entity information, processes them, and
@@ -370,7 +385,7 @@ def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
         lst = []
 
         for i in range(20):
-            lst.append(info_df[it : it + 20].values[i][0])
+            lst.append(info_df[it : it + 20].to_numpy()[i][0])
         l2.append(lst)
 
     dat = pd.DataFrame(l2)

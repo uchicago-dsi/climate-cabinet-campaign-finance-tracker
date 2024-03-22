@@ -1,13 +1,6 @@
-"""
-Constants to be used in various parts of the project.
-"""
-from pathlib import Path
+"""Constants to be used in various parts of the project."""
 
-import splink.duckdb.comparison_library as cl
-import splink.duckdb.comparison_template_library as ctl
-
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
-# returns the base_path to the directory
+from utils.constants import BASE_FILEPATH
 
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
@@ -21,16 +14,7 @@ AZ_INDIVIDUALS_FILEPATH = (
     BASE_FILEPATH / "data" / "raw" / "AZ" / "az_individuals_demo.csv"
 )
 
-AZ_ORGANIZATIONS_FILEPATH = (
-    BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
-)
-
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    "(KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-)
-
-HEADERS = {"User-Agent": USER_AGENT}
+AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
 
 MI_CONTRIBUTION_COLUMNS = [
     "doc_seq_no",
@@ -60,23 +44,19 @@ MI_CONTRIBUTION_COLUMNS = [
     "extra_desc",
 ]
 
-# MN State Cleaner Constants:
-here = Path(__file__).resolve()
-repo_root = here.parent.parent
-
 MN_FILEPATHS_LST = [
-    repo_root / "data" / "raw" / "MN" / "AG.csv",
-    repo_root / "data" / "raw" / "MN" / "AP.csv",
-    repo_root / "data" / "raw" / "MN" / "DC.csv",
-    repo_root / "data" / "raw" / "MN" / "GC.csv",
-    repo_root / "data" / "raw" / "MN" / "House.csv",
-    repo_root / "data" / "raw" / "MN" / "SA.csv",
-    repo_root / "data" / "raw" / "MN" / "SC.csv",
-    repo_root / "data" / "raw" / "MN" / "Senate.csv",
-    repo_root / "data" / "raw" / "MN" / "SS.csv",
-    repo_root / "data" / "raw" / "MN" / "ST.csv",
-    repo_root / "data" / "raw" / "MN" / "non_candidate_con.csv",
-    repo_root / "data" / "raw" / "MN" / "independent_exp.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "AG.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "AP.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "DC.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "GC.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "House.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "SA.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "SC.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "Senate.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "SS.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "ST.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "non_candidate_con.csv",
+    BASE_FILEPATH / "data" / "raw" / "MN" / "independent_exp.csv",
 ]
 
 MN_CANDIDATE_CONTRIBUTION_COL = [
@@ -214,6 +194,9 @@ MI_EXP_DROP_COLS = [
 
 
 # PA EDA constants:
+
+PA_SCHEMA_CHANGE_YEAR = 2022
+
 
 PA_CONT_COLS_NAMES_PRE2022: list = [
     "RECIPIENT_ID",
@@ -511,47 +494,6 @@ MICHIGAN_CONTRIBUTION_COLS_RENAME = [
 ]
 
 
-AZ_pages_dict = {
-    "Candidate": 1,
-    "PAC": 2,
-    "Political Party": 3,
-    "Organizations": 4,
-    "Independent Expenditures": 5,
-    "Ballot Measures": 6,
-    "Individual Contributors": 7,
-    "Vendors": 8,
-    "Name": 11,
-    "Candidate/Income": 20,
-    "Candidate/Expense": 21,
-    "Candidate/IEFor": 22,
-    "Candidate/IEAgainst": 23,
-    "Candidate/All Transactions": 24,
-    "PAC/Income": 30,
-    "PAC/Expense": 31,
-    "PAC/IEFor": 32,
-    "PAC/IEAgainst": 33,
-    "PAC/BMEFor": 34,
-    "PAC/BMEAgainst": 35,
-    "PAC/All Transactions": 36,
-    "Political Party/Income": 40,
-    "Political Party/Expense": 41,
-    "Political Party/All Transactions": 42,
-    "Organizations/IEFor": 50,
-    "Organizations/IEAgainst": 51,
-    "Organizations/BMEFor": 52,
-    "Organizations/BME Against": 53,
-    "Organizations/All Transactions": 54,
-    "Independent Expenditures/IEFor": 60,
-    "Independent Expenditures/IEAgainst": 61,
-    "Independent Expenditures/All Transactions": 62,
-    "Ballot Measures/Amount For": 70,
-    "Ballot Measures/Amount Against": 71,
-    "Ballot Measures/All Transactions": 72,
-    "Individuals/All Transactions": 80,
-    "Vendors/All Transactions": 90,
-}
-
-
 state_abbreviations = [
     " AK ",
     " AL ",
@@ -607,149 +549,4 @@ state_abbreviations = [
     " WI ",
     " WV ",
     " WY ",
-]
-
-COMPANY_TYPES = {
-    "CORP": "CORPORATION",
-    "CO": "CORPORATION",
-    "LLC": "LIMITED LIABILITY COMPANY",
-    "PTNR": "PARTNERSHIP",
-    "LP": "LIMITED PARTNERSHIP",
-    "LLP": "LIMITED LIABILITY PARTNERSHIP",
-    "SOLE PROP": "SOLE PROPRIETORSHIP",
-    "SP": "SOLE PROPRIETORSHIP",
-    "NPO": "NONPROFIT ORGANIZATION",
-    "PC": "PROFESSIONAL CORPORATION",
-    "CO-OP": "COOPERATIVE",
-    "LTD": "LIMITED COMPANY",
-    "JSC": "JOINT STOCK COMPANY",
-    "HOLDCO": "HOLDING COMPANY",
-    "PLC": "PUBLIC LIMITED COMPANY",
-    "PVT LTD": "PRIVATE LIMITED COMPANY",
-    "INC": "INCORPORATED",
-    "ASSOC": "ASSOCIATION",
-    "FDN": "FOUNDATION",
-    "TR": "TRUST",
-    "SOC": "SOCIETY",
-    "CONSORT": "CONSORTIUM",
-    "SYND": "SYNDICATE",
-    "GRP": "GROUP",
-    "CORP SOLE": "CORPORATION SOLE",
-    "JV": "JOINT VENTURE",
-    "SUB": "SUBSIDIARY",
-    "FRANCHISE": "FRANCHISE",
-    "PA": "PROFESSIONAL ASSOCIATION",
-    "CIC": "COMMUNITY INTEREST COMPANY",
-    "PAC": "POLITICAL ACTION COMMITTEE",
-}
-
-
-individuals_settings = {
-    "link_type": "dedupe_only",
-    "blocking_rules_to_generate_predictions": [
-        "l.first_name = r.first_name",
-        "l.last_name = r.last_name",
-    ],
-    "comparisons": [
-        ctl.name_comparison("full_name"),
-        cl.exact_match("entity_type", term_frequency_adjustments=True),
-        cl.jaro_winkler_at_thresholds(
-            "state", [0.9, 0.8]
-        ),  # threshold will catch typos and shortenings
-        cl.jaro_winkler_at_thresholds("party", [0.9, 0.8]),
-        cl.jaro_winkler_at_thresholds("company", [0.9, 0.8]),
-    ],
-    # DEFAULT
-    "retain_matching_columns": True,
-    "retain_intermediate_calculation_columns": True,
-    "max_iterations": 10,
-    "em_convergence": 0.01,
-}
-
-individuals_blocking = [
-    "l.first_name = r.first_name",
-    "l.last_name = r.last_name",
-]
-
-organizations_settings = {
-    "link_type": "dedupe_only",
-    "blocking_rules_to_generate_predictions": [
-        "l.name = r.name",
-    ],
-    "comparisons": [
-        cl.exact_match("entity_type", term_frequency_adjustments=True),
-        cl.jaro_winkler_at_thresholds(
-            "state", [0.9, 0.8]
-        ),  # threshold will catch typos and shortenings
-        # Add more comparisons as needed
-    ],
-    "retain_matching_columns": True,
-    "retain_intermediate_calculation_columns": True,
-    "max_iterations": 10,
-    "em_convergence": 0.01,
-}
-
-organizations_blocking = ["l.name = r.name"]
-
-# individuals compnay f names
-f_companies = [
-    "exxon",
-    "chevron",
-    "southwest gas",
-    "petroleum",
-    "koch industries",
-    "koch companies",
-    "oil & gas",
-    "marathon oil",
-    "shell oil",
-]
-
-# organizations f names
-f_org_names = [
-    "koch industries",
-    "koch pac",
-    "kochpac",
-    "southwest gas az",
-    "pinnacle west",
-    "americans for prosperity",
-    "energy transfer",
-]
-
-# organizations c names
-c_org_names = [
-    "clean energy",
-    "vote solar action",
-    "renewable",
-    "pattern energy",
-    "beyond carbon",
-    "lcv victory",
-    "league of conservation",
-]
-
-suffixes = [
-    "sr",
-    "jr",
-    "i",
-    "ii",
-    "iii",
-    "iv",
-    "v",
-    "vi",
-    "vii",
-    "viii",
-    "ix",
-    "x",
-]
-
-titles = [
-    "mr",
-    "ms",
-    "mrs",
-    "miss",
-    "prof",
-    "dr",
-    "doctor",
-    "sir",
-    "madam",
-    "professor",
 ]
