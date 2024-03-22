@@ -1,4 +1,4 @@
-# 2023-fall-clinic-climate-cabinet
+# 2024-winter-clinic-climate-cabinet
 
 ## Data Science Clinic Project Goals
 
@@ -34,25 +34,52 @@ If you prefer to develop inside a container with VS Code then do the following s
 3. Click the blue or green rectangle in the bottom left of VS code (should say something like `><` or `>< WSL`). Options should appear in the top center of your screen. Select `Reopen in Container`.
 
 
-### Project Pipeline
+### Data Collection and Standardization Pipeline
 1. Collect the data through **<span style="color: red;">one</span>** of the steps below
     a. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN) OR
-    b. Go to the [Project's Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / <State Initial> / "file"
+    b. Go to the [Project's Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
 2. Open in development container which installs all necessary packages.
 3. Run the project by running ```python utils/pipeline.py``` or ```python3 utils/pipeline.py``` run the processing pipeline that cleans, standardizes, and creates the individuals, organizations, and transactions concatenated into one comprehensive database.
-5. running ```pipeline.py``` returns the tables to the output folder as csv files containing the complete individuals, organizations, and transactions DataFrames combining the AZ, MI, MN, and PA datasets.
+5. Running ```pipeline.py``` returns the tables to the output folder as csv files containing the complete individuals, organizations, and transactions DataFrames combining the AZ, MI, MN, and PA datasets.
 6. For future reference, the above pipeline also stores the information mapping given id to our database id (generated via uuid) in a csv file in the format of (state)IDMap.csv (example: ArizonaIDMap.csv) in the output folder
 
-## Team Members
+### Record Linkage and Network Pipeline
+1. Save the standardized tables "complete_individuals.csv", "complete_organizations.csv", and "complete_transactions.csv" (collected from the above pipeline or data from the project's Google Drive at https://drive.google.com/file/d/1Jx-ElbzeW5g5byyRB6jQe2JesLep3AaH/view?usp=sharing) in the following format: repo_root / "data" / "file"
+2. Run the pipeline by calling ```make run-linkage-and-network_pipeline```. This pipeline will perform conservative record linkage, attempt to classify entities as neutral, fossil fuels, or clean energy, convert the standardized tables into a NetworkX Graph, and show an interactive network visual.
+3. The pipeline will output the deduplicated tables saved as "cleaned_individuals_table.csv", "cleaned_organizations_table.csv", and "cleaned_transactions_table.csv". A mapping file, "deduplicated_UUIDs" tracks the UUIDs designated as duplicates. The pipeline will also output "Network Graph Node Data", 
+  which is the NetworkX Graph object converted into an adjecency list. Finally the pipeline will create a file called 'network_metrics.txt' which holds the summary statistics we extrapolated from the network including measures of centrality, connectedness, and communites.
 
-Student Name: April Wang
-Student Email: yuzhouw@uchicago.edu
+## Repository Structure
+
+### utils
+Project python code
+
+### notebooks
+Contains short, clean notebooks to demonstrate analysis.
+
+### data
+
+Contains details of acquiring all raw data used in repository. If data is small (<50MB) then it is okay to save it to the repo, making sure to clearly document how to the data is obtained.
+
+If the data is larger than 50MB than you should not add it to the repo and instead document how to get the data in the README.md file in the data directory. 
+
+This [README.md file](/data/README.md) should be kept up to date.
+
+### output
+This folder is empty by default. The final outputs of the Makefile will be placed here, consisting of a NetworkX Graph object and a txt file containing graph metrics. 
+
+
+
+## Team Member
 
 Student Name: Nicolas Posner
 Student Email: nrposner@uchicago.edu
 
-Student Name: Aïcha Camara
-Student Email: aichacamara@uchicago.edu
-
 Student Name: Alan Kagiri
 Student Email: alankagiri@uchicago.edu. 
+
+Student Name: Adil Kassim
+Student Email: adilk@uchicago.edu
+
+Student Name: Nayna Pashilkar
+Student Email: npashilkar@uchicago.edu
