@@ -172,7 +172,7 @@ def scrape_wrapper(page: int, start_year: int, end_year: int) -> pd.DataFrame:
     return raw_table
 
 
-def get_keys_from_value(d: dict, val: Any) -> str: # noqa ANN401
+def get_keys_from_value(d: dict, val: Any) -> str:  # noqa ANN401
     """Returns first key from dict with value 'val'"""
     return [k for k, v in d.items() if v == val][0]
 
@@ -277,7 +277,7 @@ def scrape(
         params=params,
         headers=headers,
         data=data,
-        timeout=MAX_TIMEOUT
+        timeout=MAX_TIMEOUT,
     )
 
 

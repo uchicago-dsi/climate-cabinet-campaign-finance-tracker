@@ -1,4 +1,5 @@
 """This modules provides functions to scrape Pennsylvannia campaign finance data"""
+
 import zipfile
 from http import HTTPStatus
 from io import BytesIO
