@@ -2,7 +2,6 @@
 
 import pandas as pd
 import pytest
-
 from utils.constants import BASE_FILEPATH
 from utils.linkage import deduplicate_perfect_matches
 
