@@ -5,10 +5,43 @@ from pathlib import Path
 import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
 
-BASE_FILEPATH = Path(__file__).resolve().parent.parent
+BASE_FILEPATH = Path(__file__).resolve().parent.parent.parent
 # returns the base_path to the directory
 
 MAX_TIMEOUT = 10
+COMPANY_TYPES = {
+    "CORP": "CORPORATION",
+    "CO": "CORPORATION",
+    "LLC": "LIMITED LIABILITY COMPANY",
+    "PTNR": "PARTNERSHIP",
+    "LP": "LIMITED PARTNERSHIP",
+    "LLP": "LIMITED LIABILITY PARTNERSHIP",
+    "SOLE PROP": "SOLE PROPRIETORSHIP",
+    "SP": "SOLE PROPRIETORSHIP",
+    "NPO": "NONPROFIT ORGANIZATION",
+    "PC": "PROFESSIONAL CORPORATION",
+    "CO-OP": "COOPERATIVE",
+    "LTD": "LIMITED COMPANY",
+    "JSC": "JOINT STOCK COMPANY",
+    "HOLDCO": "HOLDING COMPANY",
+    "PLC": "PUBLIC LIMITED COMPANY",
+    "PVT LTD": "PRIVATE LIMITED COMPANY",
+    "INC": "INCORPORATED",
+    "ASSOC": "ASSOCIATION",
+    "FDN": "FOUNDATION",
+    "TR": "TRUST",
+    "SOC": "SOCIETY",
+    "CONSORT": "CONSORTIUM",
+    "SYND": "SYNDICATE",
+    "GRP": "GROUP",
+    "CORP SOLE": "CORPORATION SOLE",
+    "JV": "JOINT VENTURE",
+    "SUB": "SUBSIDIARY",
+    "FRANCHISE": "FRANCHISE",
+    "PA": "PROFESSIONAL ASSOCIATION",
+    "CIC": "COMMUNITY INTEREST COMPANY",
+    "PAC": "POLITICAL ACTION COMMITTEE",
+}
 
 individuals_settings = {
     "link_type": "dedupe_only",
