@@ -38,7 +38,8 @@ from typing import Any
 import pandas as pd
 import requests
 
-from utils.constants import HEADERS, MAX_TIMEOUT, AZ_pages_dict, repo_root
+from utils.constants import BASE_FILEPATH
+from utils.scrape.constants import HEADERS, MAX_TIMEOUT, AZ_pages_dict
 
 BASE_URL = "https://seethemoney.az.gov/Reporting"
 BASE_ENDPOINT = "GetNEWTableData"
@@ -79,7 +80,7 @@ def scrape_and_download_az_data(
 ) -> None:
     """Collect and download all arizona data within range"""
     if output_directory is None:
-        output_directory = repo_root / "data" / "raw" / "AZ2"
+        output_directory = BASE_FILEPATH / "data" / "raw" / "AZ2"
         output_directory.mkdir(parents=True, exist_ok=True)
     for page in AZ_pages_dict:
         formatted_page = page.replace("/", "-").replace(" ", "-")

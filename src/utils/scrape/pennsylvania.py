@@ -7,7 +7,7 @@ from pathlib import Path
 
 import requests
 
-from utils.constants import repo_root
+from utils.constants import BASE_FILEPATH
 
 
 def download_PA_data(
@@ -24,7 +24,7 @@ def download_PA_data(
         for each year's files.
     """
     if output_directory is None:
-        output_directory = repo_root / "data" / "raw" / "PA"
+        output_directory = BASE_FILEPATH / "data" / "raw" / "PA"
 
     else:
         output_directory = Path(output_directory).resolve()
