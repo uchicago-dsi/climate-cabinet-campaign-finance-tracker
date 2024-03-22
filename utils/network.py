@@ -1,11 +1,14 @@
 """Buidling, visualizing, and analyzing networks"""
 
+import itertools
+from pathlib import Path
+
 import networkx as nx
 import pandas as pd
 import plotly.graph_objects as go
 
 
-def name_identifier(uuid: str, dfs: list) -> str:
+def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
     """Returns the name of the entity given the entity's uuid
 
     Args:
@@ -204,13 +207,77 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
     fig.show()
 
 
-def construct_network_graph(start_year: int, end_year: int, dfs: list) -> None:
+def network_metrics(net_graph: nx.Graph) -> None:
+    """Output network metrics to txt files
+
+    Args:
+        net_graph: network graph as defined by networkx
+
+    Returns:
+        a text file with list of nodes with greatest calculated
+        centrality for each metric: in degree, out degree,
+        eigenvector, and betweenness
+    """
+    in_degree = nx.in_degree_centrality(
+        net_graph
+    )  # calculates in degree centrality of nodes
+    out_degree = nx.out_degree_centrality(
+        net_graph
+    )  # calculated out degree centrality of nodes
+    eigenvector = nx.eigenvector_centrality_numpy(
+        net_graph, weight="amount"
+    )  # calculates eigenvector centrality of nodes
+    betweenness = nx.betweenness_centrality(
+        net_graph, weight="amount"
+    )  # calculates betweenness centrality of nodes
+
+    # sort + truncate dictionaries to 50 nodes with greatest centrality
+    in_degree = sorted(in_degree.items(), key=lambda x: x[1], reverse=True)[:50]
+    out_degree = sorted(out_degree.items(), key=lambda x: x[1], reverse=True)[:50]
+    eigenvector = sorted(eigenvector.items(), key=lambda x: x[1], reverse=True)[:50]
+    betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:50]
+
+    assortativity = nx.attribute_assortativity_coefficient(
+        net_graph, "classification"
+    )  # calculates assortativity of graph
+
+    num_nodes = len(net_graph.nodes())
+    num_edges = len(net_graph.edges())
+    density = num_edges / (num_nodes * (num_nodes - 1))  # calculates density of graph
+
+    k = 5
+    comp = nx.community.girvan_newman(net_graph)
+    for communities in itertools.islice(comp, k):
+        communities = tuple(
+            sorted(c) for c in communities
+        )  # creates clusters of nodes with high interactions where granularity = 5
+    communities = sorted(communities, key=len, reverse=True)
+
+    with Path("output/network_metrics.txt").open("w") as file:
+        file.write(f"in degree centrality: {in_degree}\n")
+        file.write(f"out degree centrality: {out_degree}\n")
+        file.write(f"eigenvector centrality: {eigenvector}\n")
+        file.write(f"betweenness centrality: {betweenness}\n\n")
+
+        file.write(f"assortativity based on 'classification': {assortativity}\n\n")
+
+        file.write(f"density': {density}\n\n")
+
+        file.write(f"communities where k = 5': {communities}\n\n")
+
+
+def construct_network_graph(
+    start_year: int, end_year: int, dfs: list[pd.DataFrame]
+) -> None:
     """Runs the network construction pipeline starting from 3 dataframes
 
     Args:
         start_year: the end range of the desired data
         end_year: the end range of the desired data
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
+
+    Returns:
+        None; however, will create 2 txt files
     """
     inds_df, orgs_df, transactions_df = dfs
     transactions_df = transactions_df.loc[
@@ -219,5 +286,6 @@ def construct_network_graph(start_year: int, end_year: int, dfs: list) -> None:
 
     aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
     G = create_network_graph(aggreg_df)
+    network_metrics(G)
     plot_network_graph(G)
-    nx.write_adjlist(G, "Network Graph Node Data")
+    plot_network_graph(G)

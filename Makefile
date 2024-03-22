@@ -29,10 +29,6 @@ run-notebooks:
 	jupyter lab --port=8888 --ip='*' --NotebookApp.token='' --NotebookApp.password='' \
 	--no-browser --allow-root
 
-
-#running the linkage pipeline and creating the network graph
-#still waiting on linkage_pipeline completion to get this into final shape
-
-run-linkage-pipeline:
+run-linkage-and-network-pipeline:
 	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
-	docker run -v $(current_abs_path):/project -t $(project_image_name) python utils/linkage_pipeline.py
+	docker run -v $(current_abs_path):/project -t $(project_image_name) python utils/linkage_and_network_pipeline.py

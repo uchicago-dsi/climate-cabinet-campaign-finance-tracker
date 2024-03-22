@@ -39,8 +39,6 @@ def get_address_line_1_from_full_address(address: str) -> str:
     ... )
     '1415 PARKER STREET'
     """
-    pass
-
     address_tuples = usaddress.parse(
         address
     )  # takes a string address and put them into value, key pairs as tuples
@@ -307,8 +305,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     if first_name + " " + last_name == full_name:
         return full_name.title()
 
-    # some names have titles or professions associated with the name. We need to
-    # remove those from the name.
+    # remove titles or professions from the name
     names = [first_name, last_name, full_name]
 
     for i in range(len(names)):
@@ -430,7 +427,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     # first remove all duplicate entries:
     new_df = df.drop_duplicates()
 
-    # now find the duplicates along all columns but the ID
+    # find the duplicates along all columns but the id
     new_df = (
         new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)["id"]
         .agg(list)
@@ -439,7 +436,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     )
     new_df.index = new_df["duplicated"].str[0].tolist()
 
-    # now convert the duplicated column into a dictionary that can will be
+    # convert the duplicated column into a dictionary that can will be
     # an output by only feeding the entries with duplicates
     new_df = new_df.reset_index().rename(columns={"index": "id"})
     convert_duplicates_to_dict(new_df[["id", "duplicated"]])
@@ -564,7 +561,7 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
             return address_line_1_components[i][0]
         elif address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
-    raise ValueError("Can not find Address Number")
+    raise ValueError("Cannot find Address Number")
 
 
 def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
@@ -621,8 +618,11 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
     )
     deduped_df = deduped_df.rename(columns={"cluster_id": "unique_id"})
 
+    deduped_df["duplicated"] = deduped_df["duplicated"].apply(
+        lambda x: x if isinstance(x, list) else [x]
+    )
     convert_duplicates_to_dict(deduped_df)
 
-    deduped_df.drop(columns=["duplicated"])
+    deduped_df = deduped_df.drop(columns=["duplicated"])
 
     return deduped_df

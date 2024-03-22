@@ -5,7 +5,13 @@ import pandas as pd
 from nameparser import HumanName
 
 from utils.classify import classify_wrapper
-from utils.constants import BASE_FILEPATH
+from utils.constants import (
+    BASE_FILEPATH,
+    individuals_blocking,
+    individuals_settings,
+    organizations_blocking,
+    organizations_settings,
+)
 from utils.linkage import (
     cleaning_company_column,
     deduplicate_perfect_matches,
@@ -13,9 +19,14 @@ from utils.linkage import (
     get_address_number_from_address_line_1,
     get_likely_name,
     get_street_from_address_line_1,
+    splink_dedupe,
     standardize_corp_names,
 )
-from utils.network import combine_datasets_for_network_graph, create_network_graph
+from utils.network import (
+    combine_datasets_for_network_graph,
+    construct_network_graph,
+    create_network_graph,
+)
 
 
 def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
@@ -83,12 +94,24 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
 
     individuals["full_name"] = individuals.apply(
         lambda row: get_likely_name(
-            row["first_name"] if pd.notna(row["first_name"]) else "",
-            row["last_name"] if pd.notna(row["last_name"]) else "",
-            row["full_name"] if pd.notna(row["full_name"]) else "",
+            row["first_name"], row["last_name"], row["full_name"]
         ),
         axis=1,
     )
+
+    # Ensure that columns with values are prioritized and appear first
+    # important for splink implementation
+    individuals["sort_priority"] = (
+        ~individuals["first_name"].isna()
+        & ~individuals["last_name"].isna()
+        & ~individuals["company"].isna()
+    ) * 2 + (~individuals["party"].isna())
+
+    individuals = individuals.sort_values(by="sort_priority", ascending=False).drop(
+        columns=["sort_priority"]
+    )
+
+    individuals["unique_id"] = individuals["id"]
 
     return individuals
 
@@ -108,6 +131,8 @@ def preprocess_organizations(organizations: pd.DataFrame) -> pd.DataFrame:
         .apply(standardize_corp_names)
     )
 
+    organizations["unique_id"] = organizations["id"]
+
     return organizations
 
 
@@ -124,6 +149,11 @@ def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
         transactions = transactions.drop(columns="Unnamed: 0")
 
     transactions["purpose"] = transactions["purpose"].str.upper()
+
+    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+    transactions[["donor_id", "recipient_id"]] = transactions[
+        ["donor_id", "recipient_id"]
+    ].replace(deduped)
 
     return transactions
 
@@ -151,24 +181,15 @@ def clean_data_and_build_network(
     individuals_table = deduplicate_perfect_matches(individuals_table)
     organizations_table = deduplicate_perfect_matches(organizations_table)
 
-    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+    organizations = splink_dedupe(
+        organizations_table, organizations_settings, organizations_blocking
+    )
 
-    individuals_table["unique_id"] = individuals_table["id"]
-    organizations_table["unique_id"] = organizations_table["id"]
+    individuals = splink_dedupe(
+        individuals_table, individuals_settings, individuals_blocking
+    )
 
-    individuals_table = individuals_table.drop(columns=[])
-
-    # organizations = splink_dedupe(
-    #     organizations, organizations_settings, organizations_blocking
-    # )
-
-    # individuals = splink_dedupe(
-    #     individuals, individuals_settings, individuals_blocking
-    # )
-
-    transactions_table[["donor_id", "recipient_id"]] = transactions_table[
-        ["donor_id", "recipient_id"]
-    ].replace(deduped)
+    transactions = preprocess_transactions(transactions_table)
 
     cleaned_individuals_output_path = (
         BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
@@ -186,21 +207,14 @@ def clean_data_and_build_network(
     organizations_table.to_csv(cleaned_organizations_output_path, index=False)
     transactions_table.to_csv(cleaned_transactions_output_path, index=False)
 
-    print("deduplication complete, initiating aggregation")
-
     aggreg_df = combine_datasets_for_network_graph(
         [individuals_table, organizations_table, transactions_table]
     )
-
-    print("aggregation complete, initiating graphing")
-
     g = create_network_graph(aggreg_df)
-
     g_output_path = BASE_FILEPATH / "output" / "g.gml"
-
     nx.write_graphml(g, g_output_path)
 
-    # construct_network_graph(2000, 2024, [individuals, organizations, transactions])
+    construct_network_graph(2018, 2023, [individuals, organizations, transactions])
 
 
 if __name__ == "__main__":
