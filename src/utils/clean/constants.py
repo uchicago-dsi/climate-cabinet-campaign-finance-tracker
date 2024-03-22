@@ -1,8 +1,5 @@
 """Constants to be used in various parts of the project."""
 
-import splink.duckdb.comparison_library as cl
-import splink.duckdb.comparison_template_library as ctl
-
 from utils.constants import BASE_FILEPATH
 
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
