@@ -3,7 +3,7 @@
 	"build": {
 		"dockerfile": "../Dockerfile",
 		"context": "..",
-		"args": {},
+		"args": {}
 	},
 	// Set *default* container specific settings.json values on container create.
     "customizations": {
@@ -16,22 +16,16 @@
                 },
                 "python.defaultInterpreterPath": "/usr/local/bin/python3",
                 "python.languageServer": "Pylance",
-                "python.formatting.provider": "black",
                 "[python]": {
                     "diffEditor.ignoreTrimWhitespace": false,
                     "editor.formatOnSave": true,
                     "editor.wordBasedSuggestions": "matchingDocuments",
                     "editor.defaultFormatter": "charliermarsh.ruff",
                     "editor.codeActionsOnSave": {
-                        "source.organizeImports": true
+                        "source.fixAll": "always",
+                        "source.organizeImports": "always"
                     }
-                },
-                "isort.args": [
-                    "--settings-path", "${workspaceFolder}/setup.cfg"
-                ],
-                "flake8.args": [
-                    "--config", "${workspaceFolder}/setup.cfg"
-                ]
+                }
             },
             "extensions": [
                 "ms-python.python",
@@ -43,10 +37,6 @@
             ]
         }
     },
-	// Add the IDs of extensions you want installed when the container is created.
-	"features": {
-		"github-cli": "latest"
-	},
 	"runArgs": [
 		"--shm-size=16gb"
 	],
