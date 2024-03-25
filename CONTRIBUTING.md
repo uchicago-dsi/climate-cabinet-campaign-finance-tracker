@@ -48,7 +48,6 @@ Then you can work, make changes and commit them. Once you make your first commit
 ```bash
 git push --set-upstream origin NEW_BRANCH_NAME
 ```
-conflicts
 
 
 ### Formatting and Linting
@@ -71,6 +70,7 @@ Running a new formatter for the first time on a repository can modify many files
     a. You may see a dialogue box in the bottom right that says something like "Dev container configuration detected". Click to open the repo in the devcontainer. 
     b. Click the bottom left blue or green rectangle that either shows `><` or `>< WSL: Ubuntu` or something like that. This is the 'backend' that VS code is running on. Select the option "Reopen folder in container"
 6. It will likely take a few minutes to build the first time. Subsequent builds should be faster. 
+7. You may get permission denied with git if you don't have an ssh agent running. See [Step 2: Create / Manage SSH Keys](https://github.com/dsi-clinic/the-clinic/blob/main/tutorials/slurm.md#step-2-create--manage-ssh-keys)
 
 #### Developing
 By default we have a few nice features:
@@ -78,4 +78,4 @@ By default we have a few nice features:
 - Our module is installed as an editable package. This means local imports should work as we expect and update as we change our code. 
 - VS Code extensions are installed by default. This will allow us to use the Python Debugger, and lint and format documents with ruff automatically.
 
-To run a pipeline using the debugger, we will want to run the relevant file in the `scripts` directory. 
+To run a pipeline using the debugger, we will want to run the relevant file in the `scripts` directory. Open the desired file and click the python debugger icon in the left sidebar (a play button with a bug). Click the play button. Select current python file. 
