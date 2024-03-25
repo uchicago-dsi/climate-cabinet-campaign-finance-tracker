@@ -1,13 +1,13 @@
-"""Implements state cleaner class for Pennsylvania"""
+"""Implements state transformer class for Pennsylvania"""
 
 import uuid
 from pathlib import Path
 
 import pandas as pd
 
-from utils.clean import clean
-from utils.clean import constants as const
 from utils.constants import BASE_FILEPATH
+from utils.transform import clean
+from utils.transform import constants as const
 
 
 def assign_PA_column_names(file_name: str, year: int) -> list:
@@ -38,8 +38,8 @@ def assign_PA_column_names(file_name: str, year: int) -> list:
             return const.PA_EXPENSE_COLS_NAMES_POST2022
 
 
-class PennsylvaniaCleaner(clean.StateCleaner):
-    """Pennsyvania state cleaner implementation"""
+class PennsylvaniaTransformer(clean.StateTransformer):
+    """Pennsyvania state transformer implementation"""
 
     name = "Pennsylvania"
     stable_id_across_years = False
