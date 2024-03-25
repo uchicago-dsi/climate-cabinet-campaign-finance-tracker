@@ -1,12 +1,25 @@
-"""Abstract base class for state cleaning workflow"""
+"""Abstract base class for transforming state data into standard schema"""
 
 from abc import ABC, abstractmethod
 
 import pandas as pd
 
 
-class StateCleaner(ABC):
-    """This abstract class is the one that all the state cleaners will be built on"""
+class StateTransformer(ABC):
+    """This abstract class is the one that all the state cleaners will be built on
+
+    Given a path to a directory with raw data from a state, this class provides
+    the interface for:
+    - reading the data into pandas DatFrames
+    - deleting empty or clearly erroneous rows
+    - renaming / reshaping data to fit a single schema
+    - validating data to fit schema
+    - adding uuids
+
+    The methods in this class are meant to be very conservative. Raw data should
+    not be modified, only transformed. Rows cannot be changed, only deleted in
+    obviously erroneous cases.
+    """
 
     @property
     def name(self) -> str:

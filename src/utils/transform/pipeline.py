@@ -2,22 +2,22 @@
 
 import pandas as pd
 
-from utils.clean.arizona import ArizonaCleaner
-from utils.clean.clean import StateCleaner
-from utils.clean.michigan import MichiganCleaner
-from utils.clean.minnesota import MinnesotaCleaner
-from utils.clean.pennsylvania import PennsylvaniaCleaner
+from utils.transform.arizona import ArizonaTransformer
+from utils.transform.clean import StateTransformer
+from utils.transform.michigan import MichiganTransformer
+from utils.transform.minnesota import MinnesotaTransformer
+from utils.transform.pennsylvania import PennsylvaniaTransformer
 
 ALL_STATE_CLEANERS = [
-    ArizonaCleaner(),
-    MichiganCleaner(),
-    MinnesotaCleaner(),
-    PennsylvaniaCleaner(),
+    ArizonaTransformer(),
+    MichiganTransformer(),
+    MinnesotaTransformer(),
+    PennsylvaniaTransformer(),
 ]
 
 
-def clean_and_merge_state_data(
-    state_cleaners: list[StateCleaner] = None,
+def transform_and_merge(
+    state_cleaners: list[StateTransformer] = None,
 ) -> list[pd.DataFrame]:
     """From raw datafiles, clean, merge, and reformat data from specified states.
 

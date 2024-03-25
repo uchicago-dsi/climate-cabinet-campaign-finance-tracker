@@ -29,10 +29,10 @@ run-notebooks:
 	jupyter lab --port=8888 --ip='*' --NotebookApp.token='' --NotebookApp.password='' \
 	--no-browser --allow-root
 
-run-linkage-and-network-pipeline:
+run-clean-classify-graph-pipeline:
 	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
-	docker run -v $(current_abs_path):/project -t $(project_image_name) python src/utils/linkage_and_network_pipeline.py
+	docker run -v $(current_abs_path):/project -t $(project_image_name) python scripts/clean_classify_graph_pipeline.py
 
-run-cleaning-pipeline:
+run-transform-pipeline:
 	docker build -t $(project_image_name) -f Dockerfile $(current_abs_path)
-	docker run -v $(current_abs_path):/project -t $(project_image_name) cd /project/src & python -m utils.clean.pipeline
+	docker run -v $(current_abs_path):/project -t $(project_image_name) python scripts/transform_pipeline.py

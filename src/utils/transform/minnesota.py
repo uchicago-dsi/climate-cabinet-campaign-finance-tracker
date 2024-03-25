@@ -1,12 +1,12 @@
-"""State cleaner implementation for Minnesota"""
+"""State transformer implementation for Minnesota"""
 
 import uuid
 
 import numpy as np
 import pandas as pd
 
-from utils.clean.clean import StateCleaner
-from utils.clean.constants import (
+from utils.transform.clean import StateTransformer
+from utils.transform.constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
     MN_CANDIDATE_CONTRIBUTION_MAP,
     MN_FILEPATHS_LST,
@@ -18,8 +18,8 @@ from utils.clean.constants import (
 )
 
 
-class MinnesotaCleaner(StateCleaner):
-    """State cleaner implementation for Minnesota"""
+class MinnesotaTransformer(StateTransformer):
+    """State transformer implementation for Minnesota"""
 
     name = "Minnesota"
     stable_id_across_years = False

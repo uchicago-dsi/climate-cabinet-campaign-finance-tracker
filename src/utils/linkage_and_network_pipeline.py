@@ -105,7 +105,7 @@ def preprocess_individuals(individuals: pd.DataFrame) -> pd.DataFrame:
         ~individuals["first_name"].isna()
         & ~individuals["last_name"].isna()
         & ~individuals["company"].isna()
-    ) * 2 + (~individuals["party"].isna())
+    ) * 2 + (~individuals["party"].isna() * 2)
 
     individuals = individuals.sort_values(by="sort_priority", ascending=False).drop(
         columns=["sort_priority"]
@@ -191,16 +191,18 @@ def clean_data_and_build_network(
 
     transactions = preprocess_transactions(transactions_table)
 
+    output_path = BASE_FILEPATH / "output" / "cleaned"
+    output_path.mkdir(exist_ok=True)
     cleaned_individuals_output_path = (
-        BASE_FILEPATH / "output" / "cleaned_individuals_table.csv"
+        BASE_FILEPATH / "output" / "cleaned" / "individuals_table.csv"
     )
 
     cleaned_organizations_output_path = (
-        BASE_FILEPATH / "output" / "cleaned_organizations_table.csv"
+        BASE_FILEPATH / "output" / "cleaned" / "organizations_table.csv"
     )
 
     cleaned_transactions_output_path = (
-        BASE_FILEPATH / "output" / "cleaned_transactions_table.csv"
+        BASE_FILEPATH / "output" / "cleaned" / "transactions_table.csv"
     )
 
     individuals_table.to_csv(cleaned_individuals_output_path, index=False)
@@ -215,13 +217,3 @@ def clean_data_and_build_network(
     nx.write_graphml(g, g_output_path)
 
     construct_network_graph(2018, 2023, [individuals, organizations, transactions])
-
-
-if __name__ == "__main__":
-    organizations_table = pd.read_csv(BASE_FILEPATH / "data" / "orgs_mini.csv")
-    individuals_table = pd.read_csv(BASE_FILEPATH / "data" / "inds_mini.csv")
-    transactions_table = pd.read_csv(BASE_FILEPATH / "data" / "trans_mini.csv")
-
-    clean_data_and_build_network(
-        individuals_table, organizations_table, transactions_table
-    )
