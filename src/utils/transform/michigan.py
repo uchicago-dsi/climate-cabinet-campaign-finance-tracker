@@ -1,12 +1,13 @@
-import os
+"""State transformer implementation for Michigan"""
+
 import uuid
 
 import numpy as np
 import pandas as pd
 
-from utils.clean import StateCleaner
-from utils.constants import (
-    BASE_FILEPATH,
+from utils.constants import BASE_FILEPATH
+from utils.transform.clean import StateTransformer
+from utils.transform.constants import (
     MI_CON_FILEPATH,
     MI_CONT_DROP_COLS,
     MI_CONTRIBUTION_COLUMNS,
@@ -16,18 +17,71 @@ from utils.constants import (
     MICHIGAN_CONTRIBUTION_COLS_RENAME,
     MICHIGAN_CONTRIBUTION_COLS_REORDER,
 )
-from utils.preprocess_mi_campaign_data import (
-    read_contribution_data,
-    read_expenditure_data,
-)
 
 
-class MichiganCleaner(StateCleaner):
+def read_expenditure_data(filepath: str, columns: list[str]) -> pd.DataFrame:
+    """Reads in the MI expenditure data
+
+    Inputs:
+        filepath (str): filepath to the MI Expenditure Data txt file
+        columns (lst): list of string names of the campaign data columns
+
+    Returns: df (Pandas DataFrame): dataframe of the MI Expenditure data
     """
-    This class is based on the StateCleaner abstract class,
-    and cleans Michigan campaign contribution and expenditure data
-    """
+    if filepath.endswith("txt"):
+        expenditure_df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            usecols=columns,
+            encoding="mac_roman",
+            low_memory=False,
+        )
 
+    return expenditure_df
+
+
+def read_contribution_data(filepath: str, columns: list[str]) -> pd.DataFrame:
+    """Reads in the MI campaign data and skips the errors
+
+    Inputs:
+        filepath (str): filepath to the MI Campaign Data txt file
+        columns (lst): list of string names of the campaign data columns
+
+    Returns: df (Pandas DataFrame): dataframe of the MI campaign data
+    """
+    if filepath.endswith("00.txt"):
+        # MI files that contain 00 or between 1998 and 2003 contain headers
+        # VALUES_TO_CHECK contains the years between 1998 and 2003
+        contribution_df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            encoding="mac_roman",
+            usecols=columns,
+            low_memory=False,
+            on_bad_lines="skip",
+        )
+    else:
+        contribution_df = pd.read_csv(
+            filepath,
+            delimiter="\t",
+            index_col=False,
+            encoding="mac_roman",
+            header=None,
+            names=columns,
+            low_memory=False,
+            on_bad_lines="skip",
+        )
+
+    return contribution_df
+
+
+class MichiganTransformer(StateTransformer):
+    """State transformer implementation for Michigan"""
+
+    name = "Michigan"
+    stable_id_across_years = False
     entity_name_dictionary = {
         "cfr_com_id": "original_com_id",
         "f_name": "first_name",
@@ -48,9 +102,8 @@ class MichiganCleaner(StateCleaner):
     ]
     # map to entity types listed in the schema
 
-    def clean_state(self) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """
-        Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
+    def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Runs the StateTransformer pipeline returning a tuple of cleaned dataframes
 
         Returns: use preprocess, clean, standardize, and create_tables methods
         to output (individuals_table, organizations_table, transactions_table)
@@ -65,9 +118,7 @@ class MichiganCleaner(StateCleaner):
         return tables
 
     def create_filepaths_list(self) -> list[list[str], list[str]]:
-        """Creates a list of Michigan Contribution and Expenditure filepaths by
-        first iterating through the expenditure filepaths then the contribution
-        filepaths
+        """Creates a list of Michigan Contribution and Expenditure filepaths
 
         Inputs: None
 
@@ -88,8 +139,7 @@ class MichiganCleaner(StateCleaner):
     # NOTE: Helper methods above are called throughout the class
 
     def preprocess(self, filepaths_list: list[str]) -> list[pd.DataFrame]:
-        """
-        Preprocesses the state data and returns a dataframe
+        """Preprocesses the state data and returns a dataframe
 
         Reads in the state's data, makes any necessary bug fixes, and
         combines the data into a list of DataFrames, discards data not schema
@@ -108,13 +158,9 @@ class MichiganCleaner(StateCleaner):
         temp_cont_list = []
 
         for file in expenditures_lst:
-            temp_exp_list.append(
-                read_expenditure_data(file, MI_EXPENDITURE_COLUMNS)
-            )
+            temp_exp_list.append(read_expenditure_data(file, MI_EXPENDITURE_COLUMNS))
         for file in contributions_lst:
-            temp_cont_list.append(
-                read_contribution_data(file, MI_CONTRIBUTION_COLUMNS)
-            )
+            temp_cont_list.append(read_contribution_data(file, MI_CONTRIBUTION_COLUMNS))
 
         contribution_dataframe = self.merge_dataframes(temp_cont_list)
         expenditure_dataframe = self.merge_dataframes(temp_exp_list)
@@ -124,7 +170,7 @@ class MichiganCleaner(StateCleaner):
     # NOTE: Helper methods for preprocess are below
 
     def merge_dataframes(
-        self, temp_list: [pd.DataFrame, pd.DataFrame]
+        self, temp_list: list[pd.DataFrame, pd.DataFrame]
     ) -> pd.DataFrame:
         """Merges the list of dataframes into one Pandas DataFrame
 
@@ -163,8 +209,7 @@ class MichiganCleaner(StateCleaner):
 
         """
         subset_condition = (
-            merged_campaign_dataframe["com_type"]
-            == "MENOMINEE COUNTY DEMOCRATIC PARTY"
+            merged_campaign_dataframe["com_type"] == "MENOMINEE COUNTY DEMOCRATIC PARTY"
         )
 
         rows_to_fix = merged_campaign_dataframe[subset_condition]
@@ -199,8 +244,7 @@ class MichiganCleaner(StateCleaner):
         # There are only 20 menominee county rows read in incorrectly and
         # missing key data these rows are dropped
         subset_condition = (
-            merged_campaign_dataframe["com_type"]
-            == "MENOMINEE COUNTY DEMOCRATIC PARTY"
+            merged_campaign_dataframe["com_type"] == "MENOMINEE COUNTY DEMOCRATIC PARTY"
         )
 
         merged_campaign_dataframe = merged_campaign_dataframe.drop(
@@ -209,16 +253,14 @@ class MichiganCleaner(StateCleaner):
 
         return merged_campaign_dataframe
 
-    def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+    def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:  # noqa: D102
         contribution_dataframe, expenditure_dataframe = data
 
         clean_cont = self.clean_contribution_dataframe(contribution_dataframe)
 
         clean_exp = self.clean_expenditure_dataframe(expenditure_dataframe)
 
-        merged_dataframe = pd.concat(
-            [clean_cont, clean_exp], axis=0, ignore_index=True
-        )
+        merged_dataframe = pd.concat([clean_cont, clean_exp], axis=0, ignore_index=True)
         # concatenate the dataframes along rows ignore the prior index
 
         return [merged_dataframe]
@@ -282,10 +324,10 @@ class MichiganCleaner(StateCleaner):
                 merged_expenditure_dataframe: Merged Michigan expenditure
                 dataframe cleaned in place
         """
-        merged_expenditure_dataframe[
-            ["amount", "supp_opp"]
-        ] = merged_expenditure_dataframe[["amount", "supp_opp"]].apply(
-            pd.to_numeric, errors="coerce"
+        merged_expenditure_dataframe[["amount", "supp_opp"]] = (
+            merged_expenditure_dataframe[
+                ["amount", "supp_opp"]
+            ].apply(pd.to_numeric, errors="coerce")
         )
         merged_expenditure_dataframe["cfr_com_id"] = (
             merged_expenditure_dataframe["cfr_com_id"]
@@ -308,7 +350,7 @@ class MichiganCleaner(StateCleaner):
 
         return merged_expenditure_dataframe
 
-    def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+    def standardize(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:  # noqa: D102
         data = self.add_uuid_columns(data)
         standardized_merged_dataframe = data[0]
 
@@ -343,14 +385,14 @@ class MichiganCleaner(StateCleaner):
         return [merged_dataframe]
 
     def generate_uuid(
-        self, merged_campaign_dataframe: pd.DataFrame, column_names: [str]
+        self, merged_campaign_dataframe: pd.DataFrame, column_names: list[str]
     ) -> pd.DataFrame:
         """Generates uuids for the pandas DataFrame based on the column names provided
 
         Inputs:
             merged_campaign_dataframe:  Merged Michigan campaign
             expenditure or contribution dataframe
-        column_names: List of column names for which UUIDs will be generated
+            column_names: List of column names for which UUIDs will be generated
 
         Returns:
             merged_campaign_dataframe: Merged Michigan campaign
@@ -359,15 +401,15 @@ class MichiganCleaner(StateCleaner):
         """
         for col_name in column_names:
             non_null_values = merged_campaign_dataframe[
-                merged_campaign_dataframe[col_name].notnull()
+                merged_campaign_dataframe[col_name].notna()
             ][col_name]
 
             ids = {value: str(uuid.uuid4()) for value in non_null_values}
 
             # Map the generated UUIDs to a new column in the DataFrame
-            merged_campaign_dataframe[
-                "{}_uuid".format(col_name)
-            ] = merged_campaign_dataframe[col_name].map(ids)
+            merged_campaign_dataframe[f"{col_name}_uuid"] = merged_campaign_dataframe[
+                col_name
+            ].map(ids)
 
         # create transaction ID for each row of the dataframe
         merged_campaign_dataframe["transaction_id"] = [
@@ -378,10 +420,8 @@ class MichiganCleaner(StateCleaner):
 
     def create_tables(
         self, data: list[pd.DataFrame]
-    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-        """
-        Creates the Individuals, Organizations, and Transactions tables from
-        the dataframe list outputted from standardize
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Creates the Individuals, Organizations, and Transactions tables
 
         Inputs:
             data: a list of 1 or 3 dataframes as outputted from standardize method.
@@ -440,8 +480,8 @@ class MichiganCleaner(StateCleaner):
             ignore_index=True,
         )
 
-        if not os.path.exists(output_path.parent):
-            os.makedirs(output_path.parent)
+        if not output_path.parent.exists():
+            output_path.parent.mkdir()
 
         michigan_id_map.to_csv(output_path, index=False)
 
@@ -459,9 +499,7 @@ class MichiganCleaner(StateCleaner):
         individuals = individuals[["year", "full_name_uuid"]].copy()
         candidates = candidates[["year", "candidate_full_name_uuid"]].copy()
 
-        individuals = individuals.rename(
-            columns={"full_name_uuid": "database_id"}
-        )
+        individuals = individuals.rename(columns={"full_name_uuid": "database_id"})
         candidates = candidates.rename(
             columns={"candidate_full_name_uuid": "database_id"}
         )
@@ -496,9 +534,7 @@ class MichiganCleaner(StateCleaner):
         ].copy()
         vendors = vendors[["year", "vend_name_uuid"]].copy()
 
-        corporations = corporations.rename(
-            columns={"full_name_uuid": "database_id"}
-        )
+        corporations = corporations.rename(columns={"full_name_uuid": "database_id"})
         committees = committees.rename(
             columns={
                 "com_legal_name_uuid": "database_id",
@@ -507,9 +543,7 @@ class MichiganCleaner(StateCleaner):
         )
         vendors = vendors.rename(columns={"vend_name_uuid": "database_id"})
 
-        id_mapping = pd.concat(
-            [corporations, committees, vendors], ignore_index=True
-        )
+        id_mapping = pd.concat([corporations, committees, vendors], ignore_index=True)
         id_mapping["state"] = "MI"
         id_mapping["entity_type"] = "Organization"
 
@@ -558,7 +592,7 @@ class MichiganCleaner(StateCleaner):
 
     def filter_dataframe(
         self, merged_campaign_dataframe: pd.DataFrame, column_name: str
-    ):
+    ) -> pd.DataFrame:
         """Filters the inputted dataframe based on the column name
 
         Inputs:
@@ -570,7 +604,7 @@ class MichiganCleaner(StateCleaner):
 
         """
         filtered_df = merged_campaign_dataframe[
-            merged_campaign_dataframe[column_name].notnull()
+            merged_campaign_dataframe[column_name].notna()
         ]
         # returns all the columns and rows associated with the column name
         # that are not null
@@ -581,9 +615,8 @@ class MichiganCleaner(StateCleaner):
 
     def standardize_and_concatenate_individuals(
         self, individuals: pd.DataFrame, candidates: pd.DataFrame
-    ):
-        """Standardizes and concatenates the individual donors and candidates
-            into one dataframe
+    ) -> pd.DataFrame:
+        """Standardizes and concatenates the individuals and candidate dataframes
 
         Inputs:
             individuals: DataFrame with individuals data
@@ -639,9 +672,7 @@ class MichiganCleaner(StateCleaner):
         candidates_df = self.filter_dataframe(
             merged_dataframe, "candidate_full_name_uuid"
         )
-        id_mapping = self.create_individuals_id_mapping(
-            individuals_df, candidates_df
-        )
+        id_mapping = self.create_individuals_id_mapping(individuals_df, candidates_df)
         individuals_df = individuals_df[
             [
                 "full_name_uuid",
@@ -688,8 +719,7 @@ class MichiganCleaner(StateCleaner):
         committees: pd.DataFrame,
         vendors: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Standardizes and concatenates the corporations, committees, and
-        vendors into one dataframe
+        """Standardizes and concatenates the corporations, committees, and vendor dfs
 
         Inputs:
             corporations: dataframe with corporations data
@@ -710,9 +740,7 @@ class MichiganCleaner(StateCleaner):
         committees = committees.rename(
             columns={"com_legal_name_uuid": "id", "com_legal_name": "name"}
         )
-        vendors = vendors.rename(
-            columns={"vend_name_uuid": "id", "vend_name": "name"}
-        )
+        vendors = vendors.rename(columns={"vend_name_uuid": "id", "vend_name": "name"})
 
         organizations = pd.concat(
             [corporations, committees, vendors],
@@ -741,12 +769,8 @@ class MichiganCleaner(StateCleaner):
         merged_dataframe = standardized_dataframe_lst[0]
 
         # contributing corporations have a first name that is null
-        corporations_df = merged_dataframe[
-            merged_dataframe["first_name"].isna()
-        ]
-        committees_df = self.filter_dataframe(
-            merged_dataframe, "com_legal_name_uuid"
-        )
+        corporations_df = merged_dataframe[merged_dataframe["first_name"].isna()]
+        committees_df = self.filter_dataframe(merged_dataframe, "com_legal_name_uuid")
         vendors_df = self.filter_dataframe(merged_dataframe, "vend_name_uuid")
 
         id_mapping = self.create_organizations_id_mapping(
@@ -763,9 +787,7 @@ class MichiganCleaner(StateCleaner):
             corporations_df, committees_df, vendors_df
         )
 
-        organizations_df = organizations_df[
-            ["id", "name", "state", "entity_type"]
-        ]
+        organizations_df = organizations_df[["id", "name", "state", "entity_type"]]
 
         return [organizations_df, id_mapping]
 
@@ -777,8 +799,7 @@ class MichiganCleaner(StateCleaner):
         ind_com: pd.DataFrame,
         com_vend: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Standardizes and concatenates the corporations, committees, and
-        vendors into one dataframe
+        """Standardizes and concatenates the corporations, committees, and vendors dfs
 
         Inputs:
             org_com: dataframe with organizations to committee transactions
@@ -819,8 +840,7 @@ class MichiganCleaner(StateCleaner):
     def create_filtered_transactions_tables(
         self, standardized_dataframe_lst: list[pd.DataFrame]
     ) -> list[pd.DataFrame, pd.DataFrame]:
-        """Creates the Transactions tables from the dataframe list outputted
-        from standardize
+        """Creates the Transactions tables from the dataframe list
 
         Inputs:
             standardized_dataframe_lst: list containing one of dataframes
@@ -904,9 +924,7 @@ class MichiganCleaner(StateCleaner):
     def create_individuals_table(
         self, standardized_dataframe_lst: list[pd.DataFrame]
     ) -> list[pd.DataFrame, pd.DataFrame]:
-        """
-        Creates the Individuals tables from the dataframe list outputted
-        from standardize
+        """Creates the Individuals tables from the dataframe list
 
         Inputs:
             standardized_dataframe_lst: a list of 1 or 3 dataframes as
@@ -925,9 +943,7 @@ class MichiganCleaner(StateCleaner):
     def create_organizations_table(
         self, standardized_dataframe_lst: list[pd.DataFrame]
     ) -> list[pd.DataFrame, pd.DataFrame]:
-        """
-        Creates the Organizations tables from the dataframe list outputted
-        from standardize
+        """Creates the Organizations tables from the dataframe
 
         Inputs:
             standardized_dataframe_lst: a list of 1 or 3 dataframes as
@@ -940,18 +956,14 @@ class MichiganCleaner(StateCleaner):
         (
             organizations_table,
             id_mapping,
-        ) = self.create_filtered_organizations_tables(
-            standardized_dataframe_lst
-        )
+        ) = self.create_filtered_organizations_tables(standardized_dataframe_lst)
 
         return [organizations_table, id_mapping]
 
     def create_transactions_table(
         self, standardized_dataframe_lst: list[pd.DataFrame]
     ) -> list[pd.DataFrame, pd.DataFrame]:
-        """
-        Creates the Transactions tables from the dataframe list outputted
-        from standardize
+        """Creates the Transactions tables from the dataframe list
 
         Inputs:
             standardized_dataframe_lst: a list of 1 or 3 dataframes as

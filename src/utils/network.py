@@ -1,4 +1,7 @@
+"""Buidling, visualizing, and analyzing networks"""
+
 import itertools
+from pathlib import Path
 
 import networkx as nx
 import pandas as pd
@@ -10,8 +13,8 @@ def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
 
     Args:
         uuid: the uuid of the entity
-        List of dfs: dataframes that have a uuid column, and an 'name' or
-        'full_name' column
+        dfs: dataframes that have a uuid column, and an 'name' or
+            'full_name' column
     Return:
         The entity's name
     """
@@ -37,15 +40,14 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     transactions and entity dfs.
 
     Args:
-        list of dataframes in the order: [inds_df, orgs_df, transactions_df]
+        dfs: list of dataframes in the order: [inds_df, orgs_df, transactions_df]
         Transactions dataframe with column: 'recipient_id'
         Individuals dataframe with column: 'full_name'
         Organizations dataframe with column: 'name'
 
-    Returns
+    Returns:
         A merged dataframe with aggregate contribution amounts between entitites
     """
-
     inds_df, orgs_df, transactions_df = dfs
 
     # first update the transactions df to have a recipient name tied to id
@@ -54,16 +56,18 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     )
 
     # next, merge the inds_df and orgs_df ids with the transactions_df donor_id
-    inds_trans_df = pd.merge(
-        inds_df, transactions_df, how="left", left_on="id", right_on="donor_id"
+    inds_trans_df = inds_df.merge(
+        transactions_df, how="left", left_on="id", right_on="donor_id"
     )
     inds_trans_df = inds_trans_df.dropna(subset=["amount"])
-    orgs_trans_df = pd.merge(
-        orgs_df, transactions_df, how="left", left_on="id", right_on="donor_id"
+    orgs_trans_df = orgs_df.merge(
+        transactions_df, how="left", left_on="id", right_on="donor_id"
     )
     orgs_trans_df = orgs_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_trans_df.rename(columns={"name": "full_name"})
 
+    inds_trans_df = inds_trans_df.loc[:, ~inds_trans_df.columns.duplicated()].copy()
+    orgs_trans_df = orgs_trans_df.loc[:, ~orgs_trans_df.columns.duplicated()].copy()
     # concatenated the merged dfs
     merged_df = pd.concat([orgs_trans_df, inds_trans_df])
 
@@ -75,9 +79,7 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
         col: "sum" if col == "amount" else "first" for col in attribute_cols
     }
     aggreg_df = (
-        merged_df.groupby(
-            ["donor_id", "recipient_id", "full_name", "recipient_name"]
-        )
+        merged_df.groupby(["donor_id", "recipient_id", "full_name", "recipient_name"])
         .agg(agg_functions)
         .reset_index()
     )
@@ -86,8 +88,7 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
 
 
 def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
-    """Takes in a dataframe and generates a MultiDiGraph where the nodes are
-    entity names, and the rest of the dataframe columns make the node attributes
+    """Creates network with entities as nodes, transactions as edges
 
     Args:
         df: a pandas dataframe with merged information from the inds, orgs, &
@@ -123,19 +124,18 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
-def plot_network_graph(G: nx.MultiDiGraph):
-    """Given a networkX Graph, creates a plotly visualization of the nodes and
-    edges
+def plot_network_graph(G: nx.MultiDiGraph) -> None:
+    """Creates a plotly visualization of the nodes and edges
 
     Args:
-        A networkX MultiDiGraph with edges including the attribute 'amount'
+        G: A networkX MultiDiGraph with edges including the attribute 'amount'
 
     Returns: None. Creates a plotly graph
     """
     edge_trace = go.Scatter(
         x=(),
         y=(),
-        line=dict(color="#888", width=1.5),
+        line={"color": "#888", "width": 1.5},
         hoverinfo="text",
         mode="lines+markers",
     )
@@ -157,9 +157,12 @@ def plot_network_graph(G: nx.MultiDiGraph):
     edge_trace["hovertext"] = hovertext
 
     # Define arrow symbol for edges
-    edge_trace["marker"] = dict(
-        symbol="arrow", color="#888", size=10, angleref="previous"
-    )
+    edge_trace["marker"] = {
+        "symbol": "arrow",
+        "color": "#888",
+        "size": 10,
+        "angleref": "previous",
+    }
 
     node_trace = go.Scatter(
         x=[],
@@ -167,7 +170,7 @@ def plot_network_graph(G: nx.MultiDiGraph):
         text=[],
         mode="markers",
         hoverinfo="text",
-        marker=dict(showscale=True, colorscale="YlGnBu", size=10),
+        marker={"showscale": True, "colorscale": "YlGnBu", "size": 10},
     )
     node_trace["marker"]["color"] = []
 
@@ -175,7 +178,7 @@ def plot_network_graph(G: nx.MultiDiGraph):
         node_info = f"Name: {node}<br>"
         for key, value in G.nodes[node].items():
             node_info += f"{key}: {value}<br>"
-        node_trace["text"] += tuple([node_info])
+        node_trace["text"] += ([node_info],)
         # Get the classification value for the node
         classification = G.nodes[node].get("classification", "neutral")
         # Assign a color based on the classification value
@@ -185,21 +188,21 @@ def plot_network_graph(G: nx.MultiDiGraph):
             color = "red"
         else:
             color = "green"  # Default color for unknown classification
-        node_trace["marker"]["color"] += tuple([color])
+        node_trace["marker"]["color"] += ([color],)
 
         # Add node positions to the trace
-        node_trace["x"] += tuple([pos[node][0]])
-        node_trace["y"] += tuple([pos[node][1]])
+        node_trace["x"] += ([pos[node][0]],)
+        node_trace["y"] += ([pos[node][1]],)
 
     # Define layout settings
     layout = go.Layout(
         title="Network Graph Indicating Campaign Contributions from 2018-2022",
-        titlefont=dict(size=16),
+        titlefont={"size": 16},
         showlegend=True,
         hovermode="closest",
-        margin=dict(b=20, l=5, r=5, t=40),
-        xaxis=dict(showgrid=True, zeroline=True, showticklabels=False),
-        yaxis=dict(showgrid=True, zeroline=True, showticklabels=False),
+        margin={"b": 20, "l": 5, "r": 5, "t": 40},
+        xaxis={"showgrid": True, "zeroline": True, "showticklabels": False},
+        yaxis={"showgrid": True, "zeroline": True, "showticklabels": False},
     )
 
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
@@ -207,20 +210,15 @@ def plot_network_graph(G: nx.MultiDiGraph):
 
 
 def network_metrics(net_graph: nx.Graph) -> None:
-    """Given a network graph, return a text files with list of nodes
-    with greatest calculated centrality
-
+    """Output network metrics to txt files
 
     Args:
         net_graph: network graph as defined by networkx
-
 
     Returns:
         a text file with list of nodes with greatest calculated
         centrality for each metric: in degree, out degree,
         eigenvector, and betweenness
-
-
     """
     in_degree = nx.in_degree_centrality(
         net_graph
@@ -237,15 +235,9 @@ def network_metrics(net_graph: nx.Graph) -> None:
 
     # sort + truncate dictionaries to 50 nodes with greatest centrality
     in_degree = sorted(in_degree.items(), key=lambda x: x[1], reverse=True)[:50]
-    out_degree = sorted(out_degree.items(), key=lambda x: x[1], reverse=True)[
-        :50
-    ]
-    eigenvector = sorted(eigenvector.items(), key=lambda x: x[1], reverse=True)[
-        :50
-    ]
-    betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[
-        :50
-    ]
+    out_degree = sorted(out_degree.items(), key=lambda x: x[1], reverse=True)[:50]
+    eigenvector = sorted(eigenvector.items(), key=lambda x: x[1], reverse=True)[:50]
+    betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:50]
 
     assortativity = nx.attribute_assortativity_coefficient(
         net_graph, "classification"
@@ -253,9 +245,7 @@ def network_metrics(net_graph: nx.Graph) -> None:
 
     num_nodes = len(net_graph.nodes())
     num_edges = len(net_graph.edges())
-    density = num_edges / (
-        num_nodes * (num_nodes - 1)
-    )  # calculates density of graph
+    density = num_edges / (num_nodes * (num_nodes - 1))  # calculates density of graph
 
     k = 5
     comp = nx.community.girvan_newman(net_graph)
@@ -265,15 +255,13 @@ def network_metrics(net_graph: nx.Graph) -> None:
         )  # creates clusters of nodes with high interactions where granularity = 5
     communities = sorted(communities, key=len, reverse=True)
 
-    with open("output/network_metrics.txt", "w") as file:
+    with Path("output/network_metrics.txt").open("w") as file:
         file.write(f"in degree centrality: {in_degree}\n")
         file.write(f"out degree centrality: {out_degree}\n")
         file.write(f"eigenvector centrality: {eigenvector}\n")
         file.write(f"betweenness centrality: {betweenness}\n\n")
 
-        file.write(
-            f"assortativity based on 'classification': {assortativity}\n\n"
-        )
+        file.write(f"assortativity based on 'classification': {assortativity}\n\n")
 
         file.write(f"density': {density}\n\n")
 
@@ -282,13 +270,12 @@ def network_metrics(net_graph: nx.Graph) -> None:
 
 def construct_network_graph(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
-):
-    """Runs the network construction pipeline starting from 3 dataframes and
-    creates a network metrics file, plots a network graph, and creates a file
-    with a network adjacency matrix
+) -> None:
+    """Runs the network construction pipeline starting from 3 dataframes
 
     Args:
-        start_year & end_year: the range of the desired data
+        start_year: the end range of the desired data
+        end_year: the end range of the desired data
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
 
     Returns:
@@ -296,13 +283,11 @@ def construct_network_graph(
     """
     inds_df, orgs_df, transactions_df = dfs
     transactions_df = transactions_df.loc[
-        (transactions_df.year >= start_year)
-        & (transactions_df.year <= end_year)
+        (transactions_df.year >= start_year) & (transactions_df.year <= end_year)
     ]
 
-    aggreg_df = combine_datasets_for_network_graph(
-        [inds_df, orgs_df, transactions_df]
-    )
+    aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
     G = create_network_graph(aggreg_df)
     network_metrics(G)
+    plot_network_graph(G)
     plot_network_graph(G)

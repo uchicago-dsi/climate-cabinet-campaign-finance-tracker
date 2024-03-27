@@ -1,0 +1,6 @@
+# add commits that are only formatting changes
+# to configure locally for git blame, run:
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# migrate code style to ruff
+7313695f4c091a3943d17a0abea351987cc02eb6
