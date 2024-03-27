@@ -1,11 +1,10 @@
 # development tools
-flake8~=6.1
-flake8-bugbear~=23.11
-black~=23.11
+ruff
 pre-commit~=3.5
 pytest~=7.4
 coverage~=7.3
 ipykernel~=6.16
+setuptools>=64.0.0
 
 # project packages
 plotly~=5.17.0
@@ -20,8 +19,7 @@ setuptools==68.0.0
 textdistance==4.6.1
 usaddress==0.5.4
 nameparser==1.1.3
-names-dataset==3.1.0
-networkx~=3.1
+#names-dataset==3.1.0
 networkx~=3.1
 splink==3.9.12
-names-dataset==3.1.0
+scipy

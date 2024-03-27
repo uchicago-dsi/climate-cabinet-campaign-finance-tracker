@@ -1,4 +1,5 @@
 ,id,first_name,last_name,full_name,entity_type,state,party,company,occupation,address,zip,city
+7,4a7e3ab5-0f25-4bec-88ed-f0c9cfc60551,,,"alston, lela",candidate,AZ,democratic,none (is a candidate),,,,
 570163,c9c352fc-6b87-4ec6-b28b-41bc6a1bc139,DRAKE               ,BROWN                               ,drake                brown                               ,Individual,MI,,,,1331 WOODLAND SPRINGS DR.,48843-0000,HOWELL              
 543683,8f9dd7d8-b8a2-4827-b9fc-30c9e2b44bd9,STEPHEN C.          ,BROWNELLE                           ,stephen c.           brownelle                           ,Individual,MI,,kirklin company,vp sales engineering,306  PROVENCAL RD,48236-0000,GROSSE POINTE FARMS 
 98688,0c627c49-d28f-4aba-850c-58b17a7f619c,WILLIAM             ,EYRING                              ,william              eyring                              ,Individual,KY,,,,2001 ALEXANDER AVE,42303-1145,OWENSBORO           
@@ -1295,7 +1296,6 @@
 332797,adebe497-b83b-4c59-9a42-fe550cfb38c9,MARY TERESA         ,GAVIGAN                             ,mary teresa          gavigan                             ,Individual,PA,,,,239 S HUTCHINSON ST APT B,19107-5730,PHILADELPHIA        
 284714,cda7082f-1599-4624-a8fd-b3fa00f2ce38,OK                  ,RUTSKY                              ,ok                   rutsky                              ,Individual,FL,,,,3651SW47AVE,33023-0000,WEST PARK           
 49726,4ba5045c-683c-4786-b363-bb8f6ecdcf87,TIFFANY             ,REINHARDT ^                         ,tiffany              reinhardt ^                         ,Individual,MI,,,,528 GLADSTONE SE,49506-0000,GRAND RAPIDS        
-7,4a7e3ab5-0f25-4bec-88ed-f0c9cfc60551,,,"alston, lela",candidate,AZ,democratic,none (is a candidate),,,,
 205386,5dcd82e4-63ac-4e22-be6e-8384795efdd1,KYLE                ,LADY                                ,kyle                 lady                                ,Individual,MI,,,,618 S MAIN ST APT 629,48104-3186,ANN ARBOR           
 482140,0b97f26d-5bc7-4ec7-b43c-a8146875d891,DAVID M             ,BOUTHILLIER                         ,david m              bouthillier                         ,Individual,PA,,,,2306 HOBSON RD APT C,17602-0000,LANCASTER           
 90746,ae9280e1-8a00-488a-839f-a26b069e5030,DEB                 ,WEILER ^                            ,deb                  weiler ^                            ,Individual,MI,,,,2356 N SHAYTOWN RD,49096-0000,VERMONTVILLE        
@@ -4383,7 +4383,7 @@
 223278,031f3d1d-95b6-4f62-bb0b-b2ec4719e862,JOEL                ,BROCKMAN                            ,joel                 brockman                            ,Individual,CA,,,,246 OLYMPIAN WAY,94044-3955,PACIFICA            
 121234,27ff8d29-777a-4c5b-8417-4cc2fb9d0bb8,MARK                ,MEIER MR.^                          ,mark                 meier mr.^                          ,Individual,MI,,,,12982 LAPLAISANCE WOODS,48145-0000,LA SALLE            
 301334,d5658ca3-31e2-41a6-b6bd-158b8a4256d5,BENJAMIN            ,HOWLETT                             ,benjamin             howlett                             ,Individual,MI,,howlett lock and door,owner,1933 SWARTHOUT RD,48169-0000,PINCKNEY            
-26297,46c23b10-c200-432a-a810-c812a0e4e676,CURTIS              ,CREIGHTON                           ,curtis               creighton                           ,Individual,MI,,grand rapids police,police officer,01 MONROE CN NW,49503-0000,GRAND RAPIDS        
+26297,46c23b10-c200-432a-a810-c812a0e4e676,CURTIS              ,CREIGHTON                           ,curtis               creighton                           ,Individual,MI,DELETE,grand rapids police,police officer,01 MONROE CN NW,49503-0000,GRAND RAPIDS        
 222237,199800ca-93c5-4270-a36f-ad1780df954d,SARAH               ,MCBRIDE                             ,sarah                mcbride                             ,Individual,MA,,,,446 MAIN ST,01720-3810,ACTON               
 106253,3bcaabb9-cc40-421c-b6a5-2b176229c391,BARBARA             ,SERVE                               ,barbara              serve                               ,Individual,OH,,,,6224 NATIONAL RD SW,43062-9032,PATASKALA           
 656287,c1c2e0f2-0935-4474-aca2-56e4846b8e2b,VIVIENNE            ,COURSEAULT                          ,vivienne             courseault                          ,Individual,FL,,,,2446 WATTLE TREE RD W,32246-2455,JACKSONVILLE        

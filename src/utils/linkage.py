@@ -1,16 +1,16 @@
-import os.path
+"""Module for performing record linkage on state campaign finance dataset"""
+
+import math
 import re
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
+import textdistance as td
 import usaddress
 from splink.duckdb.linker import DuckDBLinker
 
-from utils.constants import COMPANY_TYPES, repo_root, suffixes, titles
-
-"""
-Module for performing record linkage on state campaign finance dataset
-"""
+from utils.constants import BASE_FILEPATH, COMPANY_TYPES, suffixes, titles
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -39,7 +39,6 @@ def get_address_line_1_from_full_address(address: str) -> str:
     ... )
     '1415 PARKER STREET'
     """
-
     address_tuples = usaddress.parse(
         address
     )  # takes a string address and put them into value, key pairs as tuples
@@ -60,9 +59,166 @@ def get_address_line_1_from_full_address(address: str) -> str:
     return line1
 
 
+def calculate_string_similarity(string1: str, string2: str) -> float:
+    """Returns how similar two strings are on a scale of 0 to 1
+
+    This version utilizes Jaro-Winkler distance, which is a metric of
+    edit distance. Jaro-Winkler specially prioritizes the early
+    characters in a string.
+
+    Since the ends of strings are often more valuable in matching names
+    and addresses, we reverse the strings before matching them.
+
+    https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance
+    https://github.com/Yomguithereal/talisman/blob/master/src/metrics/jaro-winkler.js
+
+    The exact meaning of the metric is open, but the following must hold true:
+    1. equivalent strings must return 1
+    2. strings with no similar characters must return 0
+    3. strings with higher intuitive similarity must return higher scores
+    similarity score
+
+    Args:
+        string1: any string
+        string2: any string
+    Returns:
+        similarity score
+
+    Sample Usage:
+    >>> calculate_string_similarity("exact match", "exact match")
+    1.0
+    >>> calculate_string_similarity("aaaaaa", "bbbbbbbbbbb")
+    0.0
+    >>> similar_score = calculate_string_similarity("very similar", "vary similar")
+    >>> different_score = calculate_string_similarity("very similar", "very not close")
+    >>> similar_score > different_score
+    True
+    """
+    return float(td.jaro_winkler(string1.lower()[::-1], string2.lower()[::-1]))
+
+
+def calculate_row_similarity(
+    row1: pd.DataFrame, row2: pd.DataFrame, weights: np.array, comparison_func: Callable
+) -> float:
+    """Find weighted similarity of two rows in a dataframe
+
+    The length of the weights vector must be the same as
+    the number of selected columns.
+
+    This version is slow and not optimized, and will be
+    revised in order to make it more efficient. It
+    exists as to provide basic functionality. Once we have
+    the comparison function locked in, using .apply will
+    likely be easier and more efficient.
+    """
+    row_length = len(weights)
+    if not (row1.shape[1] == row2.shape[1] == row_length):
+        raise ValueError("Number of columns and weights must be the same")
+
+    similarity = np.zeros(row_length)
+
+    for i in range(row_length):
+        similarity[i] = comparison_func(
+            row1.reset_index().drop(columns="index").iloc[:, i][0],
+            row2.reset_index().drop(columns="index").iloc[:, i][0],
+        )
+
+    return sum(similarity * weights)
+
+
+def row_matches(
+    df: pd.DataFrame, weights: np.array, threshold: float, comparison_func: Callable
+) -> dict:
+    """Get weighted similarity score of two rows
+
+    Run through the rows using indices: if two rows have a comparison score
+    greater than a threshold, we assign the later row to the former. Any
+    row which is matched to any other row is not examined again. Matches are
+    stored in a dictionary object, with each index appearing no more than once.
+
+    This is not optimized. Not presently sure how to make a good test case
+    for this, will submit and ask in mentor session.
+    """
+    all_indices = np.array(list(df.index))
+
+    index_dict = {}
+    [index_dict.setdefault(x, []) for x in all_indices]
+
+    discard_indices = []
+
+    end = max(all_indices)
+    for i in all_indices:
+        # Skip indices that have been stored in the discard_indices list
+        if i in discard_indices:
+            continue
+
+        # Iterate through the remaining numbers
+        for j in range(i + 1, end):
+            if j in discard_indices:
+                continue
+
+            # Our conditional
+            if (
+                calculate_row_similarity(
+                    df.iloc[[i]], df.iloc[[j]], weights, comparison_func
+                )
+                > threshold
+            ):
+                # Store the other index and mark it for skipping in future iterations
+                discard_indices.append(j)
+                index_dict[i].append(j)
+
+    return index_dict
+
+
+def match_confidence(
+    confidences: np.ndarray, weights: np.ndarray, weights_toggle: bool
+) -> float:
+    """Combine confidences for row matches into a final confidence
+
+    This is a weighted log-odds based combination of row match confidences
+    originating from various record linkage methods. Weights will be applied
+    to the linkage methods in order and must be of the same length.
+
+    weights_toggle allows one to turn weights on and off when calling the
+    function. False cancels the use of weights.
+
+    Since log-odds have undesirable behaviors at 0 and 1, we truncate at
+    +-5, which corresponds to around half a percent probability or
+    1 - the same.
+    >>> match_confidence(np.array([.6, .9, .0001]), np.array([2,5.7,8]), True)
+    2.627759082143462e-12
+    >>> match_confidence(np.array([.6, .9, .0001]), np.array([2,5.7,8]), False)
+    0.08337802853594725
+    """
+    if (min(confidences) < 0) or (max(confidences) > 1):
+        raise ValueError("Probabilities must be bounded on [0, 1]")
+
+    log_odds = []
+    max_logit = 5
+
+    for c in confidences:
+        logit = np.log(c / (1 - c))
+
+        if logit > max_logit:
+            logit = max
+
+        elif logit < -max_logit:
+            logit = -max_logit
+
+        log_odds.append(logit)
+
+    if weights_toggle:
+        log_odds = log_odds * weights
+
+    l_o_sum = np.sum(log_odds)
+
+    conf_sum = math.e ** (l_o_sum) / (1 + math.e ** (l_o_sum))
+    return conf_sum
+
+
 def determine_comma_role(name: str) -> str:
-    """Given a string (someone's name), attempts to determine the role of the
-    comma in the name and where it ought to belong.
+    """Given a name, determine purpose of comma ("last, first", "first last, jr.", etc)
 
     Some assumptions are made:
         * If a suffix is included in the name and the name is not just the last
@@ -86,7 +242,6 @@ def determine_comma_role(name: str) -> str:
     >>> determine_comma_role("DOe, Jane")
     ' Jane Doe'
     """
-
     name_parts = name.lower().split(",")
     # if the comma is just in the end as a typo:
     if len(name_parts[1]) == 0:
@@ -136,14 +291,14 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     >>> get_likely_name("Jane","","Doe, Jane, Elisabeth")
     'Jane Elisabeth Doe'
     """
-    # first, convert any NaNs to empty strings ''
-    first_name, last_name, full_name = [
+    # first, convert any Nans to empty strings ''
+    first_name, last_name, full_name = (
         "" if x is np.NAN else x for x in [first_name, last_name, full_name]
-    ]
+    )
 
     # second, ensure clean input by deleting spaces:
-    first_name, last_name, full_name = list(
-        map(lambda x: x.lower().strip(), [first_name, last_name, full_name])
+    first_name, last_name, full_name = (
+        x.lower().strip() for x in [first_name, last_name, full_name]
     )
 
     # if data is clean:
@@ -159,9 +314,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
             names[i] = determine_comma_role(names[i])
 
         names[i] = names[i].replace(".", "").split(" ")
-        names[i] = [
-            name_part for name_part in names[i] if name_part not in titles
-        ]
+        names[i] = [name_part for name_part in names[i] if name_part not in titles]
         names[i] = " ".join(names[i])
 
     # one last check to remove any pieces that might add extra whitespace
@@ -222,30 +375,29 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(string)
 
 
-def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
-    """For each uuid, maps it to all other uuids for which it has been deemed a
-    match.
+def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
+    """Map each uuid to all other uuids for which it has been deemed a match
 
     Given a dataframe where the uuids of all rows deemed similar are stored in a
     list and all but the first row of each paired uuid is dropped, this function
     maps the matched uuids to a single uuid.
 
     Args:
-        A pandas df containing a column called 'duplicated', where each row is a
-        list of all uuids deemed a match. In each list, all uuids but the first
-        have their rows already dropped.
+        df_with_matches: A pandas df containing a column called 'duplicated',
+            where each row is a list of all uuids deemed a match. In each list,
+            all uuids but the first have their rows already dropped.
 
-    Returns
+    Returns:
         None. However it outputs a file to the output directory, with 2
         columns. The first lists all the uuids in df, and is labeled
         'original_uuids.' The 2nd shows the uuids to which each entry is mapped
         to, and is labeled 'mapped_uuids'.
     """
     deduped_dict = {}
-    for i in range(len(df)):
-        deduped_uudis = df.iloc[i]["duplicated"]
+    for i in range(len(df_with_matches)):
+        deduped_uudis = df_with_matches.iloc[i]["duplicated"]
         for j in range(len(deduped_uudis)):
-            deduped_dict.update({deduped_uudis[j]: df.iloc[i]["id"]})
+            deduped_dict.update({deduped_uudis[j]: df_with_matches.iloc[i]["id"]})
 
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
@@ -253,10 +405,9 @@ def convert_duplicates_to_dict(df: pd.DataFrame) -> None:
         columns={"index": "original_uuids", 0: "mapped_uuid"}
     )
     deduped_df.to_csv(
-        repo_root / "output" / "deduplicated_UUIDs.csv",
+        BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv",
         index=False,
         mode="a",
-        header=not os.path.exists("../output/deduplicated_UUIDs.csv"),
     )
 
 
@@ -269,7 +420,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
     first selected UUID.
 
     Args:
-        a pandas dataframe containing contribution data
+        df: a pandas dataframe containing contribution data
     Returns:
         a deduplicated pandas dataframe containing contribution data
     """
@@ -278,9 +429,7 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # find the duplicates along all columns but the id
     new_df = (
-        new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)[
-            "id"
-        ]
+        new_df.groupby(df.columns.difference(["id"]).tolist(), dropna=False)["id"]
         .agg(list)
         .reset_index()
         .rename(columns={"id": "duplicated"})
@@ -296,12 +445,10 @@ def deduplicate_perfect_matches(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def cleaning_company_column(company_entry: str) -> str:
-    """
-    Given a string, check if it contains a variation of self employed,
-    unemployed, or retired and return the standardized version.
+    """Check if string contains abbreviation of common employment state
 
     Args:
-        company: string of inputted company names
+        company_entry: string of inputted company names
     Returns:
         standardized for retired, self employed, and unemployed,
         or original string if no match or empty string
@@ -316,7 +463,6 @@ def cleaning_company_column(company_entry: str) -> str:
     >>> cleaning_company_column("N/A")
     'Unemployed'
     """
-
     if not company_entry:
         return company_entry
 
@@ -373,7 +519,6 @@ def standardize_corp_names(company_name: str) -> str:
     'STEPHANIES CHANGEMAKER FUND'
 
     """
-
     company_name_split = company_name.upper().split(" ")
 
     for i in range(len(company_name_split)):
@@ -409,7 +554,6 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     ... )
     '1415'
     """
-
     address_line_1_components = usaddress.parse(address_line_1)
 
     for i in range(len(address_line_1_components)):
@@ -420,11 +564,8 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     raise ValueError("Cannot find Address Number")
 
 
-def splink_dedupe(
-    df: pd.DataFrame, settings: dict, blocking: list
-) -> pd.DataFrame:
-    """Given a dataframe and config settings, return a
-    deduplicated dataframe
+def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
+    """Use splink to deduplicate dataframe based on settings
 
     Configuration settings and blocking can be found in constants.py as
     individuals_settings, indivduals_blocking, organizations_settings,
@@ -441,10 +582,10 @@ def splink_dedupe(
             (based on splink documentation and dataframe columns)
         blocking: list of columns to block on for the table
             (cuts dataframe into parts based on columns labeled blocks)
+
     Returns:
         deduplicated version of initial dataframe with column 'matching_id'
         that holds list of matching unique_ids
-
     """
     linker = DuckDBLinker(df, settings)
     linker.estimate_probability_two_random_records_match(
@@ -464,14 +605,13 @@ def splink_dedupe(
     match_list_df = (
         clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
     )  # dataframe where cluster_id maps unique_id to initial instance of row
-    match_list_df.rename(columns={"unique_id": "duplicated"}, inplace=True)
+    match_list_df = match_list_df.rename(columns={"unique_id": "duplicated"})
 
     first_instance_df = clusters_df.drop_duplicates(subset="cluster_id")
     col_names = np.append("cluster_id", df.columns)
     first_instance_df = first_instance_df[col_names]
 
-    deduped_df = pd.merge(
-        first_instance_df,
+    deduped_df = first_instance_df.merge(
         match_list_df[["cluster_id", "duplicated"]],
         on="cluster_id",
         how="left",

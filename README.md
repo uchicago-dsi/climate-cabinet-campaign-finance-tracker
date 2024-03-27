@@ -1,53 +1,35 @@
-# 2024-winter-clinic-climate-cabinet
+# Climate Cabinet Campaign Finance Tracker
 
-## Data Science Clinic Project Goals
+## Process
 
-1. Collect state's political campaign finance report data which should include
-recipient information, donor information, and transaction information.
-2. Preprocess, clean, and standardize the collected raw data across 4 states
-by implementing state cleaner abstract class
-3. Conduct Exploratory Data Analysis, facilitate the examination of
-the conribution made by green energy company versus that by fossil
-fuel company in terms of state's political campaign activity
+1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
+2. Transform: Define database schema for storing transaction and entity information and write code to transform and validate raw data to fit appropriate schema.
+3. Clean: Perform record linkage and fix likely data entry errors.
+4. Classify: Label all entities as fossil fuel, clean energy, or other
+5. Graph: Construct a network graph of campaign finance contributions
+6. Analyze: Perform analysis on network data and join with other relevant dataset
 
 
-## Usage
-
-### Docker
-
-### Docker & Make
-
-We use `docker` and `make` to run our code. There are three built-in `make` commands:
-
-* `make build-only`: This will build the image only. It is useful for testing and making changes to the Dockerfile.
-* `make run-notebooks`: This will run a jupyter server which also mounts the current directory into `\program`.
-* `make run-interactive`: This will create a container (with the current directory mounted as `\program`) and loads an interactive session. 
-
-The file `Makefile` contains information about about the specific commands that are run using when calling each `make` statement.
-
-### Developing inside a container with VS Code
-
-If you prefer to develop inside a container with VS Code then do the following steps. Note that this works with both regular scripts as well as jupyter notebooks.
-
-1. Open the repository in VS Code
-2. At the bottom right a window may appear that says `Folder contains a Dev Container configuration file...`. If it does, select, `Reopen in Container` and you are done. Otherwise proceed to next step. 
-3. Click the blue or green rectangle in the bottom left of VS code (should say something like `><` or `>< WSL`). Options should appear in the top center of your screen. Select `Reopen in Container`.
-
+## Setup
 
 ### Data Collection and Standardization Pipeline
 1. Collect the data through **<span style="color: red;">one</span>** of the steps below
     a. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN) OR
-    b. Go to the [Project's Google Drive]('https://drive.google.com/drive/u/2/folders/1HUbOU0KRZy85mep2SHMU48qUQ1ZOSNce') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
-2. Open in development container which installs all necessary packages.
-3. Run the project by running ```python utils/pipeline.py``` or ```python3 utils/pipeline.py``` run the processing pipeline that cleans, standardizes, and creates the individuals, organizations, and transactions concatenated into one comprehensive database.
-5. Running ```pipeline.py``` returns the tables to the output folder as csv files containing the complete individuals, organizations, and transactions DataFrames combining the AZ, MI, MN, and PA datasets.
-6. For future reference, the above pipeline also stores the information mapping given id to our database id (generated via uuid) in a csv file in the format of (state)IDMap.csv (example: ArizonaIDMap.csv) in the output folder
+    b. Go to the [Project's Google Drive]('https://drive.google.com/file/d/1fazviLqQWOXDVkP8NR80tO522lsIu5-H/view?usp=drive_link') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
+2. Run `pip install -r requirements.txt` and `pip install -e .` if not in Docker (not recommended for development)
 
-### Record Linkage and Network Pipeline
-1. Save the standardized tables "complete_individuals.csv", "complete_organizations.csv", and "complete_transactions.csv" (collected from the above pipeline or data from the project's Google Drive at https://drive.google.com/file/d/1Jx-ElbzeW5g5byyRB6jQe2JesLep3AaH/view?usp=sharing) in the following format: repo_root / "data" / "file"
-2. Run the pipeline by calling ```make run-linkage-and-network_pipeline```. This pipeline will perform conservative record linkage, attempt to classify entities as neutral, fossil fuels, or clean energy, convert the standardized tables into a NetworkX Graph, and show an interactive network visual.
-3. The pipeline will output the deduplicated tables saved as "cleaned_individuals_table.csv", "cleaned_organizations_table.csv", and "cleaned_transactions_table.csv". A mapping file, "deduplicated_UUIDs" tracks the UUIDs designated as duplicates. The pipeline will also output "Network Graph Node Data", 
-  which is the NetworkX Graph object converted into an adjecency list. Finally the pipeline will create a file called 'network_metrics.txt' which holds the summary statistics we extrapolated from the network including measures of centrality, connectedness, and communites.
+
+## Usage
+
+The main components of the package are broken up into subpackages which can be imported and used in external code. To run pipelines directly you can use the scripts in the `scripts` directory. These scripts have been dockerized already and can be run simply using `make` commands.
+
+- `make run-transform-pipeline`: This runs the pipeline to transform raw data from each state into the appropriate schema. 
+  - Expects there to be a folder for each state in a `data/raw` folder. Follow setup instructions to get data. 
+- `make run-clean-classify-graph-pipeline`: This runs the pipeline to clean, classify, and graph data that is already in the correct schema. 
+  - Expects there to be an `inds_mini.csv`, `orgs_mini.csv`, and `trans_mini.csv` in a `data/transformed` directory (should be in git by default) 
+
+For developing, please use either a Docker dev container or slurm computer cluster. See more details in `CONTRIBUTING.md`
+
 
 ## Repository Structure
 
@@ -66,7 +48,7 @@ If the data is larger than 50MB than you should not add it to the repo and inste
 This [README.md file](/data/README.md) should be kept up to date.
 
 ### output
-This folder is empty by default. The final outputs of the Makefile will be placed here, consisting of a NetworkX Graph object and a txt file containing graph metrics. 
+This folder is empty by default. The final outputs of make commands will be placed here by default.
 
 
 
@@ -86,3 +68,6 @@ Student Email: npashilkar@uchicago.edu
 
 Student Name: Bhavya Pandey    
 Student Email: bhavyapandey@uchicago.edu
+
+Student Name: Kaya Lee
+Student Email: klee2024@uchicago.edu
