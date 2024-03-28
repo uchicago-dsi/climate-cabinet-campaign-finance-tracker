@@ -150,10 +150,12 @@ def preprocess_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
 
     transactions["purpose"] = transactions["purpose"].str.upper()
 
-    deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
-    transactions[["donor_id", "recipient_id"]] = transactions[
-        ["donor_id", "recipient_id"]
-    ].replace(deduped)
+    deduplicated_uuid_path = BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv"
+    if deduplicated_uuid_path.exists():
+        deduped = pd.read_csv(BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv")
+        transactions[["donor_id", "recipient_id"]] = transactions[
+            ["donor_id", "recipient_id"]
+        ].replace(deduped)
 
     return transactions
 
