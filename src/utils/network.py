@@ -32,6 +32,7 @@ def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
 
 
 def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
+    ## look at this more closesly and refactor...
     """Combines the 3 dataframes into a single dataframe to create a graph
 
     Given 3 dataframes, the func adds a 'recipient_name' column in the
@@ -112,6 +113,7 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
         # add node attributes based on the columns relevant to the entity
         G.add_node(
             row["full_name"],
+            ## this is a little confusing... document some more
             **row[df.columns.difference(edge_columns)].dropna().to_dict(),
         )
         # add the recipient as a node
@@ -140,6 +142,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
         mode="lines+markers",
     )
     hovertext = []
+    ## what is pos?
     pos = nx.spring_layout(G)
 
     for edge in G.edges(data=True):
@@ -157,6 +160,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
     edge_trace["hovertext"] = hovertext
 
     # Define arrow symbol for edges
+    ## understand difference between edge_trace and node_trace
     edge_trace["marker"] = {
         "symbol": "arrow",
         "color": "#888",
@@ -172,14 +176,17 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
         hoverinfo="text",
         marker={"showscale": True, "colorscale": "YlGnBu", "size": 10},
     )
+    ## what does this do?
     node_trace["marker"]["color"] = []
 
     for node in G.nodes():
         node_info = f"Name: {node}<br>"
+        # rename key, value to be more descriptive
         for key, value in G.nodes[node].items():
             node_info += f"{key}: {value}<br>"
         node_trace["text"] += ([node_info],)
         # Get the classification value for the node
+        ## what are the classification values?
         classification = G.nodes[node].get("classification", "neutral")
         # Assign a color based on the classification value
         if classification == "c":
@@ -247,6 +254,7 @@ def network_metrics(net_graph: nx.Graph) -> None:
     num_edges = len(net_graph.edges())
     density = num_edges / (num_nodes * (num_nodes - 1))  # calculates density of graph
 
+    ## document this part further...
     k = 5
     comp = nx.community.girvan_newman(net_graph)
     for communities in itertools.islice(comp, k):
