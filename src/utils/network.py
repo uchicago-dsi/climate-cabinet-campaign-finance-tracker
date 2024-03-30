@@ -32,7 +32,6 @@ def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
 
 
 def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
-    ## look at this more closesly and refactor...
     """Combines the 3 dataframes into a single dataframe to create a graph
 
     Given 3 dataframes, the func adds a 'recipient_name' column in the
@@ -60,10 +59,12 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     inds_trans_df = inds_df.merge(
         transactions_df, how="left", left_on="id", right_on="donor_id"
     )
+
     inds_trans_df = inds_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_df.merge(
         transactions_df, how="left", left_on="id", right_on="donor_id"
     )
+
     orgs_trans_df = orgs_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_trans_df.rename(columns={"name": "full_name"})
 
@@ -113,7 +114,6 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
         # add node attributes based on the columns relevant to the entity
         G.add_node(
             row["full_name"],
-            ## this is a little confusing... document some more
             **row[df.columns.difference(edge_columns)].dropna().to_dict(),
         )
         # add the recipient as a node
@@ -126,11 +126,14 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
-def plot_network_graph(G: nx.MultiDiGraph) -> None:
+### added argument for start and end year if we get updated data
+def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
     """Creates a plotly visualization of the nodes and edges
 
     Args:
         G: A networkX MultiDiGraph with edges including the attribute 'amount'
+        start_year: the start range of the desired data, used in graph title
+        end_year: the end range of the desired data, used in graph title
 
     Returns: None. Creates a plotly graph
     """
@@ -176,7 +179,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
         hoverinfo="text",
         marker={"showscale": True, "colorscale": "YlGnBu", "size": 10},
     )
-    ## what does this do?
+
     node_trace["marker"]["color"] = []
 
     for node in G.nodes():
@@ -203,7 +206,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
 
     # Define layout settings
     layout = go.Layout(
-        title="Network Graph Indicating Campaign Contributions from 2018-2022",
+        title=f"Network Graph Indicating Campaign Contributions from {start_year}-{end_year}",
         titlefont={"size": 16},
         showlegend=True,
         hovermode="closest",
@@ -254,7 +257,6 @@ def network_metrics(net_graph: nx.Graph) -> None:
     num_edges = len(net_graph.edges())
     density = num_edges / (num_nodes * (num_nodes - 1))  # calculates density of graph
 
-    ## document this part further...
     k = 5
     comp = nx.community.girvan_newman(net_graph)
     for communities in itertools.islice(comp, k):
@@ -276,13 +278,15 @@ def network_metrics(net_graph: nx.Graph) -> None:
         file.write(f"communities where k = 5': {communities}\n\n")
 
 
-def construct_network_graph(
+### changed from "construct_network_graph"
+### since there is already a "create_network_graph"
+def run_network_graph_pipeline(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
 ) -> None:
     """Runs the network construction pipeline starting from 3 dataframes
 
     Args:
-        start_year: the end range of the desired data
+        start_year: the start range of the desired data
         end_year: the end range of the desired data
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
 
@@ -295,7 +299,8 @@ def construct_network_graph(
     ]
 
     aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
-    G = create_network_graph(aggreg_df)
+    G = create_network_graph(aggreg_df)  # G: graph
     network_metrics(G)
-    plot_network_graph(G)
-    plot_network_graph(G)
+    ### why execute this function twice? and also how is the plot viewed?
+    plot_network_graph(G, start_year, end_year)
+    plot_network_graph(G, start_year, end_year)
