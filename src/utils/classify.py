@@ -35,8 +35,10 @@ def classify_wrapper(
 
     return classified_individuals, classified_orgs
 
-## Here apply_classification_label might be a better function name than 
-## matcheter as the function aims to apply classification label to the df. 
+
+## Here apply_classification_label might be a better function name than
+## matcheter as the function aims to apply classification label to the df.
+
 
 def apply_classification_label(
     df: pd.DataFrame, substring: str, column: str, category: str
@@ -59,10 +61,9 @@ def apply_classification_label(
         A pandas dataframe in which rows matching the substring conditions in
         a certain column are marked with the appropriate category
     """
-    ## here bool_sereis show the contents of the variable only and didn't 
-    ## indicate the meaning of the variable. 
-    matches_target_string_bool_series = df[column].str.contains(
-        substring, na=False)
+    ## here bool_sereis show the contents of the variable only and didn't
+    ## indicate the meaning of the variable.
+    matches_target_string_bool_series = df[column].str.contains(substring, na=False)
 
     df.loc[matches_target_string_bool_series, "classification"] = category
 
@@ -83,8 +84,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
         an individuals dataframe updated with the fossil fuels category
     """
     for i in f_companies:
-        individuals_df = apply_classification_label(
-            individuals_df, i, "company", "f")
+        individuals_df = apply_classification_label(individuals_df, i, "company", "f")
 
     return individuals_df
 
@@ -105,11 +105,9 @@ def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
         and clean energy category
     """
     for i in f_org_names:
-        organizations_df = apply_classification_label(
-            organizations_df, i, "name", "f")
+        organizations_df = apply_classification_label(organizations_df, i, "name", "f")
 
     for i in c_org_names:
-        organizations_df = apply_classification_label(
-            organizations_df, i, "name", "c")
+        organizations_df = apply_classification_label(organizations_df, i, "name", "c")
 
     return organizations_df

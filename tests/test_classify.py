@@ -45,7 +45,7 @@ def test_matcher_scen_1(matcher_scen_1):
     assert np.all(res == np.array(["bob j vonrosevich", "missy elliot", "missy eliot"]))
 
 
-""" 
+"""
 def test_apply_classification_label_different_column(matcher_scen_1):
     # Testing classification based on a different column ('name' instead of 'address')
     apply_classification_label(matcher_scen_1, "bob", "name", "f")
