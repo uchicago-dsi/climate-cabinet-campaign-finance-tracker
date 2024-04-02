@@ -36,10 +36,6 @@ def classify_wrapper(
     return classified_individuals, classified_orgs
 
 
-## Here apply_classification_label might be a better function name than
-## matcheter as the function aims to apply classification label to the df.
-
-
 def apply_classification_label(
     df: pd.DataFrame, substring: str, column: str, category: str
 ) -> pd.DataFrame:
@@ -61,8 +57,6 @@ def apply_classification_label(
         A pandas dataframe in which rows matching the substring conditions in
         a certain column are marked with the appropriate category
     """
-    ## here bool_sereis show the contents of the variable only and didn't
-    ## indicate the meaning of the variable.
     matches_target_string_bool_series = df[column].str.contains(substring, na=False)
 
     df.loc[matches_target_string_bool_series, "classification"] = category
