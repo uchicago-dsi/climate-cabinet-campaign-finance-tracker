@@ -7,6 +7,9 @@ requires-python = ">=3.10"
 name = "climate-cabinet-campaign-finance"
 dynamic = ["version"]
 
+[tool.ruff]
+extend-include = ["*.ipynb"]
+
 [tool.setuptools.packages.find]
 where = ["src"]  # the package is in src/toto/ now
 
