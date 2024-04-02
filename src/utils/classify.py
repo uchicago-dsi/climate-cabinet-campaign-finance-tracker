@@ -36,7 +36,7 @@ def classify_wrapper(
     return classified_individuals, classified_orgs
 
 
-def matcher(
+def apply_classification_label(
     df: pd.DataFrame, substring: str, column: str, category: str
 ) -> pd.DataFrame:
     """Applies a label to the classification column based on substrings
@@ -57,9 +57,9 @@ def matcher(
         A pandas dataframe in which rows matching the substring conditions in
         a certain column are marked with the appropriate category
     """
-    bool_series = df[column].str.contains(substring, na=False)
+    matches_target_string_bool_series = df[column].str.contains(substring, na=False)
 
-    df.loc[bool_series, "classification"] = category
+    df.loc[matches_target_string_bool_series, "classification"] = category
 
     return df
 
@@ -78,7 +78,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
         an individuals dataframe updated with the fossil fuels category
     """
     for i in f_companies:
-        individuals_df = matcher(individuals_df, i, "company", "f")
+        individuals_df = apply_classification_label(individuals_df, i, "company", "f")
 
     return individuals_df
 
@@ -99,9 +99,9 @@ def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
         and clean energy category
     """
     for i in f_org_names:
-        organizations_df = matcher(organizations_df, i, "name", "f")
+        organizations_df = apply_classification_label(organizations_df, i, "name", "f")
 
     for i in c_org_names:
-        organizations_df = matcher(organizations_df, i, "name", "c")
+        organizations_df = apply_classification_label(organizations_df, i, "name", "c")
 
     return organizations_df
