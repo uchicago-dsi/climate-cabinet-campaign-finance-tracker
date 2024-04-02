@@ -1,6 +1,5 @@
 """Module for performing record linkage on state campaign finance dataset"""
 
-import math
 import re
 from collections.abc import Callable
 
@@ -39,24 +38,27 @@ def get_address_line_1_from_full_address(address: str) -> str:
     ... )
     '1415 PARKER STREET'
     """
-    address_tuples = usaddress.parse(
-        address
-    )  # takes a string address and put them into value, key pairs as tuples
-    line1_components = []
-    for value, key in address_tuples:
-        if key == "PlaceName":
-            break
-        elif key in (
+    parsed_address = usaddress.parse(address)
+    line1_components = [
+        value
+        for value, key in parsed_address
+        if key
+        in (
             "AddressNumber",
             "StreetNamePreDirectional",
             "StreetName",
             "StreetNamePostType",
             "USPSBoxType",
             "USPSBoxID",
-        ):
-            line1_components.append(value)
-    line1 = " ".join(line1_components)
-    return line1
+        )
+    ]
+    # halting at first occurrence of "PlaceName" or continue until end if not found
+    place_name_index = next(
+        (i for i, (_, key) in enumerate(parsed_address) if key == "PlaceName"), None
+    )
+    if place_name_index is not None:
+        line1_components = line1_components[:place_name_index]
+    return " ".join(line1_components)
 
 
 def calculate_string_similarity(string1: str, string2: str) -> float:
@@ -191,30 +193,14 @@ def match_confidence(
     >>> match_confidence(np.array([.6, .9, .0001]), np.array([2,5.7,8]), False)
     0.08337802853594725
     """
-    if (min(confidences) < 0) or (max(confidences) > 1):
+    if not (0 <= confidences).all() and (confidences <= 1).all():
         raise ValueError("Probabilities must be bounded on [0, 1]")
-
-    log_odds = []
-    max_logit = 5
-
-    for c in confidences:
-        logit = np.log(c / (1 - c))
-
-        if logit > max_logit:
-            logit = max
-
-        elif logit < -max_logit:
-            logit = -max_logit
-
-        log_odds.append(logit)
-
+    log_odds = np.clip(
+        np.log(confidences / (1 - confidences)), -5, 5
+    )  # specified max logit = 5
     if weights_toggle:
-        log_odds = log_odds * weights
-
-    l_o_sum = np.sum(log_odds)
-
-    conf_sum = math.e ** (l_o_sum) / (1 + math.e ** (l_o_sum))
-    return conf_sum
+        log_odds *= weights
+    return np.exp(log_odds.sum()) / (1 + np.exp(log_odds.sum()))
 
 
 def determine_comma_role(name: str) -> str:
@@ -242,19 +228,14 @@ def determine_comma_role(name: str) -> str:
     >>> determine_comma_role("DOe, Jane")
     ' Jane Doe'
     """
-    name_parts = name.lower().split(",")
-    # if the comma is just in the end as a typo:
-    if len(name_parts[1]) == 0:
-        return name_parts[0].title()
-    # if just the suffix in the end, leave the name as it is
-    if name_parts[1].strip() in suffixes:
+    name_parts = name.split(",")
+    last_name, remainder = name_parts[0], " ".join(name_parts[1:]).strip()
+
+    if not remainder:
         return name.title()
-    # at this point either it's just poor name placement, or the suffix is
-    # in the beginning of the name. Either way, the first part of the list is
-    # the true last name.
-    last_part = name_parts.pop(0)
-    first_part = " ".join(name_parts)
-    return first_part.title() + " " + last_part.title()
+    if remainder.lower() in suffixes:
+        return name.title()
+    return f"{remainder.title()} {last_name.title()}".strip()
 
 
 def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
@@ -358,21 +339,20 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     >>> get_street_from_address_line_1("3NW 59th St")
     '59th St'
     """
-    if not address_line_1 or address_line_1.isspace():
-        raise ValueError("address_line_1 must have whitespace")
+    if not address_line_1.strip():
+        raise ValueError("address_line_1 must have content")
 
-    address_line_lower = address_line_1.lower()
+    parsed_address = usaddress.parse(address_line_1)
+    street_components = [
+        value
+        for value, key in parsed_address
+        if key in ["StreetName", "StreetNamePostType"]
+    ]
 
-    if "po box" in address_line_lower:
-        raise ValueError("address_line_1 is PO Box")
+    if not street_components or "po box" in address_line_1.lower():
+        raise ValueError("Valid street name not found or address_line_1 is a PO Box")
 
-    string = []
-    address = usaddress.parse(address_line_1)
-    for key, val in address:
-        if val in ["StreetName", "StreetNamePostType"]:
-            string.append(key)
-
-    return " ".join(string)
+    return " ".join(street_components)
 
 
 def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
