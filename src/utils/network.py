@@ -59,10 +59,12 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     inds_trans_df = inds_df.merge(
         transactions_df, how="left", left_on="id", right_on="donor_id"
     )
+
     inds_trans_df = inds_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_df.merge(
         transactions_df, how="left", left_on="id", right_on="donor_id"
     )
+
     orgs_trans_df = orgs_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_trans_df.rename(columns={"name": "full_name"})
 
@@ -124,11 +126,13 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
-def plot_network_graph(G: nx.MultiDiGraph) -> None:
+def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
     """Creates a plotly visualization of the nodes and edges
 
     Args:
         G: A networkX MultiDiGraph with edges including the attribute 'amount'
+        start_year: the start range of the desired data, used in graph title
+        end_year: the end range of the desired data, used in graph title
 
     Returns: None. Creates a plotly graph
     """
@@ -140,6 +144,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
         mode="lines+markers",
     )
     hovertext = []
+    ## what is pos?
     pos = nx.spring_layout(G)
 
     for edge in G.edges(data=True):
@@ -157,6 +162,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
     edge_trace["hovertext"] = hovertext
 
     # Define arrow symbol for edges
+    # TODO: understand difference between edge_trace and node_trace
     edge_trace["marker"] = {
         "symbol": "arrow",
         "color": "#888",
@@ -172,14 +178,17 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
         hoverinfo="text",
         marker={"showscale": True, "colorscale": "YlGnBu", "size": 10},
     )
+
     node_trace["marker"]["color"] = []
 
     for node in G.nodes():
         node_info = f"Name: {node}<br>"
+        # rename key, value to be more descriptive
         for key, value in G.nodes[node].items():
             node_info += f"{key}: {value}<br>"
         node_trace["text"] += ([node_info],)
         # Get the classification value for the node
+        ## what are the classification values?
         classification = G.nodes[node].get("classification", "neutral")
         # Assign a color based on the classification value
         if classification == "c":
@@ -196,7 +205,7 @@ def plot_network_graph(G: nx.MultiDiGraph) -> None:
 
     # Define layout settings
     layout = go.Layout(
-        title="Network Graph Indicating Campaign Contributions from 2018-2022",
+        title=f"Network Graph Indicating Campaign Contributions from {start_year}-{end_year}",
         titlefont={"size": 16},
         showlegend=True,
         hovermode="closest",
@@ -268,13 +277,13 @@ def network_metrics(net_graph: nx.Graph) -> None:
         file.write(f"communities where k = 5': {communities}\n\n")
 
 
-def construct_network_graph(
+def run_network_graph_pipeline(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
 ) -> None:
     """Runs the network construction pipeline starting from 3 dataframes
 
     Args:
-        start_year: the end range of the desired data
+        start_year: the start range of the desired data
         end_year: the end range of the desired data
         dfs: dataframes in the order: inds_df, orgs_df, transactions_df
 
@@ -287,7 +296,8 @@ def construct_network_graph(
     ]
 
     aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
-    G = create_network_graph(aggreg_df)
+    G = create_network_graph(aggreg_df)  # G: graph
     network_metrics(G)
-    plot_network_graph(G)
-    plot_network_graph(G)
+    ### why execute this function twice? and also how is the plot viewed?
+    plot_network_graph(G, start_year, end_year)
+    plot_network_graph(G, start_year, end_year)
