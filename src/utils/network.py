@@ -126,7 +126,6 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
-### added argument for start and end year if we get updated data
 def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
     """Creates a plotly visualization of the nodes and edges
 
@@ -163,7 +162,7 @@ def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> No
     edge_trace["hovertext"] = hovertext
 
     # Define arrow symbol for edges
-    ## understand difference between edge_trace and node_trace
+    # TODO: understand difference between edge_trace and node_trace
     edge_trace["marker"] = {
         "symbol": "arrow",
         "color": "#888",
@@ -278,8 +277,6 @@ def network_metrics(net_graph: nx.Graph) -> None:
         file.write(f"communities where k = 5': {communities}\n\n")
 
 
-### changed from "construct_network_graph"
-### since there is already a "create_network_graph"
 def run_network_graph_pipeline(
     start_year: int, end_year: int, dfs: list[pd.DataFrame]
 ) -> None:
