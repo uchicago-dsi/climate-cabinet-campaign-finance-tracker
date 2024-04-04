@@ -1,0 +1,11 @@
+FFF_coal_companies.csv 
+Source: https://fossilfreefunds.org/fossil-fuel-companies
+Fossil Free Fund's list of coal companies
+Further description: 
+The coal industry screen consists of companies designated by Morningstar industry classifications as Thermal Coal or Coking Coal; companies from the Global Coal Exit List marked as Mining or Services for Coal Industry Sector; and the top 100 coal reserve holders from the Carbon Underground 200™.
+
+FFF_oil_companies.csv
+Source: https://fossilfreefunds.org/fossil-fuel-companies
+Fossil Free Fund's list of oil/gas companies
+Further description: 
+The oil/gas screen consists of companies designated by Morningstar industry classifications as Oil and Gas Drilling, Oil and Gas Extraction and Production, Oil and Gas Equipment and Services, Oil and Gas Integrated, Oil and Gas Midstream, and Oil and Gas Refining and Marketing; upstream and midstream companies from the Global Oil/Gas Exit List; and the top 100 oil/gas reserve holders from the Carbon Underground 200™.

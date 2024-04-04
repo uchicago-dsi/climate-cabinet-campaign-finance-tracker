@@ -68,7 +68,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
     """Part of the classification pipeline
 
     We check if individuals work for a known fossil fuel company
-    and categorize them using the matcher() function.
+    and categorize them using the apply_classification_label() function.
 
     Args:
         individuals_df: a dataframe containing deduplicated
@@ -86,7 +86,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
 def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
     """Part of the classification pipeline
 
-    We apply the matcher function to the organizations dataframe
+    We apply the apply_classification_label() function to the organizations dataframe
     repeatedly, using a variety of substrings to identify fossil
     fuel and clean energy companies.
 
