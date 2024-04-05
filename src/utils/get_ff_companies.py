@@ -7,10 +7,9 @@ import pandas as pd
 ff_companies_csvs = ["FFF_coal_companies.csv", "FFF_oil_companies.csv"]
 
 # assumes that the df has a "Company" column w/ the company name
-ff_company_names_arr = np.concatenate([pd.read_csv(csv)["Company"].to_numpy() 
-                                   for csv in ff_companies_csvs])
+ff_company_names_arr = np.concatenate(
+    [pd.read_csv(csv)["Company"].to_numpy() for csv in ff_companies_csvs]
+)
 
-# removing duplicate companies 
+# removing duplicate companies
 ff_company_names_arr = list(set(ff_company_names_arr))
-
-
