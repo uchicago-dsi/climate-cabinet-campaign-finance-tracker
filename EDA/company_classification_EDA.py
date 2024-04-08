@@ -1,9 +1,6 @@
 """EDA on company data to improve their classification"""
 
 import pandas as pd
-from utils.constants import BASE_FILEPATH
-
-transformed_data = BASE_FILEPATH / "output" / "transformed"
 
 organizations_df = pd.read_csv(transformed_data / "organizations_table.csv")
 print(organizations_df.head())
