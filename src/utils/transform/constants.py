@@ -192,6 +192,24 @@ MI_EXP_DROP_COLS = [
     "fundraiser",
 ]
 
+HV_FILEPATH = BASE_FILEPATH / "data" / "raw" / "HV" / "196slers1967to2016_20180908.dta"
+
+HV_INDIVIDUAL_COLS = [
+    "caseid",
+    "year",
+    "month",
+    "day",
+    "sab",
+    "cname",
+    # "candid",
+    "cand",
+    "sen",
+    "partyt",
+    "outcome",
+    "last",
+    "first",
+    "v19_20171211",
+]
 
 # PA EDA constants:
 

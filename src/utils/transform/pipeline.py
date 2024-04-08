@@ -4,6 +4,8 @@ import pandas as pd
 
 from utils.transform.arizona import ArizonaTransformer
 from utils.transform.clean import StateTransformer
+
+# from utils.transform.harvard import HarvardTransformer
 from utils.transform.michigan import MichiganTransformer
 from utils.transform.minnesota import MinnesotaTransformer
 from utils.transform.pennsylvania import PennsylvaniaTransformer
@@ -14,6 +16,8 @@ ALL_STATE_CLEANERS = [
     MinnesotaTransformer(),
     PennsylvaniaTransformer(),
 ]
+
+HARVARD_CLEANERS = [HarvardTransformer()]
 
 
 def transform_and_merge(
@@ -30,6 +34,9 @@ def transform_and_merge(
     """
     if state_cleaners is None:
         state_cleaners = ALL_STATE_CLEANERS
+    # if harvard_cleaners is None:
+    #     harvard_cleaners = HARVARD_CLEANERS
+
     single_state_individuals_tables = []
     single_state_organizations_tables = []
     single_state_transactions_tables = []
@@ -43,7 +50,7 @@ def transform_and_merge(
         single_state_individuals_tables.append(individuals_table)
         single_state_organizations_tables.append(organizations_table)
         single_state_transactions_tables.append(transactions_table)
-
+    # harvard_individuals_table = harvard_cleaners.clean_state()
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
     complete_transactions_table = pd.concat(single_state_transactions_tables)
