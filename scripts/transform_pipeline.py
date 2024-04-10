@@ -4,6 +4,7 @@ import argparse
 
 from utils.constants import BASE_FILEPATH
 from utils.transform.pipeline import transform_and_merge
+from utils.transform.texas import TexasTransformer
 
 parser = argparse.ArgumentParser()
 

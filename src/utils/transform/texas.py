@@ -1,7 +1,8 @@
-"""Implements state transformer class for Pennsylvania"""
+"""Implements state transformer class for Texas"""
 
 import uuid
 from pathlib import Path
+from tkinter.tix import COLUMN
 
 import pandas as pd
 
@@ -10,107 +11,64 @@ from utils.transform import clean
 from utils.transform import constants as const
 
 
-def assign_PA_column_names(file_name: str, year: int) -> list:
-    """Assigns the right column names to the right datasets.
+class TexasTransformer(clean.StateTransformer):
+    """Texas state transformer implementation"""
 
-    Args:
-        file_name: the path in which the data is stored/located.
-        year: to make parsing through the data more manageable, the year
-            from which the data originates is also taken.
-
-    Returns:
-        a list of the appropriate column names for the dataset
-    """
-    if "contrib" in file_name:
-        if year < const.PA_SCHEMA_CHANGE_YEAR:
-            return const.PA_CONT_COLS_NAMES_PRE2022
-        else:
-            return const.PA_CONT_COLS_NAMES_POST2022
-    elif "filer" in file_name:
-        if year < const.PA_SCHEMA_CHANGE_YEAR:
-            return const.PA_FILER_COLS_NAMES_PRE2022
-        else:
-            return const.PA_FILER_COLS_NAMES_POST2022
-    elif "expense" in file_name:
-        if year < const.PA_SCHEMA_CHANGE_YEAR:
-            return const.PA_EXPENSE_COLS_NAMES_PRE2022
-        else:
-            return const.PA_EXPENSE_COLS_NAMES_POST2022
-
-
-class PennsylvaniaTransformer(clean.StateTransformer):
-    """Pennsyvania state transformer implementation"""
-
-    name = "Pennsylvania"
-    stable_id_across_years = False
+    name = "Texas"
+    stable_id_across_years = True
+    TX_directory = BASE_FILEPATH / "data" / "raw" / "TX"/"sample"
 
     def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Return tables of proper schema"""
-        PA_directory = BASE_FILEPATH / "data" / "raw" / "PA"
-        pre_processed_dfs = self.preprocess(PA_directory)
+        pre_processed_dfs = self.preprocess(self.TX_directory)
         clean_dfs = self.clean(pre_processed_dfs)
         standardized_dfs = self.standardize(clean_dfs)
         return self.create_tables(standardized_dfs)
 
     def preprocess(self, directory: str | Path = None) -> list[pd.DataFrame]:
-        """Read raw campaign finance files from PA secretary of state
-
-        Files should be stored in directory with format:
-        /
-        |--YYYY/
-        |   |--contrib_*.txt
-        |   |--debt_*.txt
-        |   |--expense_*.txt
-        |   |--filer_*.txt
-        |   |--receipt_*.txt
-        |--YYYY/
-        ...
-        """
-        contributor_datasets, filer_datasets, expense_datasets = [], [], []
+        contributor_datasets, filer_datasets, expense_datasets = None,None,None
         if directory is None:
-            directory = BASE_FILEPATH / "data" / "raw" / "PA"
+            directory = self.TX_directory
         else:
             directory = Path(directory)
-        for year_directory in directory.iterdir():
-            year = int(year_directory.stem)
-            for file_path in year_directory.iterdir():
-                file_name = file_path.stem
-                # only want contributor, filer, and expenditure files:
-                if (
-                    ("contrib" in file_name)
-                    | ("filer" in file_name)
-                    | ("expense" in file_name)
-                ):
-                    raw_finance_table = pd.read_csv(
-                        file_path,
-                        names=assign_PA_column_names(file_name, year),
-                        sep=",",
-                        encoding="latin-1",
-                        on_bad_lines="warn",
-                    )
-                    raw_finance_table["YEAR"] = year
+        for file_path in directory.iterdir():
+            file_name = file_path.name
+            try:
+                if file_name == 'contribs.csv':
+                    contributor_df = pd.read_csv(file_path,low_memory=False)
+                    # contributor_df = self.pre_process_contributor_dataset(contributor_df)
+                    contributor_datasets= contributor_df
+                if file_name == 'filers.csv':
+                    filer_df = pd.read_csv(file_path,low_memory=False)
+                    # filer_datasets.append(filer_df)
+                    filer_datasets = filer_df
+                elif file_name== "expend1.csv":
+                    try:
+                        expense_df = pd.read_csv(file_path,low_memory=False)
+                        # expense_datasets.append(expense_df)
+                        expense_datasets= expense_df
+                    except Exception as e:
+                        print(f"Error processing {file_name}: {e}")
+            except Exception as e:
+                print(f"Error processing {file_name}: {e}")
 
-                    if "contrib" in file_name:
-                        contributor_datasets.append(raw_finance_table)
-                    elif "filer" in file_name:
-                        filer_datasets.append(raw_finance_table)
-                    else:
-                        expense_datasets.append(raw_finance_table)
-                else:
-                    continue
+        return contributor_datasets, filer_datasets,expense_datasets
 
-        return contributor_datasets, filer_datasets, expense_datasets
+
 
     def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:  # noqa: D102
         contributor_datasets, filer_datasets, expense_datasets = [], [], []
         cont_ds, filer_ds, exp_ds = data
+        contributor_datasets.append(self.pre_process_contributor_dataset(cont_ds))
+        filer_datasets.append(self.pre_process_filer_dataset(filer_ds))
+        expense_datasets.append(self.pre_process_expense_dataset(exp_ds))
 
-        for contrib_df, filer_df, exp_df in zip(cont_ds, filer_ds, exp_ds):
-            contributor_datasets.append(
-                self.pre_process_contributor_dataset(contrib_df)
-            )
-            filer_datasets.append(self.pre_process_filer_dataset(filer_df))
-            expense_datasets.append(self.pre_process_expense_dataset(exp_df))
+        # for contrib_df, filer_df, exp_df in zip(cont_ds, filer_ds, exp_ds):
+        #     contributor_datasets.append(
+        #         self.pre_process_contributor_dataset(contrib_df)
+        #     )
+        #     filer_datasets.append(self.pre_process_filer_dataset(filer_df))
+        #     expense_datasets.append(self.pre_process_expense_dataset(exp_df))
 
         return contributor_datasets, filer_datasets, expense_datasets
 
@@ -119,10 +77,11 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         merged_dataset = self.combine_contributor_expenditure_datasets(
             contributor_ds, filer_ds, expense_ds
         )
-        merged_dataset = self.replace_id_with_uuid(merged_dataset, "DONOR_ID", "YEAR")
-        merged_dataset = self.replace_id_with_uuid(
-            merged_dataset, "RECIPIENT_ID", "YEAR"
-        )
+        #TO CLARIFY: do we need this?
+        # merged_dataset = self.replace_id_with_uuid(merged_dataset, "DONOR_ID", "YEAR")
+        # merged_dataset = self.replace_id_with_uuid(
+        #     merged_dataset, "RECIPIENT_ID", "YEAR"
+        # )
         # assign transaction_id
         merged_dataset["TRANSACTION_ID"] = str(uuid.uuid4())
         return merged_dataset
@@ -176,7 +135,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
             ]
         ]
         transactions_df.columns = map(str.lower, transactions_df.columns)
-        transactions_df = transactions_df.rename(
+        transactions_df.rename(
             columns={"recipient_office": "office_sought"}
         )
 
@@ -226,10 +185,11 @@ class PennsylvaniaTransformer(clean.StateTransformer):
 
         new_cols = ["first_name", "last_name", "company"]
         all_individuals = all_individuals.assign(**{col: None for col in new_cols})
-        all_individuals["state"] = "PA"
+        all_individuals["state"] = "TX"
 
         return all_individuals
-
+    
+    #TODO: Remove redundant checks
     def make_organizations_table(self, organizations_df: pd.DataFrame) -> pd.DataFrame:
         """Returns entiteis that are likely organizations with only relevant columns
 
@@ -269,7 +229,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         )
         all_organizations = pd.concat([donor_organizations, recipient_organizations])
         all_organizations = all_organizations.drop_duplicates()
-        all_organizations["state"] = "PA"
+        all_organizations["state"] = "TX"
 
         return all_organizations
 
@@ -385,7 +345,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
 
         Args:
             df_with_ids: Dataframe that must contain a column representing
-                ids for donor/contributor entities.
+                ids for docnor/contributor entities.
             id_column: Column containing raw ids provided by state
             year_column: Column containing year transaction/entity appeared in data.
         """
@@ -426,146 +386,61 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         rows_with_id_and_uuid = rows_with_id_and_uuid.drop(columns=["UUID"])
         # concatenate dfs and return
         return pd.concat([rows_with_id_and_uuid, rows_with_no_id])
+    #Identifies whether an entity is likely an organization or individual
 
-    def classify_contributor(self, entity: str) -> str:
-        """Identifies whether an entity is likely an organization or individual
+    def classify_contributor(self, PersentTypeCd: str) -> str:
+        return "Individual" if PersentTypeCd.lower()=="individual" else "Organization"
 
-        Args:
-            entity: a string
-        Returns:
-            string "ORGANIZATION" or "INDIVIDUAL" depending on the
-            classification of the parameter
-        """
-        split = entity.split()
-        loc = 0
-        while loc < len(split):
-            if split[loc].upper() in const.PA_ORGANIZATION_IDENTIFIERS:
-                return "Organization"
-            loc += 1
-        return "Individual"
-    # TODO: why occupation is drop here?
+
     def pre_process_contributor_dataset(
         self, contributor_df: pd.DataFrame
     ) -> pd.DataFrame:
-        """Filter contributor dataset to only relevant columns
-
-        Args:
-            contributor_df: the contributor dataset
-
-        Returns:
-            a pandas dataframe whose columns are appropriately formatted.
-        """
-        contributor_df["AMOUNT"] = (
-            contributor_df["CONT_AMT_1"]
-            + contributor_df["CONT_AMT_2"]
-            + contributor_df["CONT_AMT_3"]
-        )
-        contributor_df["RECIPIENT_ID"] = contributor_df["RECIPIENT_ID"].astype("str")
-        contributor_df["DONOR"] = contributor_df["DONOR"].astype("str")
-        contributor_df["DONOR"] = contributor_df["DONOR"].str.title()
-        contributor_df["DONOR_TYPE"] = contributor_df["DONOR"].apply(
+        contributor_df["RECIPIENT_TYPE"] = None
+        contributor_df["RECIPIENT_TYPE"] = contributor_df["contributorPersentTypeCd"].apply(
             self.classify_contributor
         )
-        contributor_df = contributor_df.drop(
-            columns={
-                "ADDRESS_1",
-                "ADDRESS_2",
-                "CITY",
-                "STATE",
-                "ZIPCODE",
-                "OCCUPATION",
-                "E_NAME",
-                "E_ADDRESS_1",
-                "E_ADDRESS_2",
-                "E_CITY",
-                "E_STATE",
-                "E_ZIPCODE",
-                "SECTION",
-                "CYCLE",
-                "CONT_DATE_1",
-                "CONT_AMT_1",
-                "CONT_DATE_2",
-                "CONT_AMT_2",
-                "CONT_DATE_3",
-                "CONT_AMT_3",
-            }
-        )
 
-        if "TIMESTAMP" in contributor_df.columns:
-            contributor_df = contributor_df.drop(columns={"TIMESTAMP", "REPORTER_ID"})
+        contributor_df = contributor_df[const.TX_CONTRIBUTION_COLS]
+        contributor_df["DONOR"] = contributor_df.apply(
+            lambda row: row["contributorNameLast"] + row["contributorNameFirst"]
+            if row["contributorPersentTypeCd"] == "INDIVIDUAL" else row["contributorNameOrganization"],
+            axis=1,
+        )
+        contributor_df["YEAR"] = pd.to_datetime(contributor_df["contributionDt"]).dt.year        
+        contributor_df["PURPOSE"] = pd.NA
+        contributor_df.rename(
+            columns=const.TX_CONTRIBUTION_MAPPING,inplace=True
+        )
+        contributor_df = contributor_df[const.PA_CONTRIBUTION_COLS]
+        contributor_df["RECIPIENT_ID"] =contributor_df["RECIPIENT_ID"].astype("str")
 
         return contributor_df
 
     def pre_process_filer_dataset(self, filer_df: pd.DataFrame) -> pd.DataFrame:
-        """Filter filer dataset to only relevant columns
-
-        Args:
-            filer_df: the filer dataset
-
-        Returns:
-            a pandas dataframe whose columns are appropriately formatted.
-        """
-        filer_df["RECIPIENT_ID"] = filer_df["RECIPIENT_ID"].astype("str")
-        filer_df = filer_df.drop(
-            columns={
-                "YEAR",
-                "CYCLE",
-                "AMEND",
-                "TERMINATE",
-                "DISTRICT",
-                "ADDRESS_1",
-                "ADDRESS_2",
-                "CITY",
-                "STATE",
-                "ZIPCODE",
-                "COUNTY",
-                "PHONE",
-                "BEGINNING",
-                "MONETARY",
-                "INKIND",
-            }
-        )
-        if "TIMESTAMP" in filer_df.columns:
-            filer_df = filer_df.drop(columns={"TIMESTAMP", "REPORTER_ID"})
-
+        
+        filer_df["RECIPIENT_ID"] = filer_df["filerIdent"].astype("str")
         filer_df = filer_df.drop_duplicates(subset=["RECIPIENT_ID"])
-        filer_df["RECIPIENT_TYPE"] = filer_df.RECIPIENT_TYPE.map(
+        filer_df["RECIPIENT_TYPE"] = filer_df.filerTypeCd.map(
             const.PA_FILER_ABBREV_DICT
         )
-        filer_df["RECIPIENT"] = filer_df["RECIPIENT"].apply(lambda x: str(x).title())
+        filer_df["RECIPIENT"] = filer_df["filerName"].apply(lambda x: str(x).title())
+        filer_df["RECIPIENT_OFFICE"] = pd.NA
+        filer_df["RECIPIENT_PARTY"] = pd.NA
+        filer_df = filer_df[const.PA_FILER_COLS]
         return filer_df
 
     def pre_process_expense_dataset(self, expense_df: pd.DataFrame) -> pd.DataFrame:
-        """Filter expense dataset to only relevant columns
-
-        Args:
-            expense_df: the expenditure dataset
-
-        Returns:
-            a pandas dataframe whose columns are appropriately formatted.
-        """
-        expense_df["DONOR_ID"] = expense_df["DONOR_ID"].astype("str")
-        expense_df = expense_df.drop(
-            columns={
-                "EXPENSE_CYCLE",
-                "EXPENSE_ADDRESS_1",
-                "EXPENSE_ADDRESS_2",
-                "EXPENSE_CITY",
-                "EXPENSE_STATE",
-                "EXPENSE_ZIPCODE",
-                "EXPENSE_DATE",
-            }
-        )
-        if "EXPENSE_REPORTER_ID" in expense_df.columns:
-            expense_df = expense_df.drop(
-                columns={"EXPENSE_TIMESTAMP", "EXPENSE_REPORTER_ID"}
-            )
-        expense_df["PURPOSE"] = expense_df["PURPOSE"].apply(lambda x: str(x).title())
-        expense_df["RECIPIENT"] = expense_df["RECIPIENT"].apply(
-            lambda x: str(x).title()
-        )
+        # expense_df = expense_df[const.TX_EXPENSE_COLS]
+        expense_df["RECIPIENT"]= expense_df.apply(
+            lambda row: row["payeeNameLast"] + row["payeeNameFirst"] if row["payeePersentTypeCd"] == "INDIVIDUAL" else row["payeeNameOrganization"],axis=1)
+        expense_df["DONOR_ID"] = expense_df["filerIdent"].astype("str")
+        expense_df["YEAR"] = pd.to_datetime(expense_df["expendDt"]).dt.year
+        expense_df["PURPOSE"] = pd.NA
+        expense_df.rename(columns={"expendAmount": "AMOUNT"}, inplace=True)
+        expense_df = expense_df[const.PA_EXPENSE_COLS]
         return expense_df
 
+    #TO CLARIFY: do we need two methods for this?
     def merge_contributor_filer_datasets(
         self, contributor_file: pd.DataFrame, filer_file: pd.DataFrame
     ) -> pd.DataFrame:
@@ -594,6 +469,8 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         Returns
             The merged pandas dataframe
         """
+        #TO CLARIFY: no donor in filer
+
         merged_df = expenditure_file.merge(
             filer_file, left_on="DONOR_ID", right_on="RECIPIENT_ID"
         ).drop("RECIPIENT_ID", axis=1)
@@ -612,28 +489,64 @@ class PennsylvaniaTransformer(clean.StateTransformer):
             A new dataframe with the appropriate column formatting for
             concatenation
         """
+        #TO CLARIFY: no donor_party, donor_office in TX?
         new_cols = ["DONOR_ID", "DONOR_PARTY", "DONOR_OFFICE"]
         merged_contributor_filer_df = merged_contributor_filer_df.assign(
             **{col: None for col in new_cols}
         )
-
-        # There are some recipients whose entity_types isn't specified, so I
         # auto-fill the nan entries with 'Organization.'
-        na_free = merged_contributor_filer_df.dropna(subset="RECIPIENT_TYPE")
-        only_na = merged_contributor_filer_df[
-            ~merged_contributor_filer_df.index.isin(na_free.index)
-        ]
-        only_na["RECIPIENT_TYPE"] = "Organization"
-        merged_contributor_filer_df = pd.concat([na_free, only_na])
-
+        merged_contributor_filer_df['RECIPIENT_TYPE'].fillna('Organization', inplace=True)
         columns = merged_contributor_filer_df.columns.to_list()
         columns.sort()
         merged_contributor_filer_df = merged_contributor_filer_df.loc[:, columns]
         return merged_contributor_filer_df
 
-    def format_expense_filer_dataset(
-        self, merged_expense_filer_df: pd.DataFrame
-    ) -> pd.DataFrame:
+    # def format_expense_filer_dataset(
+    #     self, merged_expense_filer_df: pd.DataFrame
+    # ) -> pd.DataFrame:
+    #     """Reformats merged contributor - filer dataset
+
+    #     Args:
+    #         merged_expense_filer_df: result of the merge between contributor and
+    #             filer datasets
+
+    #     Returns:
+    #         A new dataframe with the appropriate column formatting for
+    #         concatenation
+    #     """
+    #     merged_expense_filer_df["RECIPIENT_ID"] = None
+    #     merged_expense_filer_df = merged_expense_filer_df.rename(
+    #         columns={
+    #             "RECIPIENT_x": "RECIPIENT",
+    #             "RECIPIENT_y": "DONOR",
+    #             "RECIPIENT_TYPE": "DONOR_TYPE",
+    #             "RECIPIENT_PARTY": "DONOR_PARTY",
+    #             "RECIPIENT_OFFICE": "DONOR_OFFICE",
+    #         }
+    #     )
+    #     # because recipient information in the expenditure dataset is not
+    #     # provided, for the sake of fitting the schema I code recipient_type as
+    #     # 'Organization'.
+    #     merged_expense_filer_df['RECIPIENT_TYPE'].fillna('Organization', inplace=True)
+
+    #     # There are some donors whose entity_types isn't specified, so I
+    #     # implement the same classify_contributor function used in the
+    #     # contributors dataset
+    #     na_free = merged_expense_filer_df.dropna(subset="DONOR_TYPE")
+    #     only_na = merged_expense_filer_df[
+    #         ~merged_expense_filer_df.index.isin(na_free.index)
+    #     ]
+    #     only_na["DONOR_TYPE"] = only_na["DONOR"].apply(self.classify_contributor)
+    #     merged_expense_filer_df = pd.concat([na_free, only_na])
+
+    #     columns = merged_expense_filer_df.columns.to_list()
+    #     columns.sort()
+    #     merged_expense_filer_df = merged_expense_filer_df.loc[:, columns]
+    #     return merged_expense_filer_df
+
+
+
+    def format_expense_filer_dataset(self,merged_expense_filer_df: pd.DataFrame) -> pd.DataFrame:
         """Reformats merged contributor - filer dataset
 
         Args:
@@ -644,8 +557,9 @@ class PennsylvaniaTransformer(clean.StateTransformer):
             A new dataframe with the appropriate column formatting for
             concatenation
         """
-        merged_expense_filer_df["RECIPIENT_ID"] = None
-        merged_expense_filer_df = merged_expense_filer_df.rename(
+        merged_expense_filer_df['RECIPIENT_TYPE'].fillna('Organization', inplace=True)
+
+        merged_expense_filer_df= merged_expense_filer_df.rename(
             columns={
                 "RECIPIENT_x": "RECIPIENT",
                 "RECIPIENT_y": "DONOR",
@@ -654,27 +568,10 @@ class PennsylvaniaTransformer(clean.StateTransformer):
                 "RECIPIENT_OFFICE": "DONOR_OFFICE",
             }
         )
-        # because recipient information in the expenditure dataset is not
-        # provided, for the sake of fitting the schema I code recipient_type as
-        # 'Organization'.
-        merged_expense_filer_df["RECIPIENT_TYPE"] = "Organization"
-        merged_expense_filer_df["RECIPIENT_OFFICE"] = None
-        merged_expense_filer_df["RECIPIENT_PARTY"] = None
+        merged_expense_filer_df = merged_expense_filer_df.reindex(sorted(merged_expense_filer_df.columns), axis=1)
 
-        # There are some donors whose entity_types isn't specified, so I
-        # implement the same classify_contributor function used in the
-        # contributors dataset
-        na_free = merged_expense_filer_df.dropna(subset="DONOR_TYPE")
-        only_na = merged_expense_filer_df[
-            ~merged_expense_filer_df.index.isin(na_free.index)
-        ]
-        only_na["DONOR_TYPE"] = only_na["DONOR"].apply(self.classify_contributor)
-        merged_expense_filer_df = pd.concat([na_free, only_na])
-
-        columns = merged_expense_filer_df.columns.to_list()
-        columns.sort()
-        merged_expense_filer_df = merged_expense_filer_df.loc[:, columns]
         return merged_expense_filer_df
+
 
     def combine_contributor_expenditure_datasets(
         self,
@@ -682,7 +579,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         filer_ds: list[pd.DataFrame],
         expend_ds: list[pd.DataFrame],
     ) -> pd.DataFrame:
-        """Merges together contrib, filer, and expense PA campaign finance data
+        """Merges together contrib, filer, and expense TX campaign finance data
 
         Args:
             contrib_ds: list of dataframes, with each entry in dataframes being a

@@ -7,12 +7,14 @@ from utils.transform.clean import StateTransformer
 from utils.transform.michigan import MichiganTransformer
 from utils.transform.minnesota import MinnesotaTransformer
 from utils.transform.pennsylvania import PennsylvaniaTransformer
+from utils.transform.texas import TexasTransformer
 
 ALL_STATE_CLEANERS = [
     ArizonaTransformer(),
     MichiganTransformer(),
     MinnesotaTransformer(),
     PennsylvaniaTransformer(),
+    TexasTransformer()
 ]
 
 
@@ -52,3 +54,5 @@ def transform_and_merge(
         complete_organizations_table,
         complete_transactions_table,
     )
+
+
