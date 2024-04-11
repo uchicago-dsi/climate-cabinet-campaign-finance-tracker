@@ -58,8 +58,10 @@ pattern_ce = "|".join(ce_keywords)
 pattern_ambg = "|".join(ambiguous_keywords)
 
 business_data_df = pd.read_csv(business_data_2023, sep=",", header=0, chunksize=1000)
-counter = 0  # only looking at around 20 chunks for now since file is quite large
+counter = 0
+max_chunks = 20  # only looking at around 20 chunks for now since file is quite large
 for chunk in business_data_df:
+    # TODO: #93 Use SIC6 codes instead of descriptions
     chunk = chunk.dropna(subset=["SIC6_DESCRIPTIONS (SIC)"])
     ff_keywords_df = pd.concat(
         [
@@ -80,7 +82,7 @@ for chunk in business_data_df:
         ],
     )
     counter += 1
-    if counter >= 20:
+    if counter >= max_chunks:
         break
 
 ce_keywords_df["initial classification"] = "c"

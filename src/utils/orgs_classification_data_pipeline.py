@@ -1,5 +1,6 @@
 """Script to combine datasets of fossil fule company names from CSVs for use in classification"""
 
+# TODO: #92 Make orgs classification script into more well-defined pipeline
 import pandas as pd
 
 from utils.constants import BASE_FILEPATH
