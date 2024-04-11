@@ -160,3 +160,37 @@ contribution data and READMEs in a Google Drive for the duration of this project
 3. The Finance Report states that a record must be kept for any contribution over \$10.00, but “Contributions and receipts of \$50.00 or less per contributor, during the reporting period, need not be itemized on the report” … this might mean that if 1,000 people for instance donate \$50 or less, there could be potentially thousands/tens of thousands of \$ not shown on the data, even though this information is recorded. This means that the total contributions that filers itemize does not necessarily reflect the total contributions they received. 
 
 4. Transparency USA has aggregated data on the contributions of individuals and committees. This could be a helpful source to cross-check the data and potentially help alleviate the debt-contribution issue. Pennsylvania' Dept. of State also offers a detailed website that shows all the aggregated contributions made and received, expenditures made, debts, and receipts. The catch is one must know which candidate they are looking for as it's a searchable database, but it can be very helpful for cross-matching and verification. Here's the link :https://www.campaignfinanceonline.pa.gov/Pages/CFReportSearch.aspx 
+
+## Fossil Fuel Company Data: Coal 
+### Summary
+CSV file name: FFF_coal_companies.csv 
+Source: https://fossilfreefunds.org/fossil-fuel-companies
+This is Fossil Free Fund's list of coal companies.
+
+The coal industry screen consists of companies designated by Morningstar industry classifications as Thermal Coal or Coking Coal; companies from the Global Coal Exit List marked as Mining or Services for Coal Industry Sector; and the top 100 coal reserve holders from the Carbon Underground 200™.
+
+These companies were listed on the website in a table, which was copy and pasted and formatted into a CSV. 
+
+### Features
+Company: The name of the company
+Symbol: The company's Stock Ticker Symbol
+Legal name: The legal name of the company (can differ from the company name)
+
+-Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis. 
+
+## Fossil Fuel Company Data: Oil  
+
+File name: FFF_oil_companies.csv
+Source: https://fossilfreefunds.org/fossil-fuel-companies
+This is. Fossil Free Fund's list of oil/gas companies
+
+The oil/gas screen consists of companies designated by Morningstar industry classifications as Oil and Gas Drilling, Oil and Gas Extraction and Production, Oil and Gas Equipment and Services, Oil and Gas Integrated, Oil and Gas Midstream, and Oil and Gas Refining and Marketing; upstream and midstream companies from the Global Oil/Gas Exit List; and the top 100 oil/gas reserve holders from the Carbon Underground 200™.
+
+These companies were listed on the website in a table, which was copy and pasted and formatted into a CSV. 
+
+### Features
+Company: The name of the company
+Symbol: The company's Stock Ticker Symbol
+Legal name: The legal name of the company (can differ from the company name)
+
+-Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis. 
