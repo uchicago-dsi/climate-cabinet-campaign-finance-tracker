@@ -24,8 +24,8 @@ from utils.linkage import (
 )
 from utils.network import (
     combine_datasets_for_network_graph,
-    construct_network_graph,
     create_network_graph,
+    run_network_graph_pipeline,
 )
 
 
@@ -218,4 +218,4 @@ def clean_data_and_build_network(
     g_output_path = BASE_FILEPATH / "output" / "g.gml"
     nx.write_graphml(g, g_output_path)
 
-    construct_network_graph(2018, 2023, [individuals, organizations, transactions])
+    run_network_graph_pipeline(2018, 2023, [individuals, organizations, transactions])
