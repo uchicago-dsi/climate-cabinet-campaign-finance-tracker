@@ -68,7 +68,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
     """Part of the classification pipeline
 
     We check if individuals work for a known fossil fuel company
-    and categorize them using the matcher() function.
+    and categorize them using the apply_classification_label() function.
 
     Args:
         individuals_df: a dataframe containing deduplicated
@@ -77,8 +77,10 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         an individuals dataframe updated with the fossil fuels category
     """
-    for i in f_companies:
-        individuals_df = apply_classification_label(individuals_df, i, "company", "f")
+    for company in f_companies:
+        individuals_df = apply_classification_label(
+            individuals_df, company, "company", "f"
+        )
 
     return individuals_df
 
@@ -86,7 +88,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
 def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
     """Part of the classification pipeline
 
-    We apply the matcher function to the organizations dataframe
+    We apply the apply_classification_label() function to the organizations dataframe
     repeatedly, using a variety of substrings to identify fossil
     fuel and clean energy companies.
 
@@ -98,10 +100,14 @@ def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
         an organizations dataframe updated with the fossil fuels
         and clean energy category
     """
-    for i in f_org_names:
-        organizations_df = apply_classification_label(organizations_df, i, "name", "f")
+    for org in f_org_names:
+        organizations_df = apply_classification_label(
+            organizations_df, org, "name", "f"
+        )
 
-    for i in c_org_names:
-        organizations_df = apply_classification_label(organizations_df, i, "name", "c")
+    for org in c_org_names:
+        organizations_df = apply_classification_label(
+            organizations_df, org, "name", "c"
+        )
 
     return organizations_df
