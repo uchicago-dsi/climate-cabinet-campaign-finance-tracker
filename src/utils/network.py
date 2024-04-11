@@ -5,7 +5,7 @@ from pathlib import Path
 
 import networkx as nx
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # TODO: #100 explore other libraries
 
 
 def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
@@ -302,6 +302,7 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
 #     fig.show()
 
 
+# TODO: #99 delete old version of graph code when finished experimenting
 # NEW VERSION
 def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
     """Creates a plotly visualization of the nodes and edges."""
