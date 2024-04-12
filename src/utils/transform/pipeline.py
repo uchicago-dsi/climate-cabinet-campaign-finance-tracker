@@ -17,8 +17,6 @@ ALL_STATE_CLEANERS = [
     PennsylvaniaTransformer(),
 ]
 
-HARVARD_CLEANERS = [HarvardTransformer()]
-
 
 def transform_and_merge(
     state_cleaners: list[StateTransformer] = None,
@@ -34,8 +32,6 @@ def transform_and_merge(
     """
     if state_cleaners is None:
         state_cleaners = ALL_STATE_CLEANERS
-    # if harvard_cleaners is None:
-    #     harvard_cleaners = HARVARD_CLEANERS
 
     single_state_individuals_tables = []
     single_state_organizations_tables = []
@@ -51,6 +47,7 @@ def transform_and_merge(
         single_state_organizations_tables.append(organizations_table)
         single_state_transactions_tables.append(transactions_table)
     # harvard_individuals_table = harvard_cleaners.clean_state()
+    # TODO: #96 harvard cleaner should be its own pipeline, not related to campaign finance
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
     complete_transactions_table = pd.concat(single_state_transactions_tables)
