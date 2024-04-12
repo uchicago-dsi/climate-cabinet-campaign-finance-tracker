@@ -10,10 +10,10 @@ from utils.transform.pennsylvania import PennsylvaniaTransformer
 from utils.transform.texas import TexasTransformer
 
 ALL_STATE_CLEANERS = [
-    ArizonaTransformer(),
-    MichiganTransformer(),
-    MinnesotaTransformer(),
-    PennsylvaniaTransformer(),
+    # ArizonaTransformer(),
+    # MichiganTransformer(),
+    # MinnesotaTransformer(),
+    # PennsylvaniaTransformer(),
     TexasTransformer()
 ]
 
