@@ -5,10 +5,13 @@ import uuid
 import numpy as np
 import pandas as pd
 from nameparser import HumanName
+from nameparser import HumanName
+
+from utils.linkage import get_likely_name
+from utils.ind_transform import standardize_individual_names
 
 from utils.transform.clean import (
     ElectionResultTransformer,
-    standardize_individual_names,
 )
 from utils.transform.constants import HV_FILEPATH, HV_INDIVIDUAL_COLS
 
@@ -44,8 +47,7 @@ class HarvardTransformer(ElectionResultTransformer):
         clean_df = clean_df[HV_INDIVIDUAL_COLS] 
         clean_df = clean_df[clean_df["year"] <=2016 & clean_df["year"] >=2014]
         clean_df = clean_df[~clean_df["cand"].str.startswith("namemissing")] 
-        clean_df = match_individual(clean_df)
-        # Replace candidate names where updated names are available
+        clean_df = self.match_individual(clean_df)
         clean_df["cand"] = np.where(
             clean_df["v19_20171211"].notna(), 
             clean_df["v19_20171211"], 
@@ -79,6 +81,7 @@ class HarvardTransformer(ElectionResultTransformer):
 
         return data
     
+    
     def create_table(self, data: pd.DataFrame) -> pd.DataFrame:
         """Creates the election result table and match the data with individual data
 
@@ -90,9 +93,7 @@ class HarvardTransformer(ElectionResultTransformer):
         """
         final_table = data.copy()
 
-        final_table = create_election_result_uuid(final_table)
-
-        final_table["id"] = pd.util.hash_pandas_object(final_table.index)
+        final_table = self.create_election_result_uuid(final_table)
 
         return final_table
     

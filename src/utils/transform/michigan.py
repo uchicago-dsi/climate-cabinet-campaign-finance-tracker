@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 from utils.constants import BASE_FILEPATH
-from utils.transform.clean import StateTransformer, standardize_individual_names
+from utils.ind_transform import standardize_individual_names
+from utils.transform.clean import StateTransformer
 from utils.transform.constants import (
     MI_CON_FILEPATH,
     MI_CONT_DROP_COLS,
@@ -652,6 +653,7 @@ class MichiganTransformer(StateTransformer):
         individuals_df["state"] = individuals_df["state"].fillna("MI")
 
         return individuals_df
+
 
     def create_filtered_individuals_tables(
         self, standardized_dataframe_lst: list[pd.DataFrame]

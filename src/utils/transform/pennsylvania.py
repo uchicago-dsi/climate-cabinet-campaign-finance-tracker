@@ -6,9 +6,9 @@ from pathlib import Path
 import pandas as pd
 
 from utils.constants import BASE_FILEPATH
+from utils.ind_transform import standardize_individual_names
 from utils.transform import clean
 from utils.transform import constants as const
-from utils.transform.clean import standardize_individual_names
 
 
 def assign_PA_column_names(file_name: str, year: int) -> list:

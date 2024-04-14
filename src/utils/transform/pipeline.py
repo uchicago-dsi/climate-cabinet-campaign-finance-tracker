@@ -44,8 +44,6 @@ def transform_and_merge(
         single_state_individuals_tables.append(individuals_table)
         single_state_organizations_tables.append(organizations_table)
         single_state_transactions_tables.append(transactions_table)
-    # harvard_individuals_table = harvard_cleaners.clean_state()
-    # TODO: #96 harvard cleaner should be its own pipeline, not related to campaign finance
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
     complete_transactions_table = pd.concat(single_state_transactions_tables)

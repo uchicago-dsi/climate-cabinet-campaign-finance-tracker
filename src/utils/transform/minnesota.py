@@ -5,7 +5,8 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from utils.transform.clean import StateTransformer, standardize_individual_names
+from utils.ind_transform import standardize_individual_names
+from utils.transform.clean import StateTransformer
 from utils.transform.constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
     MN_CANDIDATE_CONTRIBUTION_MAP,
