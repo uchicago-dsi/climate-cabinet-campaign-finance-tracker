@@ -4,8 +4,6 @@ import pandas as pd
 
 from utils.transform.arizona import ArizonaTransformer
 from utils.transform.clean import StateTransformer
-
-# from utils.transform.harvard import HarvardTransformer
 from utils.transform.michigan import MichiganTransformer
 from utils.transform.minnesota import MinnesotaTransformer
 from utils.transform.pennsylvania import PennsylvaniaTransformer

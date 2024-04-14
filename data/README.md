@@ -194,3 +194,34 @@ Symbol: The company's Stock Ticker Symbol
 Legal name: The legal name of the company (can differ from the company name)
 
 -Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis. 
+
+
+## State Legislative Election Returns (1967-2016)
+
+### Overview
+This dataset accompanies the State Legislative Election Returns dataset, which chronicles detailed election outcomes for individual candidates in state legislative races across the United States, covering the period from 1967 to 2016. This extensive dataset allows for historical analysis of electoral trends, candidate performance, and legislative turnover.
+
+### Data Source
+The dataset aggregates data from multiple authoritative sources, including state election boards and historical archives, to ensure comprehensive coverage and accuracy. It provides an invaluable resource for researchers focusing on political science, electoral behavior, and governance.
+
+### Features
+- **Temporal Coverage:** Includes data from 1967 to 2016, capturing a broad spectrum of political and historical contexts.
+- **Utility:** Designed to support a wide range of analyses, from simple descriptive statistics to complex longitudinal studies.
+
+### Key Variables
+The dataset comprises several critical variables that capture the essentials of each election:
+- **caseid:** A unique identifier for each election entry.
+- **year, month, day:** The date on which the election was held.
+- **sab:** State abbreviation, indicating the state in which the election took place.
+- **cname:** Name of the county for localized analysis.
+- **candid:** A unique identifier for each candidate.
+- **vote:** The number of votes received by the candidate.
+- **termz:** The actual length of term the elected candidate served.
+- **cand:** Name of the candidate.
+- **sen:** Indicates whether the election was for the state senate.
+- **partyt:** The political party affiliation of the candidate.
+- **outcome:** The result of the election for the candidate (e.g., won, lost).
+- **last, first:** Last and first names of the candidate.
+- **v19_20171211:** A standardized candidate name variable, updated as of December 11, 2017.
+
+
