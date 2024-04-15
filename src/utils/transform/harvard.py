@@ -4,12 +4,7 @@ import uuid
 
 import numpy as np
 import pandas as pd
-from nameparser import HumanName
-from nameparser import HumanName
-
-from utils.linkage import get_likely_name
 from utils.ind_transform import standardize_individual_names
-
 from utils.transform.clean import (
     ElectionResultTransformer,
 )
@@ -75,7 +70,6 @@ class HarvardTransformer(ElectionResultTransformer):
         ]
         data = data.apply(standardize_individual_names, axis = 1)
 
-        # Mapping party abbreviations to full names
         party_map = {"d": "democratic", "r": "republican", "partymiss": np.nan}
         data["party"] = data["party"].map(party_map)
 
@@ -120,7 +114,11 @@ class HarvardTransformer(ElectionResultTransformer):
         """
         # Edit the pathfile
         transform_ind_df = pd.read_csv("/project/output/transformed/individuals_table.csv")
-        merged_data = election_data.merge(transform_ind_df[["full_name", "id"]], left_on = "cand", right_on="full_name", how="inner")
+        merged_data = election_data.merge(
+            transform_ind_df[["full_name", "id"]], 
+            left_on = "cand", 
+            right_on="full_name", 
+            how="inner")
         return merged_data
 
     
