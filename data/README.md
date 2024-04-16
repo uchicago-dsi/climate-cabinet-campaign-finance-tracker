@@ -182,7 +182,7 @@ Legal name: The legal name of the company (can differ from the company name)
 
 File name: FFF_oil_companies.csv
 Source: https://fossilfreefunds.org/fossil-fuel-companies
-This is. Fossil Free Fund's list of oil/gas companies
+This is Fossil Free Fund's list of oil/gas companies
 
 The oil/gas screen consists of companies designated by Morningstar industry classifications as Oil and Gas Drilling, Oil and Gas Extraction and Production, Oil and Gas Equipment and Services, Oil and Gas Integrated, Oil and Gas Midstream, and Oil and Gas Refining and Marketing; upstream and midstream companies from the Global Oil/Gas Exit List; and the top 100 oil/gas reserve holders from the Carbon Underground 200™.
 
