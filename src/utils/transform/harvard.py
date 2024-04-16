@@ -8,7 +8,7 @@ from utils.ind_transform import standardize_individual_names
 from utils.transform.clean import (
     ElectionResultTransformer,
 )
-from utils.transform.constants import HV_FILEPATH, HV_INDIVIDUAL_COLS
+from utils.transform.constants import HV_FILEPATH, HV_INDIVIDUAL_COLS, INDIVIDUALS_FILEPATH
 
 
 class HarvardTransformer(ElectionResultTransformer):
@@ -113,7 +113,7 @@ class HarvardTransformer(ElectionResultTransformer):
         Returns: election result with a new column of individual uuid
         """
         # Edit the pathfile
-        transform_ind_df = pd.read_csv("/project/output/transformed/individuals_table.csv")
+        transform_ind_df = pd.read_csv(INDIVIDUALS_FILEPATH)
         merged_data = election_data.merge(
             transform_ind_df[["full_name", "id"]], 
             left_on = "cand", 
