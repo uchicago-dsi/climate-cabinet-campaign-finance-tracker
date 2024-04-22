@@ -89,7 +89,7 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     return aggreg_df
 
 
-# OLD VERSION
+# RETAINED
 def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     """Creates network with entities as nodes, transactions as edges
 
@@ -304,93 +304,192 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
 
 # TODO: #99 delete old version of graph code when finished experimenting
 # NEW VERSION
+# def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
+#     """Creates a plotly visualization of the nodes and edges."""
+#     pos = nx.spring_layout(G)  # position nodes using the spring layout
+
+#     edge_x = []
+#     edge_y = []
+#     for edge in G.edges():
+#         x0, y0 = pos[edge[0]]
+#         x1, y1 = pos[edge[1]]
+#         edge_x.extend([x0, x1, None])  # none stated to create a line segment
+#         edge_y.extend([y0, y1, None])
+
+#     # adding edges
+#     edge_trace = go.Scatter(
+#         x=edge_x,
+#         y=edge_y,
+#         line=go.scatter.Line(width=0.5, color="#888"),
+#         hoverinfo="none",
+#         mode="lines",
+#     )
+
+#     # adding nodes
+#     node_x = []
+#     node_y = []
+#     node_color = []
+#     hover_text = []
+#     for node in G.nodes():
+#         x, y = pos[node]
+#         node_x.append(x)
+#         node_y.append(y)
+#         hover_text.append(f"Name: {node}")
+#         # assigning color based on classification
+#         classification = G.nodes[node].get(
+#             "classification", "neutral"
+#         )  # default set to 'neutral' if not specified
+#         if classification == "c":
+#             node_color.append("blue")
+#         elif classification == "f":
+#             node_color.append("red")
+#         else:
+#             node_color.append("green")  # green is default
+
+#     # adding a marker for node color to vary by classification - ONLY GREEN VISIBLE SO FAR - something up with the data?
+#     node_trace = go.Scatter(
+#         x=node_x,
+#         y=node_y,
+#         mode="markers",
+#         hoverinfo="text",
+#         text=hover_text,
+#         marker=go.scatter.Marker(
+#             showscale=True,
+#             colorscale="YlGnBu",
+#             size=10,
+#             color=node_color,
+#             line=go.scatter.marker.Line(width=2),
+#         ),
+#     )
+
+#     # creating the figure object
+#     fig = go.Figure(data=[edge_trace, node_trace])
+
+#     # updating the layout to add interactivity and annotations as needed
+#     fig.update_layout(
+#         title=f"Network Graph Indicating Campaign Contributions from {start_year} to {end_year}",
+#         titlefont_size=16,
+#         showlegend=False,
+#         hovermode="closest",
+#         margin={"b": 20, "l": 5, "r": 5, "t": 40},
+#         annotations=[
+#             go.layout.Annotation(
+#                 showarrow=True,
+#                 xref="paper",
+#                 yref="paper",
+#                 x=0.005,
+#                 y=-0.002,
+#                 arrowhead=1,
+#             )
+#         ],
+#         xaxis=go.layout.XAxis(showgrid=False, zeroline=False, showticklabels=False),
+#         yaxis=go.layout.YAxis(showgrid=False, zeroline=False, showticklabels=False),
+#     )
+
+#     # specify the directory and filename to save output
+#     graphs_directory = Path("output/network_graphs")
+#     graphs_directory.mkdir(
+#         parents=True, exist_ok=True
+#     )  # creating the directory if it doesn't exist
+#     filename = graphs_directory / f"network_graph_{start_year}_to_{end_year}.html"
+
+#     # saving the plot and showing it in a browser window as an interactive visualization
+#     fig.write_html(str(filename))
+#     # print(f"Graph saved to {filename}")
+#     fig.show()
+
+
 def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
-    """Creates a plotly visualization of the nodes and edges."""
-    pos = nx.spring_layout(G)  # position nodes using the spring layout
+    """Creates a plotly visualization of the nodes and edges with arrows indicating direction, and colors indicating classification."""
+    pos = nx.spring_layout(G)  # position nodes using the spring layout - retained from original code
 
     edge_x = []
     edge_y = []
+    annotations = []
+
+    # looping through edges to add lines and annotations for arrows
     for edge in G.edges():
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
-        edge_x.extend([x0, x1, None])  # none stated to create a line segment
-        edge_y.extend([y0, y1, None])
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
 
-    # adding edges
-    edge_trace = go.Scatter(
-        x=edge_x,
-        y=edge_y,
-        line=go.scatter.Line(width=0.5, color="#888"),
-        hoverinfo="none",
-        mode="lines",
-    )
+        # adding arrows with annotations for each line segment
+        annotations.append(
+            dict(
+                ax=x0,  # arrow tail location (x)
+                ay=y0,  # arrow tail location (y)
+                axref='x',
+                ayref='y',
+                x=x1,  # arrow head location (x)
+                y=y1,  # arrow head location (y)
+                xref='x',
+                yref='y',
+                showarrow=True,
+                arrowhead=3,  # size of the arrow head
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor='#636363'
+            )
+        )
 
-    # adding nodes
+    # nodes
     node_x = []
     node_y = []
-    node_color = []
-    hover_text = []
+    node_text = []
+    node_color = []  # list for storing colors based on classification
+
     for node in G.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        hover_text.append(f"Name: {node}")
-        # assigning color based on classification
-        classification = G.nodes[node].get(
-            "classification", "neutral"
-        )  # default set to 'neutral' if not specified
-        if classification == "c":
-            node_color.append("blue")
-        elif classification == "f":
-            node_color.append("red")
+        node_x.append(pos[node][0])
+        node_y.append(pos[node][1])
+        node_text.append(node)
+        # set color based on classification, default to 'lightgrey' if not specified
+        classification = G.nodes[node].get('classification', 'neutral')
+        if classification == 'c':
+            node_color.append('blue')
+        elif classification == 'f':
+            node_color.append('red')
         else:
-            node_color.append("green")  # green is default
+            node_color.append('green')  # default color for 'neutral' and others
 
-    # adding a marker for node color to vary by classification - ONLY GREEN VISIBLE SO FAR - something up with the data?
     node_trace = go.Scatter(
-        x=node_x,
-        y=node_y,
-        mode="markers",
-        hoverinfo="text",
-        text=hover_text,
-        marker=go.scatter.Marker(
-            showscale=True,
-            colorscale="YlGnBu",
-            size=10,
-            color=node_color,
-            line=go.scatter.marker.Line(width=2),
-        ),
+        x=node_x, y=node_y, 
+        mode='markers', 
+        hoverinfo='text',
+        text=node_text,
+        marker=dict(
+            showscale=True, 
+            colorscale='Viridis', # experimenting w colors here
+            size=10, 
+            color=node_color, 
+            colorbar=dict(title="Classification"),
+            line_width=2)
     )
 
-    # creating the figure object
-    fig = go.Figure(data=[edge_trace, node_trace])
-
-    # updating the layout to add interactivity and annotations as needed
-    fig.update_layout(
-        title=f"Network Graph Indicating Campaign Contributions from {start_year} to {end_year}",
-        titlefont_size=16,
-        showlegend=False,
-        hovermode="closest",
-        margin={"b": 20, "l": 5, "r": 5, "t": 40},
-        annotations=[
-            go.layout.Annotation(
-                showarrow=False, xref="paper", yref="paper", x=0.005, y=-0.002
-            )
-        ],
-        xaxis=go.layout.XAxis(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=go.layout.YAxis(showgrid=False, zeroline=False, showticklabels=False),
+    # setting up figure
+    fig = go.Figure(
+        data=[go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(color='#888', width=2))],
+        layout=go.Layout(
+            title=f"Network Graph Indicating Campaign Contributions from {start_year} to {end_year}",
+            titlefont_size=16,
+            showlegend=False,
+            hovermode='closest',
+            margin={'b': 20, 'l': 5, 'r': 5, 't': 40},
+            annotations=annotations,
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+        )
     )
+    
+    # adding node trace separately to have nodes appear above the lines
+    fig.add_trace(node_trace)
 
-    # specify the directory and filename to save output
+    # saving and show figure
     graphs_directory = Path("output/network_graphs")
-    graphs_directory.mkdir(
-        parents=True, exist_ok=True
-    )  # creating the directory if it doesn't exist
+    graphs_directory.mkdir(parents=True, exist_ok=True)
     filename = graphs_directory / f"network_graph_{start_year}_to_{end_year}.html"
-
-    # saving the plot and showing it in a browser window as an interactive visualization
     fig.write_html(str(filename))
-    # print(f"Graph saved to {filename}")
+    print(f"Graph saved to {filename}")
     fig.show()
 
 
@@ -474,6 +573,19 @@ def run_network_graph_pipeline(
     aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
     G = create_network_graph(aggreg_df)  # G: graph
     network_metrics(G)
-    ### why execute this function twice? and also how is the plot viewed? - NOT NEEDED TWICE, ADDRESSED
-    # plot_network_graph(G, start_year, end_year)
+    additional_network_metrics(G)
     plot_network_graph(G, start_year, end_year)
+
+# added for macro-level viz - Work in Progress
+def additional_network_metrics(G):
+    """ Calculate and print additional network metrics. """
+    # Clustering Coefficient
+    clustering_coeff = nx.average_clustering(G)
+    print(f"Average Clustering Coefficient: {clustering_coeff}")
+    return clustering_coeff
+
+# for testing 
+# individuals = pd.read_csv("output/cleaned/individuals_table.csv")
+# organizations = pd.read_csv("output/cleaned/organizations_table.csv")
+# transactions =  pd.read_csv("output/cleaned/transactions_table.csv")  
+# run_network_graph_pipeline(2018, 2021, [individuals, organizations, transactions])
