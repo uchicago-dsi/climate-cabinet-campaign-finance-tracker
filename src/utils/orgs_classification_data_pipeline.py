@@ -8,7 +8,7 @@ import pandas as pd
 import requests
 
 from utils.constants import BASE_FILEPATH
-from utils.linkage import *
+from utils.linkage import standardize_corp_names
 
 # FILE PATHS
 
@@ -52,6 +52,36 @@ organizations_cleaned_csv = (
     BASE_FILEPATH / "output" / "cleaned" / "organizations_table.csv"
 )
 
+TESTING_relevant_InfoGroup_2023_csv = (
+    BASE_FILEPATH
+    / "data"
+    / "raw_classification"
+    / "TESTING_relevant_InfoGroup_2023.csv"
+)
+
+parent_company_validation_csv = (
+    BASE_FILEPATH / "data" / "raw_classification" / "parent_company_validation.csv"
+)
+
+output_df_schema = {
+    "company_name": str,
+    "stock_symbol": str,
+    "legal_name": str,
+    "address": str,
+    "city": str,
+    "state": str,
+    "zipcode": str,
+    "area_code": str,
+    "primary_SIC_code": int,
+    "SIC6_description": str,
+    "SIC_code": float,
+    "primary_NAICS_code": str,
+    "NAICS8_description": str,
+    "parent_company_name": str,
+    "parent_company_ABI": int,
+    "classification": str,
+}
+
 
 def merge_FFF_data(FFF_data_classification_dict: dict) -> pd.DataFrame:
     """Merge FFF CSV files into one DataFrame
@@ -89,7 +119,7 @@ def merge_FFF_data(FFF_data_classification_dict: dict) -> pd.DataFrame:
 
 
 def prepare_FFF_data(merged_FFF_df: pd.DataFrame) -> pd.DataFrame:
-    """Merge FFF CSV files into one DataFrame
+    """Clean the merged FFF DataFrame and apply consistent data schema
 
     Args:
         merged_FFF_df: a DataFrame with the data from all FFF CSVs merged
@@ -99,25 +129,29 @@ def prepare_FFF_data(merged_FFF_df: pd.DataFrame) -> pd.DataFrame:
         company df for downstream use in the pipeline.
     """
     # establishing schema of outuput DataFrame
-    df_schema = {
-        "company_name": str,
-        "stock_symbol": str,
-        "legal_name": str,
-        "address": str,
-        "city": str,
-        "state": str,
-        "zipcode": str,
-        "area_code": str,
-        "primary_SIC_code": int,
-        "SIC6_description": str,
-        "primary_NAICS_code": str,
-        "NAICS8_description": str,
-        "classification": str,
-    }
+    df_schema = output_df_schema
     cleaned_aggregated_df = pd.DataFrame(df_schema, index=[])
     merged_FFF_df = merged_FFF_df.drop_duplicates()
     cleaned_aggregated_df = pd.concat([cleaned_aggregated_df, merged_FFF_df])
     return cleaned_aggregated_df
+
+
+def get_FFF_df(FFF_data_classification_dict: dict) -> pd.DataFrame:
+    """Returns a DataFrame of all FFF data for use in pipeline
+
+    Args:
+        FFF_data_classification_dict: a dictionary where a key is a FFF csv str and
+        the value is the corresponding classification for that csv where
+        'f' is fossil fuel, 'c' is clean energy, 'n' is neutral
+
+    Returns:
+        a cleaned FFF DataFrame that is formatted in the same schema as the aggregated
+        company df for downstream use in the pipeline.
+    """
+    print("preparing FFF data...")
+    merged_FFF_data = merge_FFF_data(FFF_dict)
+    cleaned_FFF_df = prepare_FFF_data(merged_FFF_data)
+    return cleaned_FFF_df
 
 
 def convert_SIC_codes_regex(SIC6_codes_csv: str) -> pd.DataFrame:
@@ -129,7 +163,7 @@ def convert_SIC_codes_regex(SIC6_codes_csv: str) -> pd.DataFrame:
     Returns:
     A DataFrame of the SIC6 code csv w/ an added column to convert the codes to regular expressions
     for matching purposes. the n digits of the SIC codes should correspond to the first n digits
-    # of the SIC codes in the InfoGroup dataset
+    of the SIC codes in the InfoGroup dataset
 
     Examples:
     SIC Code 123 should match SIC Code 12345
@@ -193,18 +227,50 @@ def get_symbol_from_company(company_name: str) -> str:
     return company_code
 
 
+def get_classification(row: pd.Series) -> str:
+    """Gets the final classification of the company
+
+    Returns the final classification of the company based on the Primary SIC Code and the SIC Code Column.
+    Theoretically these should be the same (both fossil fuel, both clean energy, or neither)
+    Function should be used with .apply() on a row of the DataFrame.
+
+    Args:
+        row: a row of the InfoGroup DataFrame
+
+    Returns:
+        the str classification of the company (f or c). if neither SIC code is relevant, returns None.
+        if they return different classifications, returns "ambiguous"
+    """
+    # if the same classification, just return one of them
+    if row["classification_primary_code"] == row["classification_code"]:
+        return row["classification_primary_code"]
+    elif (row["classification_primary_code"] is not None) & (
+        row["classification_code"] is None
+    ):
+        return row["classification_primary_code"]
+    elif (row["classification_primary_code"] is None) & (
+        row["classification_code"] is not None
+    ):
+        return row["classification_code"]
+    # if different classifications, return ambiguous
+    else:
+        return "ambiguous"
+
+
 def prepare_infogroup_data(
-    infogroup_csv: str, SIC6_codes_df: pd.DataFrame
+    infogroup_csv: str, SIC6_codes_df: pd.DataFrame, testing=False
 ) -> pd.DataFrame:
     """Subsets InfoGroup company data into only relevant CE, FF, and energy companies
 
     Args:
         infogroup_csv: the InfoGroup csv file
         SIC6_codes_df: DataFrame of the relevant SIC6 codes w/ corresponding regex codes and descriptions
+        testing: Boolean - True if code is being tested on only several chunks, False if whole InfoGroup csv should be used
     Returns:
         a DataFrame with information for only the relevant companies from the InfoGroup
         dataset that is formatted in the same schema as the aggregated company df for downstream
         use in the pipeline.
+        also returns a dictionary of parent companies and their associated IDs for record linkage.
         also writes the subsetted DataFrame to an output data file that can be found in
         the Google Drive folder.
     """
@@ -221,7 +287,8 @@ def prepare_infogroup_data(
         "PRIMARY NAICS CODE",
         "NAICS8 DESCRIPTIONS",
         "classification",
-        "stock_symbol",
+        "ABI",
+        "PARENT NUMBER",
     ]
 
     # establishing schema of outuput DataFrame
@@ -234,31 +301,111 @@ def prepare_infogroup_data(
         "state": str,
         "zipcode": str,
         "area_code": str,
+        "ABI": float,
         "primary_SIC_code": int,
         "SIC6_description": str,
         "primary_NAICS_code": str,
         "NAICS8_description": str,
+        "parent_company_name": str,
+        "parent_company_ABI": float,
         "classification": str,
     }
+
+    # dict where key is ID and value is parent name
+    parent_companies = {}
+
+    # dict of potential parent companies throughout chunks
+    potential_parent_companies_df = pd.DataFrame(columns=["ABI", "COMPANY"])
+
     cleaned_aggregated_df = pd.DataFrame(df_schema, index=[])
 
     counter = 0  # only looking at around 20 chunks for now since file is quite large
-    business_data_df = pd.read_csv(infogroup_csv, sep=",", header=0, chunksize=1000)
+    business_data_df = pd.read_csv(infogroup_csv, sep=",", header=0, chunksize=10000)
     for chunk in business_data_df:
         print("processing chunk", counter, "...")
-        chunk = chunk.dropna(subset=["PRIMARY SIC CODE"])
-        # applies SIC matcher to each company in the chunk
-        chunk["classification"] = chunk["PRIMARY SIC CODE"].apply(
+
+        # applies SIC matcher to each company in the chunk based on both
+        # primary SIC code as well as SIC Code (which can be different)
+        chunk["classification_primary_code"] = chunk["PRIMARY SIC CODE"].apply(
+            lambda x: SIC_matcher(x, SIC6_codes_df)
+        )
+
+        chunk["classification_code"] = chunk["SIC CODE"].apply(
             lambda x: SIC_matcher(x, SIC6_codes_df)
         )
 
         # drops any rows in chunk that do not have classification
         # (companies that are not classified are not relevant)
-        chunk = chunk.dropna(subset=["classification"])
+        no_classification_rows = chunk[
+            (chunk["classification_primary_code"].isna())
+            & (chunk["classification_code"].isna())
+        ]
 
-        # gets stock symbol for each relevant company if found
-        chunk["stock_symbol"] = chunk["COMPANY"].apply(
-            lambda x: get_symbol_from_company(x)
+        relevant_rows = chunk[
+            (chunk["classification_primary_code"].notna())
+            | (chunk["classification_code"].notna())
+        ]
+
+        # get the potential parent companies from the chunk (companies that do not have a parent company)
+        # and add them to the potential parent company dictionary
+
+        potential_parent_companies = chunk[chunk["PARENT NUMBER"].isna()]
+        potential_parent_companies = potential_parent_companies[["ABI", "COMPANY"]]
+
+        potential_parent_companies_df = pd.concat(
+            [potential_parent_companies, potential_parent_companies_df]
+        )
+
+        # get all the unique values from parent companies to see if they are in the chunk
+        parent_companies_in_chunk = relevant_rows["PARENT NUMBER"].unique()
+
+        # get the parent company ids from the parent company dictionary
+        parent_company_ids_from_dict = list(parent_companies.keys())
+
+        # after the first chunk, want to see if each parent company is found
+        # in any of the chunks
+        if counter != 0:
+            parent_companies_in_chunk = np.append(
+                parent_company_ids_from_dict, parent_companies_in_chunk
+            )
+
+        # look at each parent company id and see if it is in the chunk.
+        # if so, get the name of the parent company
+        for parent_company_id in parent_companies_in_chunk:
+            parent_company_df = chunk[chunk["ABI"] == parent_company_id]
+            potential_company_match_df = potential_parent_companies_df[
+                potential_parent_companies_df["ABI"] == parent_company_id
+            ]
+            # if the parent company id already has an associated name, skip it
+            if (parent_company_id in parent_companies) and (
+                parent_companies[parent_company_id] is not None
+            ):
+                pass
+            # if the parent company id is not a number, skip as well
+            elif np.isnan(parent_company_id):
+                pass
+            # if the parent company id does not have an associated name in the dict and the parent company
+            # is found within the chunk, get and set the name to the ID
+            elif len(parent_company_df) > 0:
+                parent_company = parent_company_df.iloc[0]
+                parent_company_name = parent_company["COMPANY"]
+                parent_companies[parent_company_id] = parent_company_name
+            # if the parent company id does not have an associated name in the dict and the parent company
+            # is NOT found within the chunk, see if it's in the potential company list
+            # and get and set the name to the corresponding ID if so
+            elif len(potential_company_match_df) > 0:
+                parent_company = potential_company_match_df.iloc[0]
+                parent_company_name = parent_company["COMPANY"]
+                parent_companies[parent_company_id] = parent_company_name
+            # if the parent company id does not have an associated name in the dict and it is NOT
+            # found within the chunk, set it to None (to look for in other chunks)
+            else:
+                parent_companies[parent_company_id] = None
+
+        chunk = chunk.drop(no_classification_rows.index)
+
+        chunk["classification"] = chunk.apply(
+            lambda row: get_classification(row), axis=1
         )
 
         # subsetting the chunk by only relevant columns
@@ -277,48 +424,101 @@ def prepare_infogroup_data(
             "PRIMARY NAICS CODE": "primary_NAICS_code",
             "NAICS8 DESCRIPTIONS": "NAICS8_description",
             "classification": "classification",
+            "PARENT NUMBER": "parent_company_ABI",
+            "parent_company_name": "parent_company_name",
+            "ABI": "ABI",
         }
         cleaned_chunk = chunk.rename(mapper=column_name_mapper, axis=1)
 
         # appending chunk to the aggregated output DataFrame
         cleaned_aggregated_df = pd.concat([cleaned_chunk, cleaned_aggregated_df])
         counter += 1
+        testing_max_chunks = 4
+        if testing & (counter > testing_max_chunks):
+            cleaned_aggregated_df.to_csv(
+                TESTING_relevant_InfoGroup_2023_csv, mode="w", index=False
+            )
+            return cleaned_aggregated_df, parent_companies
 
     # write cleaned DF to output file in data/raw_classification
     cleaned_aggregated_df.to_csv(relevant_InfoGroup_2023_csv, mode="w", index=False)
 
-    return cleaned_aggregated_df
+    return cleaned_aggregated_df, parent_companies
 
 
-def merge_company_dfs(
-    FFF_data_classification_dict: dict, InfoGroup_csv: str
-) -> pd.DataFrame:
-    """Merges all company DataFrames from FFF and InfoGroup into one DataFrame
+def set_parent_company(parent_company_ABI: float, parent_company_dict: dict) -> None:
+    """Sets the parent company name for a row of the InfoGroup DataFrame
+
+        If the parent company ABI of the InfoGroup data row is found in the
+        parent company dict, sets the row's parent company name.
+        This function should be used with .apply() on each row of the
+        subsetted InfoGroup dataframe.
 
     Args:
-        FFF_data_classification_dict: a dictionary where a key is a FFF csv str and
-        the value is the corresponding classification for that csv
-        InfoGroup_csv: the InfoGroup csv
+        parent_company_ABI: the row's parent company ABI
+        parent_company_dict: dictionary of parent company names and their corresponding ABI codes
 
     Returns:
-        a merged DataFrame from FFF and InfoGroup data. also writes this to a CSV
-        in data/raw_classification
+        Returns the parent company name
     """
-    # preparing FF data
-    print("preparing FFF data...")
-    merged_FFF_data = merge_FFF_data(FFF_dict)
-    cleaned_FFF_df = prepare_FFF_data(merged_FFF_data)
+    if parent_company_ABI is None:
+        return None
+    if parent_company_ABI in parent_company_dict:
+        return parent_company_dict[parent_company_ABI]
 
+
+# IN PROGRESS
+def transform_IG_df(
+    InfoGroup_df: pd.DataFrame, parent_company_dict: dict
+) -> pd.DataFrame:
+    """Gets additional information for each row of subsetted InfoGroup data
+
+        Gets the stock symbol and parent company of each company in the
+        subsetted InfoGroup dataframe if possible
+    Args:
+        company_df: a DataFrame of companies from the FFF datasets and
+        InfoGroup dataset
+        parent_company_dict: dictionary of parent company names and their corresponding ABI codes
+
+    Returns:
+        a dataframe with additional information about each company such as
+        the stock symbol and the parent company
+        also writes the data to the file of relevant InfoGroup data
+    """
+    InfoGroup_df["parent_company_name"] = InfoGroup_df["parent_company_ABI"].apply(
+        lambda parent_company_ABI: set_parent_company(
+            parent_company_ABI, parent_company_dict
+        )
+    )
+    # need to test this... times out randomly
+    # InfoGroup_df["stock_symbol"] = InfoGroup_df["company_name"].apply(
+    #     lambda company: get_symbol_from_company(company)
+    # )
+
+    return InfoGroup_df
+
+
+def get_InfoGroup_df(
+    SIC6_codes_csv: str, infogroup_csv: str, testing=False
+) -> pd.DataFrame:
+    """Returns a DataFrame of all InfoGroup data for use in pipeline
+
+    Args:
+      SIC6_codes_csv: a csv of relevant SIC6 codes and NCAIS codes and their descriptions
+      infogroup_csv: the InfoGroup csv file
+      testing: Boolean - True if code is being tested on only several chunks, False if whole InfoGroup csv should be used
+    Returns:
+        a cleaned InfoGroup DataFrame that is formatted in the same schema as the aggregated
+        company df for downstream use in the pipeline.
+    """
     # preparing InfoGroup data
     print("preparing InfoGroup data...")
     SIC6_codes_df = convert_SIC_codes_regex(SIC6_codes_csv)
-    cleaned_InfoGroup_df = prepare_infogroup_data(infogroup_data_2023, SIC6_codes_df)
-
-    # merge the data into one DataFrame
-    print("merging the FFF and InfoGroup data...")
-    merged_dfs = pd.concat([cleaned_FFF_df, cleaned_InfoGroup_df])
-    merged_dfs.to_csv(aggregated_classification_csv, mode="w", index=False)
-    return merged_dfs
+    InfoGroup_df, parent_company_dict = prepare_infogroup_data(
+        infogroup_csv, SIC6_codes_df, testing=testing
+    )
+    cleaned_InfoGroup_df = transform_IG_df(InfoGroup_df, parent_company_dict)
+    return cleaned_InfoGroup_df
 
 
 def clean_aggregated_company_df(company_df: pd.DataFrame) -> pd.DataFrame:
@@ -333,12 +533,54 @@ def clean_aggregated_company_df(company_df: pd.DataFrame) -> pd.DataFrame:
 
     """
     company_df["company_name"] = company_df["company_name"].apply(
-        lambda x: standardize_corp_names(x)
+        lambda company: standardize_corp_names(company)
     )
     print("Cleaning the aggregated company df...")
     # removes any exact duplicates that may have occurred due to overlapping SIC Codes
     company_df = company_df.drop_duplicates()
     return company_df
+
+
+def merge_company_dfs(
+    cleaned_FFF_df=None,
+    cleaned_InfoGroup_df=None,
+    FFF_data_classification_dict=None,
+    InfoGroup_csv=None,
+    SIC6_codes_csv=None,
+) -> pd.DataFrame:
+    """Merges all company DataFrames from FFF and InfoGroup into one DataFrame
+
+        If you provide the FFF_df and the InfoGroup_df, it will merge the company dataframes
+        If FFF_df and InfoGroup_df are left as None, will perform the necessary transforamtions
+        to the original dataset to get the cleaned FFF and InfoGroup dataframes (this is useful
+        if you dont' want to run the InfoGroup data cleaning function)
+
+    Args:
+        FFF_df: a prepared, cleaned and merged FFF dataframe
+        InfoGroup_df: a prepared and cleaned InfoGroup dataframe with only relevant companies
+        FFF_data_classification_dict: a dictionary where a key is a FFF csv str and
+        the value is the corresponding classification for that csv (for original FFF data)
+        InfoGroup_csv: the original InfoGroup csv
+        SIC6_codes_csv: a csv of relevant SIC6 codes and NCAIS codes and their descriptions
+
+    Returns:
+        a merged DataFrame from FFF and InfoGroup data. also writes this to a CSV
+        in data/raw_classification
+    """
+    if cleaned_FFF_df is None:
+        cleaned_FFF_df = get_FFF_df(FFF_data_classification_dict)
+
+    if cleaned_InfoGroup_df is None:
+        cleaned_InfoGroup_df = get_InfoGroup_df(SIC6_codes_csv, InfoGroup_csv)
+
+    # merge the data into one DataFrame
+    print("merging the FFF and InfoGroup data...")
+    merged_dfs = pd.concat([cleaned_FFF_df, cleaned_InfoGroup_df])
+
+    # clean the merged DataFrame
+    cleaned_merged_dfs = clean_aggregated_company_df(merged_dfs)
+    cleaned_merged_dfs.to_csv(aggregated_classification_csv, mode="w", index=False)
+    return cleaned_merged_dfs
 
 
 # IN PROGRESS
@@ -354,24 +596,10 @@ def company_record_linkage(company_df: pd.DataFrame) -> pd.DataFrame:
         possible and duplicates removed.
     """
 
-
-# IN PROGRESS
-def transform_organizations_df(organizations_df: pd.DataFrame) -> pd.DataFrame:
-    """Performs record linkage on aggregated company DataFrame
-
-    Args:
-        organizations_df: a DataFrame of organizations from previous pipeline
-
-    Returns:
-        the organizations_df with a new column for stock_symbol
-    """
-    # would like to get the stock symbols of all the organizations listed in the
-    # organization table where possible but it is taking too long to run...
-
-    organizations_df["stock_symbol"] = organizations_df["name"].apply(
-        lambda x: get_symbol_from_company(x)
-    )
-    return organizations_df
+    # record linkage on parent company within InfoGroup DataFrame and also between
+    # FFF and InfoGroup Data.
+    # how granular do we want the organization data? do we want to keep
+    # organizations if they are the same but have different addresses?
 
 
 def classify_stock_symbol_match(
@@ -444,58 +672,89 @@ def match_organizations(
 
 # executing the pipeline
 FFF_dict = {FFF_oil_company_csv: "f", FFF_coal_company_csv: "f"}
-company_classification_df = merge_company_dfs(FFF_dict, infogroup_data_2023)
-cleaned_company_classification_df = clean_aggregated_company_df(
-    company_classification_df
+company_classification_df = merge_company_dfs(
+    FFF_data_classification_dict=FFF_dict,
+    InfoGroup_csv=infogroup_data_2023,
+    SIC6_codes_csv=SIC6_codes_csv,
 )
 
+
 # TESTING
+
+# parent_testing_df, parent_testing_company_dict = get_InfoGroup_df(
+#     SIC6_codes_csv=SIC6_codes_csv,
+#     infogroup_csv=parent_company_validation_csv,
+#     testing=True,
+# )
+
+# print(parent_testing_df.head())
+# print(parent_testing_df.columns)
+# print(parent_testing_company_dict)
+
+# transform_IG_df(parent_testing_df, parent_testing_company_dict)
+
+# IF_testing_df, IF_testing_company_dict = get_InfoGroup_df(
+#     SIC6_codes_csv=SIC6_codes_csv, infogroup_csv=infogroup_data_2023, testing=True
+# )
+# print(IF_testing_df.head())
+# print(IF_testing_df.columns)
+# print(IF_testing_company_dict)
+
+# transform_IG_df(IF_testing_df, IF_testing_company_dict)
+
+# FFF_dict = {FFF_oil_company_csv: "f", FFF_coal_company_csv: "f"}
+# relevant_InfoGroup_df = pd.read_csv(relevant_InfoGroup_2023_csv)
+# company_classification_df = merge_company_dfs(
+#     FFF_data_classification_dict=FFF_dict, cleaned_InfoGroup_df=relevant_InfoGroup_df
+# )
+
+
 # organizations_df = pd.read_csv(organizations_cleaned_csv)
 # print(transform_organizations_df(organizations_df).head())
 
-# trying to find best similarity score...
-print(calculate_string_similarity("EXXON", "Exxon Mobil"))
+# # trying to find best similarity score...
+# print(calculate_string_similarity("EXXON", "Exxon Mobil"))
 
 
-def jaccard_similarity(str1, str2):
-    # Convert the strings to sets of characters
-    set1 = set(str1.lower())
-    set2 = set(str2.lower())
+# def jaccard_similarity(str1, str2):
+#     # Convert the strings to sets of characters
+#     set1 = set(str1.lower())
+#     set2 = set(str2.lower())
 
-    # Calculate the intersection and union of the sets
-    intersection = len(set1.intersection(set2))
-    union = len(set1.union(set2))
+#     # Calculate the intersection and union of the sets
+#     intersection = len(set1.intersection(set2))
+#     union = len(set1.union(set2))
 
-    # Calculate Jaccard Similarity
-    similarity = intersection / union if union != 0 else 0
+#     # Calculate Jaccard Similarity
+#     similarity = intersection / union if union != 0 else 0
 
-    return similarity
-
-
-# Test the function
-str1 = "EXXON"
-str2 = "Exxon Mobil"
-similarity = jaccard_similarity(str1, str2)
-print(f"Jaccard Similarity between '{str1}' and '{str2}': {similarity:.2f}")
+#     return similarity
 
 
-def jaccard_similarity_ngrams(str1, str2, n=3):
-    # Generate n-grams for each string
-    set1 = set([str1[i : i + n].lower() for i in range(len(str1) - n + 1)])
-    set2 = set([str2[i : i + n].lower() for i in range(len(str2) - n + 1)])
-
-    # Calculate the intersection and union of the sets
-    intersection = len(set1.intersection(set2))
-    union = len(set1.union(set2))
-
-    # Calculate Jaccard Similarity
-    similarity = intersection / union if union != 0 else 0
-
-    return similarity
+# # Test the function
+# str1 = "EXXON"
+# str2 = "Exxon Mobil"
+# similarity = jaccard_similarity(str1, str2)
+# print(f"Jaccard Similarity between '{str1}' and '{str2}': {similarity:.2f}")
 
 
-# Test the function
-str1 = "EXXON"
-str2 = "Exxon Mobil"
-similarity = jaccard_similarity_ngrams(str1, str2, n=3)
-print(f"Jaccard Similarity between '{str1}' and '{str2}': {similarity:.2f}")
+# def jaccard_similarity_ngrams(str1, str2, n=3):
+#     # Generate n-grams for each string
+#     set1 = set([str1[i : i + n].lower() for i in range(len(str1) - n + 1)])
+#     set2 = set([str2[i : i + n].lower() for i in range(len(str2) - n + 1)])
+
+#     # Calculate the intersection and union of the sets
+#     intersection = len(set1.intersection(set2))
+#     union = len(set1.union(set2))
+
+#     # Calculate Jaccard Similarity
+#     similarity = intersection / union if union != 0 else 0
+
+#     return similarity
+
+
+# # Test the function
+# str1 = "EXXON"
+# str2 = "Exxon Mobil"
+# similarity = jaccard_similarity_ngrams(str1, str2, n=3)
+# print(f"Jaccard Similarity between '{str1}' and '{str2}': {similarity:.2f}")
