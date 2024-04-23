@@ -192,29 +192,6 @@ MI_EXP_DROP_COLS = [
     "fundraiser",
 ]
 
-HV_FILEPATH = BASE_FILEPATH / "data" / "raw" / "HV" / "196slers1967to2016_20180908.dta"
-
-INDIVIDUALS_FILEPATH = BASE_FILEPATH / "output" / "transformed" / "individuals_table.csv"
-
-HV_INDIVIDUAL_COLS = [
-    "year",
-    "month",
-    "day",
-    "sab",
-    "cname",
-    "candid",
-    "vote",
-    "termz",
-    "cand",
-    "sen",
-    "partyt",
-    "dseats",
-    "outcome",
-    "last",
-    "first",
-    "v19_20171211",
-]
-
 # PA EDA constants:
 
 PA_SCHEMA_CHANGE_YEAR = 2022
@@ -516,7 +493,6 @@ MICHIGAN_CONTRIBUTION_COLS_RENAME = [
 ]
 
 
-
 state_abbreviations = [
     " AK ",
     " AL ",
@@ -573,4 +549,3 @@ state_abbreviations = [
     " WV ",
     " WY ",
 ]
-

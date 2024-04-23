@@ -3,7 +3,7 @@
 import argparse
 
 from utils.constants import BASE_FILEPATH
-from utils.transform.election_pipeline import transform_and_merge
+from utils.election.election_pipeline import transform_and_merge
 
 parser = argparse.ArgumentParser()
 
@@ -32,9 +32,12 @@ else:
 input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
 
-election_results_output_path = output_directory / "elction_results_table.csv"
+election_results_output_path = output_directory / "election_results_table.csv"
 
 complete_election_resutls_table = transform_and_merge()
+print(election_results_output_path)
+print(complete_election_resutls_table)
 
 complete_election_resutls_table.to_csv(election_results_output_path)
 
+## splink_dedupe
