@@ -29,7 +29,7 @@ FFF_oil_company_csv = (
 )
 
 infogroup_data_2023 = (
-    BASE_FILEPATH / "data" / "raw_classification" / "2023_Business_Academic_QCQ.txt"
+    BASE_FILEPATH / "data" / "raw_classification" / "2023_InfoGroup.txt"
 )
 
 SIC6_codes_csv = BASE_FILEPATH / "data" / "raw_classification" / "SIC6_codes.csv"
@@ -200,8 +200,7 @@ def SIC_matcher(IF_SIC_code: float, relevant_SIC_code_df: pd.DataFrame) -> str:
 
 
 def get_symbol_from_company(company_name: str) -> str:
-    """Gets the stock symbol based on the name of the company for use
-    in record linkage.
+    """Gets the stock symbol based on the name of the company for use in record linkage.
 
     Function should be used with .apply() on a company name column. Function taken from
     stack overflow article: https://stackoverflow.com/questions/38967533/retrieve-company-name-with-ticker-symbol-input-yahoo-or-google-api
@@ -217,12 +216,21 @@ def get_symbol_from_company(company_name: str) -> str:
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
     params = {"q": company_name, "quotes_count": 1, "country": "United States"}
 
-    res = requests.get(url=url, params=params, headers={"User-Agent": user_agent})
+    res = requests.get(
+        url=url, params=params, headers={"User-Agent": user_agent}, timeout=10
+    )
     data = res.json()
 
     try:
         company_code = data["quotes"][0]["symbol"]
-    except:
+    except requests.RequestException as e:
+        print("Request Exception:", e)
+        return None
+    except IndexError:
+        print("IndexError: Unable to retrieve symbol for", company_name)
+        return None
+    except KeyError:
+        print("KeyError: Unable to retrieve symbol for", company_name)
         return None
     return company_code
 
@@ -258,7 +266,7 @@ def get_classification(row: pd.Series) -> str:
 
 
 def prepare_infogroup_data(
-    infogroup_csv: str, SIC6_codes_df: pd.DataFrame, testing=False
+    infogroup_csv: str, SIC6_codes_df: pd.DataFrame, testing: bool = False
 ) -> pd.DataFrame:
     """Subsets InfoGroup company data into only relevant CE, FF, and energy companies
 
@@ -499,7 +507,7 @@ def transform_IG_df(
 
 
 def get_InfoGroup_df(
-    SIC6_codes_csv: str, infogroup_csv: str, testing=False
+    SIC6_codes_csv: str, infogroup_csv: str, testing: bool = False
 ) -> pd.DataFrame:
     """Returns a DataFrame of all InfoGroup data for use in pipeline
 
@@ -542,11 +550,11 @@ def clean_aggregated_company_df(company_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def merge_company_dfs(
-    cleaned_FFF_df=None,
-    cleaned_InfoGroup_df=None,
-    FFF_data_classification_dict=None,
-    InfoGroup_csv=None,
-    SIC6_codes_csv=None,
+    cleaned_FFF_df: pd.DataFrame = None,
+    cleaned_InfoGroup_df: pd.DataFrame = None,
+    FFF_data_classification_dict: dict = None,
+    InfoGroup_csv: str = None,
+    SIC6_codes_csv: str = None,
 ) -> pd.DataFrame:
     """Merges all company DataFrames from FFF and InfoGroup into one DataFrame
 
@@ -556,8 +564,8 @@ def merge_company_dfs(
         if you dont' want to run the InfoGroup data cleaning function)
 
     Args:
-        FFF_df: a prepared, cleaned and merged FFF dataframe
-        InfoGroup_df: a prepared and cleaned InfoGroup dataframe with only relevant companies
+        cleaned_FFF_df: a prepared, cleaned and merged FFF dataframe
+        cleaned_InfoGroup_df: a prepared and cleaned InfoGroup dataframe with only relevant companies
         FFF_data_classification_dict: a dictionary where a key is a FFF csv str and
         the value is the corresponding classification for that csv (for original FFF data)
         InfoGroup_csv: the original InfoGroup csv
@@ -659,7 +667,7 @@ def match_organizations(
     # if no symbol match, then we rely on company names and states
     # if there's enough of a match on company name and state, then we can classify
 
-    org_name = org_company["name"]
+    # org_name = org_company["name"]
 
     # will test out different similarity score metrics to match company names
 
