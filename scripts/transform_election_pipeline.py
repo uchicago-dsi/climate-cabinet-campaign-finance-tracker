@@ -1,4 +1,4 @@
-"""Script for running cleaning pipeline for election results, should be run after running the transform_pipeline"""
+"""Script for running cleaning pipeline for election results"""
 
 import argparse
 
@@ -35,9 +35,5 @@ output_directory.mkdir(parents=True, exist_ok=True)
 election_results_output_path = output_directory / "election_results_table.csv"
 
 complete_election_resutls_table = transform_and_merge()
-print(election_results_output_path)
-print(complete_election_resutls_table)
 
 complete_election_resutls_table.to_csv(election_results_output_path)
-
-## splink_dedupe
