@@ -1,11 +1,14 @@
-"""Buidling, visualizing, and analyzing networks"""
+"""Buidling, visualizing, and analyzing networks (micro-level)"""
 
 import itertools
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import networkx as nx
+
+# import numpy as np
 import pandas as pd
-import plotly.graph_objects as go  # TODO: #100 explore other libraries
+import plotly.graph_objects as go
 
 
 def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
@@ -275,17 +278,29 @@ def network_metrics(net_graph: nx.Graph) -> None:
         )  # creates clusters of nodes with high interactions where granularity = 5
     communities = sorted(communities, key=len, reverse=True)
 
-    with Path("output/network_metrics.txt").open("w") as file:
-        file.write(f"in degree centrality: {in_degree}\n")
-        file.write(f"out degree centrality: {out_degree}\n")
-        file.write(f"eigenvector centrality: {eigenvector}\n")
-        file.write(f"betweenness centrality: {betweenness}\n\n")
+    # Package metrics in a dictionary
+    metrics = {
+        "in_degree": in_degree,
+        "out_degree": out_degree,
+        "eigenvector": eigenvector,
+        "betweenness": betweenness,
+        "assortativity": assortativity,
+        "density": density,
+    }
 
-        file.write(f"assortativity based on 'classification': {assortativity}\n\n")
+    # with Path("output/network_metrics.txt").open("w") as file:
+    #     file.write(f"in degree centrality: {in_degree}\n")
+    #     file.write(f"out degree centrality: {out_degree}\n")
+    #     file.write(f"eigenvector centrality: {eigenvector}\n")
+    #     file.write(f"betweenness centrality: {betweenness}\n\n")
 
-        file.write(f"density': {density}\n\n")
+    #     file.write(f"assortativity based on 'classification': {assortativity}\n\n")
 
-        file.write(f"communities where k = 5': {communities}\n\n")
+    #     file.write(f"density': {density}\n\n")
+
+    #     file.write(f"communities where k = 5': {communities}\n\n")
+
+    return metrics, communities
 
 
 def run_network_graph_pipeline(
@@ -341,3 +356,78 @@ def additional_network_metrics(G: nx.Graph) -> None:
 # organizations = pd.read_csv("output/cleaned/organizations_table.csv")
 # transactions = pd.read_csv("output/cleaned/transactions_table.csv")
 # run_network_graph_pipeline(2018, 2021, [individuals, organizations, transactions])
+
+
+def plot_macro_level_graph(
+    net_graph: nx.Graph, communities: list, centrality_metrics: list
+) -> None:
+    """Plots a macro-level view of the network graph highlighting communities and key nodes.
+
+    Args:
+        net_graph (nx.Graph): The networkx graph object.
+        communities (list of lists): Each sublist contains nodes that form a community.
+        centrality_metrics (dict): Dictionary containing various centrality measures.
+    """
+    pos = nx.spring_layout(net_graph)
+    plt.figure(figsize=(12, 8))
+
+    # mapping each node to its community
+    # community_map = {
+    #     node: idx for idx, community in enumerate(communities) for node in community
+    # }
+    # obtaining colors for each community
+    # community_colors = np.array([community_map[node] for node in net_graph.nodes()])
+
+    # putting down nodes
+    node_sizes = [
+        5 * centrality_metrics["betweenness"][node] * 1000 for node in net_graph.nodes()
+    ]  # scaling node size by betweenness centrality
+    nx.draw_networkx_nodes(
+        net_graph,
+        pos,
+        # node_color=community_colors,
+        node_size=node_sizes,
+        cmap=plt.cm.jet,
+        alpha=0.7,
+    )
+
+    # drawing edges
+    nx.draw_networkx_edges(net_graph, pos, alpha=0.5)
+
+    # labels for high centrality nodes
+    high_centrality_nodes = [
+        node
+        for node in centrality_metrics["betweenness"]
+        if centrality_metrics["betweenness"][node]
+        > sorted(centrality_metrics["betweenness"].values())[-10]
+    ]  # have to adjust threshold
+    nx.draw_networkx_labels(
+        net_graph,
+        pos,
+        labels={node: node for node in high_centrality_nodes},
+        font_size=10,
+    )
+
+    plt.title("Macro-Level Clustering View of Network Graph")
+    # plt.colorbar(
+    #     plt.cm.ScalarMappable(cmap=plt.cm.jet),
+    #     orientation="horizontal",
+    #     label="Community ID",
+    # )
+    plt.axis("off")
+    plt.show()
+
+
+# testing usage of macro level viz function - change paths if needed and RUN IN AN INTERACTIVE WINDOW TO DISPLAY GRAPH
+individuals = pd.read_csv("/project/output/cleaned/individuals_table.csv")
+organizations = pd.read_csv("/project/output/cleaned/organizations_table.csv")
+transactions = pd.read_csv("/project/output/cleaned/transactions_table.csv")
+
+aggreg_df = combine_datasets_for_network_graph(
+    [individuals, organizations, transactions]
+)
+G = create_network_graph(aggreg_df)
+centrality_metrics, communities = network_metrics(G)
+plot_macro_level_graph(
+    G, communities, {"betweenness": nx.betweenness_centrality(G, weight="amount")}
+)
