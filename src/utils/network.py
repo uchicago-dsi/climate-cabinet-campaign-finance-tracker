@@ -149,21 +149,21 @@ def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> No
 
         # adding arrows with annotations for each line segment
         annotations.append(
-            dict(
-                ax=x0,  # arrow tail location (x)
-                ay=y0,  # arrow tail location (y)
-                axref="x",
-                ayref="y",
-                x=x1,  # arrow head location (x)
-                y=y1,  # arrow head location (y)
-                xref="x",
-                yref="y",
-                showarrow=True,
-                arrowhead=3,  # size of the arrow head
-                arrowsize=1,
-                arrowwidth=2,
-                arrowcolor="#636363",
-            )
+            {
+                "ax": x0,  # arrow tail location (x)
+                "ay": y0,  # arrow tail location (y)
+                "axref": "x",
+                "ayref": "y",
+                "x": x1,  # arrow head location (x)
+                "y": y1,  # arrow head location (y)
+                "xref": "x",
+                "yref": "y",
+                "showarrow": True,
+                "arrowhead": 3,  # size of the arrow head
+                "arrowsize": 1,
+                "arrowwidth": 2,
+                "arrowcolor": "#636363",
+            }
         )
 
     # nodes
@@ -191,21 +191,21 @@ def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> No
         mode="markers",
         hoverinfo="text",
         text=node_text,
-        marker=dict(
-            showscale=True,
-            colorscale="Viridis",  # experimenting w colors here
-            size=10,
-            color=node_color,
-            colorbar=dict(title="Classification"),
-            line_width=2,
-        ),
+        marker={
+            "showscale": True,
+            "colorscale": "Viridis",  # experimenting w colors here
+            "size": 10,
+            "color": node_color,
+            "colorbar": {"title": "Classification"},
+            "line_width": 2,
+        },
     )
 
     # setting up figure
     fig = go.Figure(
         data=[
             go.Scatter(
-                x=edge_x, y=edge_y, mode="lines", line=dict(color="#888", width=2)
+                x=edge_x, y=edge_y, mode="lines", line={"color": "#888", "width": 2}
             )
         ],
         layout=go.Layout(
@@ -215,8 +215,8 @@ def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> No
             hovermode="closest",
             margin={"b": 20, "l": 5, "r": 5, "t": 40},
             annotations=annotations,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
         ),
     )
 
