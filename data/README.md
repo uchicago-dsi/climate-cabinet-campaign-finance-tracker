@@ -227,7 +227,7 @@ A description of relevant features can be found in InfoGroup's variable listing 
 
 File name: SIC6_codes.csv
 
-This file outlines SIC codes relevant to Fossil Fuel and Clean Energy companies that will be used to subset InfoGroup data. 
+This file outlines SIC codes relevant to Fossil Fuel and Clean Energy companies that will be used to subset InfoGroup data. SIC codes were manually selected by combing the SIC code databse here: https://siccode.com/
 
 ### How to access:
 This file is called SIC_codes and and should be downloaded as a csv from the climate cabinet drive in 2024-spring-clinic folder. It should be renamed to SIC6_codes.csv This file should be saved in data/raw_classification. 
