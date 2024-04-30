@@ -352,10 +352,10 @@ def additional_network_metrics(G: nx.Graph) -> None:
 
 
 # for testing
-# individuals = pd.read_csv("output/cleaned/individuals_table.csv")
-# organizations = pd.read_csv("output/cleaned/organizations_table.csv")
-# transactions = pd.read_csv("output/cleaned/transactions_table.csv")
-# run_network_graph_pipeline(2018, 2021, [individuals, organizations, transactions])
+individuals = pd.read_csv("output/cleaned/individuals_table.csv")
+organizations = pd.read_csv("output/cleaned/organizations_table.csv")
+transactions = pd.read_csv("output/cleaned/transactions_table.csv")
+run_network_graph_pipeline(2018, 2021, [individuals, organizations, transactions])
 
 
 def plot_macro_level_graph(
@@ -419,6 +419,8 @@ def plot_macro_level_graph(
 
 
 # testing usage of macro level viz function - change paths if needed and RUN IN AN INTERACTIVE WINDOW TO DISPLAY GRAPH
+# TODO: make default paths more robust
+# TODO: move script to scripts directory
 individuals = pd.read_csv("/project/output/cleaned/individuals_table.csv")
 organizations = pd.read_csv("/project/output/cleaned/organizations_table.csv")
 transactions = pd.read_csv("/project/output/cleaned/transactions_table.csv")
