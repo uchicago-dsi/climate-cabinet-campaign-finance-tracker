@@ -161,7 +161,7 @@ def get_FFF_df(FFF_data_classification_dict: dict) -> pd.DataFrame:
         company df for downstream use in the pipeline.
     """
     print("preparing FFF data...")
-    merged_FFF_data = merge_FFF_data(FFF_dict)
+    merged_FFF_data = merge_FFF_data(FFF_data_classification_dict)
     cleaned_FFF_df = prepare_FFF_data(merged_FFF_data)
     return cleaned_FFF_df
 
@@ -546,7 +546,7 @@ def prepare_infogroup_data(
         parent_company_ids -= confirmed_parent_company_ids
 
         chunk = chunk.drop(no_classification_rows.index)
-        print(confirmed_parent_companies_df)
+        # print(confirmed_parent_companies_df)
 
         # get the final classification of the chunk (based on classification of SIC code
         # and SIC6 code)
@@ -678,7 +678,7 @@ def set_parent_company(row: pd.Series, company_df: pd.DataFrame) -> None:
     if len(parent_ABIs) > 0:
         # find UUID that corresponds to this ABI
         parent = parent_ABIs.iloc[0]
-        parent_UUID = parent["UUID"]
+        parent_UUID = parent["unique_id"]
         return parent_UUID
     else:
         return None
@@ -704,10 +704,10 @@ def transform_aggregated_company_df(
     print("transforming the aggregated company df...")
 
     # creating UUIDs for table
-    company_df["UUID"] = [uuid.uuid4() for i in range(len(company_df))]
+    company_df["unique_id"] = [uuid.uuid4() for i in range(len(company_df))]
 
     # set parent company to parent company's UUID if applicable
-    company_df["parent_company_UUID"] = company_df.apply(
+    company_df["parent_company_unique_id"] = company_df.apply(
         lambda row: set_parent_company(row, company_df), axis=1
     )
 
@@ -715,7 +715,7 @@ def transform_aggregated_company_df(
     # and are not from the FFF dataset
     company_df["stock_symbol"] = company_df.apply(
         lambda row: get_symbol_from_company(row["company_name"])
-        if (row["parent_company_UUID"] is None) & (pd.isna(row["stock_symbol"]))
+        if (row["parent_company_unique_id"] is None) & (pd.isna(row["stock_symbol"]))
         else row["stock_symbol"],
         axis=1,
     )
@@ -883,16 +883,19 @@ def match_organizations(
     return None
 
 
-# executing a test of the pipeline
-FFF_dict = {FFF_oil_company_csv: "f", FFF_coal_company_csv: "f"}
-company_classification_df = merge_company_dfs(
-    FFF_data_classification_dict=FFF_dict,
-    InfoGroup_csv=infogroup_data_2023,
-    SIC6_codes_csv=SIC6_codes_csv,
-    testing=True,
+# # executing a test of the pipeline
+# FFF_dict = {FFF_oil_company_csv: "f", FFF_coal_company_csv: "f"}
+# company_classification_df = merge_company_dfs(
+#     FFF_data_classification_dict=FFF_dict,
+#     InfoGroup_csv=infogroup_data_2023,
+#     SIC6_codes_csv=SIC6_codes_csv,
+#     testing=True,
+# )
+
+IG_data = get_InfoGroup_df(
+    SIC6_codes_csv=SIC6_codes_csv, infogroup_csv=infogroup_data_2023
 )
-
-
+print(IG_data)
 # TESTING
 
 # parent_testing_df = get_InfoGroup_df(
@@ -900,6 +903,7 @@ company_classification_df = merge_company_dfs(
 #     infogroup_csv=parent_company_validation_csv,
 #     testing=True,
 # )
+
 
 # print(parent_testing_df.head())
 # print(parent_testing_df.columns)
@@ -910,9 +914,11 @@ company_classification_df = merge_company_dfs(
 #     InfoGroup_csv=parent_company_validation_csv,
 #     SIC6_codes_csv=SIC6_codes_csv,
 # )
+
+# print(company_classification_df.columns)
 # print(
 #     company_classification_df[
-#         ["parent_company_ABI", "ABI", "UUID", "parent_company_UUID"]
+#         ["parent_company_ABI", "ABI", "UUID", "parent_company_unique_id"]
 #     ]
 # )
 
