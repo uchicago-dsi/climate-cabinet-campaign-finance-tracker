@@ -37,3 +37,4 @@ election_results_output_path = output_directory / "election_results_table.csv"
 complete_election_resutls_table = transform_and_merge()
 
 complete_election_resutls_table.to_csv(election_results_output_path)
+print(complete_election_resutls_table.dtypes)

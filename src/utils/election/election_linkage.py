@@ -8,11 +8,14 @@ from utils.election.constants import INDIVIDUALS_FILEPATH
 def contains_custom_special_characters(s:str) -> bool:
     """Check if a string contains special characters
 
-    Inputs: String
+    Inputs: Any input, expected to handle any type.
 
-    Returns: bool 
+    Returns: bool
     """
-    special_chars="!@#$%^&*()"
+    if pd.isna(s):
+        return False  
+    special_chars = "!@#$%^&*()"
+    s = str(s)  
     return any(char in special_chars for char in s)
 
 
@@ -28,9 +31,9 @@ def create_single_last_name(row: pd.Series) -> pd.Series:
 
     Returns: Row with single_last_name column
     """
-    last_name = row["last_name"]
+    last_name = str(row["last_name"])
     if contains_custom_special_characters(last_name):
-        full_name = row["full_name"] 
+        full_name = str(row["full_name"]) 
         row["single_last_name"] = full_name.lower().strip().split()[-1]
     else: 
         row["single_last_name"] = last_name.lower().strip().split()[-1]
@@ -49,6 +52,7 @@ def extract_first_name(full_name: str) -> str:
     Returns:
     str: The standardized first name in lower case.
     """
+    full_name = str(full_name)
     parts = full_name.split(",")
     if len(parts) > 1:
         first_name_part = parts[1].strip()  
@@ -57,21 +61,37 @@ def extract_first_name(full_name: str) -> str:
     return ""
 
 
-def match_individual( election_data: pd.DataFrame) -> pd.DataFrame:
+def decide_foreign_key(election_data: pd.DataFrame, ind_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Include only the individual names with existed data and find id
     
-    Inputs: election result cleaned data
+    Inputs: 
+    election_data: election result cleaned data
+    ind_df: cleaned individual table
     
-    Returns: election result with a new column of individual uuid
+    Returns:
+    a table of election result with a new column of individual uuid
+    and another table with duplicated information susceptible for inacuracy
     """
-    # Edit the pathfile
-    transform_ind_df = pd.read_csv(INDIVIDUALS_FILEPATH)
+    transform_ind_df = ind_df.copy()[["first_name","single_last_name","id","state"]]
     merged_data = election_data.merge(
-        transform_ind_df[["full_name", "id"]], 
-        left_on = "cand", 
-        right_on="full_name", 
-        how="inner")
-    return merged_data
+        transform_ind_df,
+        on = ["first_name","single_last_name","state"], 
+        how="inner").rename(
+            columns = {
+                "id" : "candidate_uuid", 
+                "unique_id": "case_id"
+                }
+        )
+    merged_data = merged_data.drop(["single_last_name"],axis = 1)
+    transform_ind_df["is_duplicate"] = transform_ind_df.duplicated(subset=["first_name", "single_last_name", "state"], keep=False)
+    duplicated_id = transform_ind_df[transform_ind_df["is_duplicate"]]
+
+    duplicated_id = duplicated_id.merge(merged_data[["candidate_uuid"]], left_on='id', right_on='candidate_uuid', how='left')
+    duplicated_id["in_merged_data"] = duplicated_id["candidate_uuid"].notna()
+
+    # Optionally drop the temporary 'candidate_uuid' column from duplicated_id DataFrame
+    duplicated_id.drop(columns=["candidate_uuid"], inplace=True)
+    return merged_data, duplicated_id
 
 
 def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
@@ -101,7 +121,7 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
 
     # Estimate probability that two random records match
     linker.estimate_probability_two_random_records_match(
-        blocking, recall=0.6
+        blocking, recall=0.80
     )
 
     # Estimate the parameter u using random sampling
@@ -134,7 +154,7 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
 
     deduped_df["matching_id"] = deduped_df["cluster_id"]
 
-    # Clean up dataframe columns
+
     deduped_df = deduped_df.drop(columns=["duplicated", "cluster_id"])
 
     return deduped_df

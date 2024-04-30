@@ -10,6 +10,8 @@ from utils.election.clean import (
 from utils.election.constants import (
     HV_FILEPATH,
     HV_INDIVIDUAL_COLS,
+    party_map,
+    type_mapping,
 )
 from utils.election.utils import extract_first_name
 
@@ -46,6 +48,14 @@ class HarvardTransformer(ElectionResultTransformer):
         clean_df = clean_df[(clean_df["year"] <=2016) & (clean_df["year"] >=2014)]
 
         clean_df = clean_df[~(clean_df["last"] == "scattering")]
+        # the data is cleaned in the original dataset -- if last or first name is missing
+        # that implies that the full name is incomplete as well
+        # there is a posibility that records could match base on last/first name solely
+        # but here for simplicity and efficiency, I jsut deleted rows with incomplete full names
+        clean_df = clean_df[~(clean_df["last"].isna())]
+        clean_df = clean_df[~(clean_df["first"].isna())]
+        print("check")
+        print(clean_df[clean_df["first"].isna()])
 
         clean_df.loc[clean_df["first"] == "", "first"] = clean_df["cand"].apply(extract_first_name)
 
@@ -78,7 +88,6 @@ class HarvardTransformer(ElectionResultTransformer):
             data["cand"].notna()
         ]
 
-        party_map = {"d": "democratic", "r": "republican", "partymiss": np.nan}
         data["partyt"] = data["partyt"].map(party_map)
 
         data = data.rename(columns={
@@ -98,6 +107,19 @@ class HarvardTransformer(ElectionResultTransformer):
             "termz" : "term",
             "dseats": "district_seat_number"
         })
+
+        data["day"] = data["day"].fillna(0)
+        data["county"] = data["county"].fillna("Unknown")
+        data["district"] = data["district"].fillna("Unknown")
+        data["district_number"] = data["district_number"].fillna(0)
+        data["geographic_post"] = data["geographic_post"].fillna(0)
+        data["mmd_post"] = data["mmd_post"].fillna(0)
+        data["vote"] = data["vote"].fillna(0)
+        data["full_name"] = data["full_name"].fillna("Unknown")  # Fixed from mistakenly using 'district'
+        data["party"] = data["party"].fillna("Unknown")
+
+        data = data.astype(type_mapping)
+        print("standardize result", data.dtypes)
         return data
     
     

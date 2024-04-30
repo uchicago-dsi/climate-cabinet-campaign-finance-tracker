@@ -1,5 +1,6 @@
 """Constants to be used in building up election pipeline."""
 
+import numpy as np
 import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
 from utils.constants import BASE_FILEPATH
@@ -32,57 +33,58 @@ HV_INDIVIDUAL_COLS = [
     "v19_20171211",
 ]
 
+type_mapping = {
+    "year": "int",
+    "month": "int",
+    "day": "int", 
+    "state": "string",
+    "county": "string",
+    "district_designation_ballot": "string",
+    "district": "string",
+    "district_number": "int",
+    "geographic_post": "int",
+    "mmd_post": "int",
+    "candidate_id": "int",
+    "vote": "int",
+    "term": "float",
+    "full_name": "string",
+    "senate": "int",
+    "party": "string",
+    "district_seat_number": "int",
+    "outcome": "string",
+    "last_name": "string",
+    "first_name": "string",
+}
+party_map = {"d": "democratic", "r": "republican", "partymiss": np.nan}
+
 election_settings = {
-    "link_type": "dedupe_only",
-    "comparison_columns": [
-        {
-            "col_name": "first_name",
-            "data_type": "string",
-            "case_expression": "lower(first_name)",
-            "string_metric": "jarowinkler",
-            "threshold": 0.85,
-            "weight": 2
-        },
-        {
-            "col_name": "last_name",
-            "data_type": "string",
-            "case_expression": "lower(last_name)",
-            "string_metric": "jarowinkler",
-            "threshold": 0.85,
-            "weight": 2
-        },
-        {
-            "col_name": "full_name",
-            "data_type": "string",
-            "case_expression": "lower(full_name)",
-            "string_metric": "jarowinkler",
-            "threshold": 0.85,
-            "weight": 3
-        },
-        {
-            "col_name": "state",
-            "data_type": "string",
-            "case_expression": "upper(state)",
-            "string_metric": "levenshtein",
-            "threshold": 0.95,
-            "weight": 1
-        },
-        {
-            "col_name": "party",
-            "data_type": "string",
-            "case_expression": "upper(party)",
-            "string_metric": "levenshtein",
-            "threshold": 0.95,
-            "weight": 1
-        }
+    "link_type" : "dedupe_only",
+    "blocking_rules_to_generate_predictions": [
+        "l.first_name = r.first_name",
+        "l.single_last_name = r.single_last_name",
     ],
-    "additional_columns_to_retain": ["year", "district_number", "vote", "outcome", "unique_id"],
+    "comparisons": [
+        ctl.name_comparison("full_name"),
+        ctl.name_comparison("last_name"),
+        cl.exact_match("year", term_frequency_adjustments=True),
+        cl.exact_match("month", term_frequency_adjustments=True),
+        cl.exact_match("state", term_frequency_adjustments=True),
+        cl.jaro_winkler_at_thresholds(
+            "state", [0.9, 0.8]
+        ),  # threshold will catch typos and shortenings
+        cl.jaro_winkler_at_thresholds("party", [0.9, 0.7]), # people may change party
+    ],
+    # DEFAULT
+    "retain_matching_columns": True,
+    "retain_intermediate_calculation_columns": True,
+    "max_iterations": 10,
     "em_convergence": 0.01,
-    "max_iterations": 10
 }
 
 
 election_blocking = [
     "l.first_name = r.first_name",
     "l.single_last_name = r.single_last_name",
+    "l.year = r.year",
+    "l.month = r.month",
 ]
