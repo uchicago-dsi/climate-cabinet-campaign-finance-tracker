@@ -218,4 +218,4 @@ def clean_data_and_build_network(
     g_output_path = BASE_FILEPATH / "output" / "g.gml"
     nx.write_graphml(g, g_output_path)
 
-    run_network_graph_pipeline(2018, 2023, [individuals, organizations, transactions])
+    run_network_graph_pipeline(2018, 2022, [individuals, organizations, transactions])
