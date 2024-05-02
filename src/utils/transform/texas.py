@@ -29,7 +29,6 @@ class TexasTransformer(clean.StateTransformer):
         return self.create_tables(standardized_dfs)
 
     def read_dataset(self, directory: str | Path = None) -> None:
-        # contributor_datasets, filer_datasets, expense_datasets = None, None, None
         if directory is None:
             directory = self.TX_directory
         else:
@@ -39,15 +38,11 @@ class TexasTransformer(clean.StateTransformer):
         expense_files = [f for f in directory.iterdir() if f.name == "expend1.csv"]
         filer_files = [f for f in directory.iterdir() if f.name == "filers.csv"]
         try:
-            # contributor_datasets = self.contributionFrom.read_table(contribs_files)
-            # filer_datasets = self.filerForm.read_table(filer_files)
-            # expense_datasets = self.expenseForm.read_table(expense_files)
             self.contributionFrom.read_table(contribs_files)
             self.filerForm.read_table(filer_files)
             self.expenseForm.read_table(expense_files)
         except Exception as e:
             print(f"Error processing file: {e}")
-        # return contributor_datasets, filer_datasets, expense_datasets
         return
 
     def preprocess(self, directory: str | Path = None) -> list[pd.DataFrame]:
@@ -73,16 +68,6 @@ class TexasTransformer(clean.StateTransformer):
         self.filerForm.preprocess_data()
         self.expenseForm.preprocess_data()
 
-    # def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:  # noqa: D102
-    #     contributor_datasets, filer_datasets, expense_datasets = [], [], []
-    #     self.contributionFrom.preprocess_data()
-    #     self.filerForm.preprocess_data()
-    #     self.expenseForm.preprocess_data()
-    #     contributor_datasets.append(self.contributionFrom.get_table())
-    #     filer_datasets.append(self.filerForm.get_table())
-    #     expense_datasets.append(self.expenseForm.get_table())
-    #     return contributor_datasets, filer_datasets, expense_datasets
-
     # integrate all datasets
     def standardize(self, data: list[pd.DataFrame] = None) -> list[pd.DataFrame]:  # noqa: D102
         merged_dataset = self.combine_contributor_expenditure_datasets(
@@ -91,10 +76,10 @@ class TexasTransformer(clean.StateTransformer):
             [self.expenseForm.get_table()],
         )
         # TO CLARIFY: do we need this?
-        # merged_dataset = self.replace_id_with_uuid(merged_dataset, "DONOR_ID", "YEAR")
-        # merged_dataset = self.replace_id_with_uuid(
-        #     merged_dataset, "RECIPIENT_ID", "YEAR"
-        # )
+        merged_dataset = self.replace_id_with_uuid(merged_dataset, "DONOR_ID", "YEAR")
+        merged_dataset = self.replace_id_with_uuid(
+            merged_dataset, "RECIPIENT_ID", "YEAR"
+        )
         # assign transaction_id
         merged_dataset["TRANSACTION_ID"] = str(uuid.uuid4())
         return merged_dataset
@@ -112,6 +97,9 @@ class TexasTransformer(clean.StateTransformer):
                 "DONOR_ID",
                 "DONOR_PARTY",
                 "DONOR_TYPE",
+                "DONOR_FIRST_NAME",
+                "DONOR_LAST_NAME",
+                "DONOR_EMPLOYER",
                 "RECIPIENT",
                 "RECIPIENT_ID",
                 "RECIPIENT_PARTY",
@@ -167,12 +155,25 @@ class TexasTransformer(clean.StateTransformer):
                 | (df.DONOR_TYPE == "Candidate")
                 | (df.DONOR_TYPE == "Lobbyist")
             )
-        ][["DONOR", "DONOR_ID", "DONOR_PARTY", "DONOR_TYPE"]].rename(
+        ][
+            [
+                "DONOR",
+                "DONOR_ID",
+                "DONOR_PARTY",
+                "DONOR_TYPE",
+                "DONOR_FIRST_NAME",
+                "DONOR_LAST_NAME",
+                "DONOR_EMPLOYER",
+            ]
+        ].rename(
             columns={
                 "DONOR": "full_name",
                 "DONOR_ID": "id",
                 "DONOR_PARTY": "party",
                 "DONOR_TYPE": "entity_type",
+                "DONOR_FIRST_NAME": "first_name",
+                "DONOR_LAST_NAME": "last_name",
+                "DONOR_EMPLOYER": "company",
             }
         )
 
@@ -191,11 +192,12 @@ class TexasTransformer(clean.StateTransformer):
             }
         )
 
+        new_cols = ["first_name", "last_name", "company"]
+        recipient_individuals = recipient_individuals.assign(
+            **{col: None for col in new_cols}
+        )
         all_individuals = pd.concat([donor_individuals, recipient_individuals])
         all_individuals = all_individuals.drop_duplicates()
-
-        new_cols = ["first_name", "last_name", "company"]
-        all_individuals = all_individuals.assign(**{col: None for col in new_cols})
         all_individuals["state"] = "TX"
 
         return all_individuals
@@ -343,60 +345,102 @@ class TexasTransformer(clean.StateTransformer):
         return [ind_to_ind, ind_to_org, org_to_ind, org_to_org]
 
     def replace_id_with_uuid(
-        self, df_with_ids: pd.DataFrame, id_column: str, year_column: int = None
+        self, df_with_ids: pd.DataFrame, id_column: str, year_column: str = None
     ) -> pd.DataFrame:
-        """For each row, replaces id with UUID. Creates mapping from any previous ids
-
-        If the id_column is na, just replaces it with a uuid. If the id_column is not
-        na, creates a UUID for each unique value of the id_column*
-
-        * Some states' ids are not stable across year. This is noted by the
-        `stable_id_across_years` attribute. If False, the id is treated as the
-        year - id pairing.
-
-        Args:
-            df_with_ids: Dataframe that must contain a column representing
-                ids for docnor/contributor entities.
-            id_column: Column containing raw ids provided by state
-            year_column: Column containing year transaction/entity appeared in data.
-        """
+        """For each row, replaces id with UUID and optionally saves a lookup table mapping old IDs and years to new UUIDs."""
+        # Handle NA IDs by generating UUIDs directly in the DataFrame
         na_id_mask = df_with_ids[id_column].isna()
-        rows_with_no_id = df_with_ids[na_id_mask]
-        rows_with_id = df_with_ids[~na_id_mask]
-        # generate and replace na ids with uuids
-        rows_with_no_id[id_column] = rows_with_no_id[id_column].apply(
-            lambda _: uuid.uuid4()
-        )
-        # identify unique identifiers
-        if self.stable_id_across_years:
-            unique_id_year_pairs = [
-                (row_id, None) for row_id in rows_with_id[id_column].unique()
-            ]
+        df_with_ids.loc[na_id_mask, id_column] = [
+            uuid.uuid4() for _ in range(na_id_mask.sum())
+        ]
+
+        # Create unique identifier combinations based on 'stable_id_across_years' and 'year_column'
+        if self.stable_id_across_years or year_column is None:
+            unique_ids = df_with_ids.loc[~na_id_mask, id_column].drop_duplicates()
+            uuid_lookup_table = pd.DataFrame(unique_ids, columns=[id_column])
         else:
-            unique_id_year_pairs = (
-                rows_with_id[[id_column, year_column]].drop_duplicates().to_numpy()
-            )
-        # generate uuids for existing ids
-        uuid_lookup_table_data = []
-        for identifier in unique_id_year_pairs:
-            uuid_lookup_table_data.append([*identifier, uuid.uuid4()])
-        uuid_lookup_table = pd.DataFrame(
-            columns=["Raw ID", "Year", "UUID"], data=uuid_lookup_table_data
-        )
-        uuid_lookup_table["State"] = self.name
-        # TODO: save uuid
-        # replace ids with uuids
-        uuid_lookup_table = uuid_lookup_table.set_index(["Raw ID", "Year"])
-        rows_with_id_and_uuid = rows_with_id.merge(
+            unique_ids = df_with_ids.loc[
+                ~na_id_mask, [id_column, year_column]
+            ].drop_duplicates()
+            uuid_lookup_table = pd.DataFrame(unique_ids)
+
+        uuid_lookup_table["UUID"] = [
+            uuid.uuid4() for _ in range(len(uuid_lookup_table))
+        ]
+
+        uuid_lookup_table.to_csv(f"{self.name}_uuid_lookup_table.csv", index=False)
+        df_with_ids = df_with_ids.merge(
             uuid_lookup_table,
+            on=[id_column]
+            + (
+                [year_column] if year_column and not self.stable_id_across_years else []
+            ),
             how="left",
-            left_on=[id_column, year_column],
-            right_index=True,
         )
-        rows_with_id_and_uuid[id_column] = rows_with_id_and_uuid["UUID"]
-        rows_with_id_and_uuid = rows_with_id_and_uuid.drop(columns=["UUID"])
-        # concatenate dfs and return
-        return pd.concat([rows_with_id_and_uuid, rows_with_no_id])
+
+        # Replace original IDs with UUIDs
+        df_with_ids[id_column] = df_with_ids["UUID"]
+        df_with_ids.drop(columns=["UUID"], inplace=True)
+
+        return df_with_ids
+
+    # def replace_id_with_uuid(
+    #     self, df_with_ids: pd.DataFrame, id_column: str, year_column: int = None
+    # ) -> pd.DataFrame:
+    #     """For each row, replaces id with UUID. Creates mapping from any previous ids
+
+    #     If the id_column is na, just replaces it with a uuid. If the id_column is not
+    #     na, creates a UUID for each unique value of the id_column*
+
+    #     * Some states' ids are not stable across year. This is noted by the
+    #     `stable_id_across_years` attribute. If False, the id is treated as the
+    #     year - id pairing.
+
+    #     Args:
+    #         df_with_ids: Dataframe that must contain a column representing
+    #             ids for docnor/contributor entities.
+    #         id_column: Column containing raw ids provided by state
+    #         year_column: Column containing year transaction/entity appeared in data.
+    #     """
+    #     na_id_mask = df_with_ids[id_column].isna()
+    #     rows_with_no_id = df_with_ids[na_id_mask]
+    #     rows_with_id = df_with_ids[~na_id_mask]
+    #     rows_with_no_id[id_column] = rows_with_no_id[id_column].apply(
+    #         lambda _: uuid.uuid4()
+    #     )
+
+    #     # identify unique identifiers
+    #     if self.stable_id_across_years:
+    #         unique_id_year_pairs = [
+    #             (row_id, None) for row_id in rows_with_id[id_column].unique()
+    #         ]
+    #     else:
+    #         unique_id_year_pairs = (
+    #             rows_with_id[[id_column, year_column]].drop_duplicates().to_numpy()
+    #         )
+    #     # generate uuids for existing ids
+    #     uuid_lookup_table_data = []
+    #     for identifier in unique_id_year_pairs:
+    #         uuid_lookup_table_data.append([*identifier, uuid.uuid4()])
+    #     uuid_lookup_table = pd.DataFrame(
+    #         columns=["Raw ID", "Year", "UUID"], data=uuid_lookup_table_data
+    #     )
+    #     uuid_lookup_table["State"] = self.name
+    #     unique_id_year_pairs = (
+    #         rows_with_id[[id_column, year_column]].drop_duplicates().to_numpy()
+    #     )
+    #     uuid_lookup_table = uuid_lookup_table.set_index(["Raw ID", "Year"])
+    #     rows_with_id_and_uuid = rows_with_id.merge(
+    #         uuid_lookup_table,
+    #         how="left",
+    #         left_on=[id_column, year_column] if year_column else id_column,
+    #         right_index=True,
+    #     )
+    #     uuid_lookup_table.to_csv(f"{self.name}_uuid_lookup_table.csv", index=False)
+    #     df_with_ids[id_column] = df_with_ids["UUID"]
+    #     df_with_ids.drop(columns=["UUID"], inplace=True)
+    #     # concatenate dfs and return
+    #     return pd.concat([rows_with_id_and_uuid, rows_with_no_id])
 
     # TO CLARIFY: do we need two methods for this?
     def merge_contributor_filer_datasets(

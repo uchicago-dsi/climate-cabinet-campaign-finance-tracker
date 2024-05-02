@@ -28,7 +28,21 @@ class Form(abc.ABC):
 
 class ContributionForm(Form):
     def __init__(self, column_mapper=None):
-        required_columns = ["RECIPIENT_ID", "DONOR", "AMOUNT", "YEAR", "PURPOSE"]
+        required_columns = [
+            "RECIPIENT_ID",
+            "DONOR_ID",
+            "DONOR",
+            "AMOUNT",
+            "YEAR",
+            "PURPOSE",
+            "DONOR_FIRST_NAME",
+            "DONOR_LAST_NAME",
+            "DONOR_ADDRESS_LINE_1",
+            "DONOR_ZIP_CODE",
+            "DONOR_EMPLOYER",
+            "DONOR_OCCUPATION",
+            "DONOR_TYPE",
+        ]
 
         super().__init__(required_columns, column_mapper)
 
@@ -104,19 +118,29 @@ class FilerForm(Form):
 
 class TexasContributionForm(ContributionForm):
     def __init__(self):
-        column_mapper = {"filerIdent": "RECIPIENT_ID", "contributionAmount": "AMOUNT"}
-
+        # column_mapper = {"filerIdent": "RECIPIENT_ID", "contributionAmount": "AMOUNT"}
+        column_mapper = {
+            "contributorNameFirst": "DONOR_FIRST_NAME",
+            "contributorNameLast": "DONOR_LAST_NAME",
+            "contributorStreetCity": "DONOR_ADDRESS_LINE_1",
+            "contributorStreetPostalCode": "DONOR_ZIP_CODE",
+            "contributorEmployer": "DONOR_EMPLOYER",
+            "contributorOccupation": "DONOR_OCCUPATION",
+            "filerIdent": "RECIPIENT_ID",
+            "contributionAmount": "AMOUNT",
+        }
         super().__init__(column_mapper)
 
     def type_classifier(self, PersentTypeCd: str) -> str:
-        return "Individual" if PersentTypeCd.lower() == "individual" else "Organization"
+        return "Individual" if PersentTypeCd.upper() == "INDIVIDUAL" else "Organization"
 
     def get_additional_columns(self) -> None:
         """Enhance and prepare the dataset for final output."""
-        self.table["RECIPIENT_TYPE"] = None
-        self.table["RECIPIENT_TYPE"] = self.table["contributorPersentTypeCd"].apply(
-            self.type_classifier
-        )
+        # self.table["RECIPIENT_TYPE"] = None
+        # ##?
+        # self.table["RECIPIENT_TYPE"] = self.table["contributorPersentTypeCd"].apply(
+        #     self.type_classifier
+        # )
 
         self.table["DONOR"] = self.table.apply(
             lambda row: f"{row['contributorNameLast']}, {row['contributorNameFirst']}"
@@ -125,6 +149,10 @@ class TexasContributionForm(ContributionForm):
             else row.get("contributorNameOrganization", ""),
             axis=1,
         )
+        self.table["DONOR_TYPE"] = self.table["contributorPersentTypeCd"].apply(
+            self.type_classifier
+        )
+        self.table["DONOR_ID"] = pd.NA
         self.table["YEAR"] = pd.to_datetime(self.table["contributionDt"]).dt.year
         self.table["PURPOSE"] = pd.NA
         return

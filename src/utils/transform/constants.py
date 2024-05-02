@@ -2,6 +2,19 @@
 
 from utils.constants import BASE_FILEPATH
 
+INIDIVIDUAL_COLUMNS = [
+    "DONOR",
+    "DONOR_ID",
+    "DONOR_PARTY",
+    "DONOR_TYPE",
+    "DONOR_FIRST_NAME",
+    "DONOR_LAST_NAME",
+    "DONOR_EMPLOYER",
+    "RECIPIENT",
+    "RECIPIENT_ID",
+    "RECIPIENT_PARTY",
+    "RECIPIENT_TYPE",
+]
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
 MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
@@ -15,6 +28,7 @@ AZ_INDIVIDUALS_FILEPATH = (
 )
 
 AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
+
 
 MI_CONTRIBUTION_COLUMNS = [
     "doc_seq_no",
@@ -550,22 +564,17 @@ state_abbreviations = [
     " WV ",
     " WY ",
 ]
-PA_CONTRIBUTION_COLS: list = [
-    "RECIPIENT_ID",
-    "DONOR",
-    "AMOUNT",
-    "YEAR",
-    "PURPOSE"]
+PA_CONTRIBUTION_COLS: list = ["RECIPIENT_ID", "DONOR", "AMOUNT", "YEAR", "PURPOSE"]
 
-PA_FILER_COLS: list =[
+PA_FILER_COLS: list = [
     "RECIPIENT_ID",
     "RECIPIENT_TYPE",
     "RECIPIENT",
     "RECIPIENT_OFFICE",
-    "RECIPIENT_PARTY"
+    "RECIPIENT_PARTY",
 ]
 
-PA_EXPENSE_COLS: list= [
+PA_EXPENSE_COLS: list = [
     "DONOR_ID",
     "RECIPIENT",
     "PURPOSE",
@@ -574,14 +583,15 @@ PA_EXPENSE_COLS: list= [
 ]
 
 TX_CONTRIBUTION_COLS: list = [
-    'filerIdent',
-    'filerName',
-    'contributionDt', 
-    'contributionAmount',
-    'contributorPersentTypeCd', 
-    'contributorNameOrganization',
-    'contributorNameLast', 
-    'contributorNameFirst']
+    "filerIdent",
+    "filerName",
+    "contributionDt",
+    "contributionAmount",
+    "contributorPersentTypeCd",
+    "contributorNameOrganization",
+    "contributorNameLast",
+    "contributorNameFirst",
+]
 # TO CLARIFY: (1) does filer refer to recipient (2)no office for texas
 TX_FILER_COLS: list = [
     "filerIdent",
@@ -605,12 +615,12 @@ TX_EXPENSE_COLS: list = [
     "payeeNameLast",
     "payeeNameFirst",
     "expendAmount",
-    "expendDt"
+    "expendDt",
 ]
 
 TX_CONTRIBUTION_MAPPING: dict = {
     "filerIdent": "RECIPIENT_ID",
-    "contributionAmount": "AMOUNT"
+    "contributionAmount": "AMOUNT",
 }
 
 TX_FILER_MAPPING: dict = {
