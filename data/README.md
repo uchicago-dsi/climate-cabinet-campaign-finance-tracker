@@ -171,10 +171,17 @@ The coal industry screen consists of companies designated by Morningstar industr
 
 These companies were listed on the website in a table, which was copy and pasted and formatted into a CSV. 
 
+This file should be saved in data/raw_classification/ff_companies
+
+### How to access: 
+This file is called FFF_coal_companies.csv and can be downloaded from the climate cabinet drive in 2024-spring-clinic folder. 
+
+This file should be saved in the path data/raw_classification/FFF_coal_companies
+
 ### Features
-Company: The name of the company
-Symbol: The company's Stock Ticker Symbol
-Legal name: The legal name of the company (can differ from the company name)
+- Company: The name of the company
+- Symbol: The company's Stock Ticker Symbol
+- Legal name: The legal name of the company (can differ from the company name)
 
 -Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis. 
 
@@ -182,19 +189,55 @@ Legal name: The legal name of the company (can differ from the company name)
 
 File name: FFF_oil_companies.csv
 Source: https://fossilfreefunds.org/fossil-fuel-companies
-This is. Fossil Free Fund's list of oil/gas companies
+This is Fossil Free Fund's list of oil/gas companies
 
 The oil/gas screen consists of companies designated by Morningstar industry classifications as Oil and Gas Drilling, Oil and Gas Extraction and Production, Oil and Gas Equipment and Services, Oil and Gas Integrated, Oil and Gas Midstream, and Oil and Gas Refining and Marketing; upstream and midstream companies from the Global Oil/Gas Exit List; and the top 100 oil/gas reserve holders from the Carbon Underground 200™.
 
 These companies were listed on the website in a table, which was copy and pasted and formatted into a CSV. 
 
+### How to access: 
+This file is called FFF_oil_companies.csv and can be downloaded from the climate cabinet drive in 2024-spring-clinic folder. 
+
+-Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis.
+
+This file should be saved in the path data/raw_classification/FFF_oil_companies.csv
+
 ### Features
-Company: The name of the company
-Symbol: The company's Stock Ticker Symbol
-Legal name: The legal name of the company (can differ from the company name)
+- Company: The name of the company
+- Symbol: The company's Stock Ticker Symbol
+- Legal name: The legal name of the company (can differ from the company name)
 
 -Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis. 
 
+## InfoGroup data
+File name: 2023_InfoGroup.txt
+
+This file is the InfoGroup historical datafile. It is directory data on U.S. businesses. Information includes name, address, estimated sales, industry group and more. For our purposes, we are most concerned with the company name, the company's address, and the SIC codes that represent which industry the company is involved in for classification purposes. 
+
+### How to access: 
+
+1. Follow this link: https://www.lib.uchicago.edu/restricted/db/infogroup-historical-datafile/
+2. Go to download the Datasets, press on the link: InfoGroup Basic Historical Datafile, 1997-2020, 2022-2023
+3. Press on 2023_Business_Academic_QCQ.txt.gz (this downloads the datafile)
+4. Rename the file to 2023_InfoGroup.txt (make sure the extension is .txt)
+5. Move the file to the path data/raw_classification
+
+### Features
+A description of relevant features can be found in InfoGroup's variable listing here: https://uchicago.app.box.com/s/k8xr0g9ieuvohbxca2xci9r1lu2dpl5i
+
+## Relevant SIC Codes
+
+File name: SIC6_codes.csv
+
+This file outlines SIC codes relevant to Fossil Fuel and Clean Energy companies that will be used to subset InfoGroup data. SIC codes were manually selected by combing the SIC code databse here: https://siccode.com/
+
+### How to access:
+This file is called SIC_codes and and should be downloaded as a csv from the climate cabinet drive in 2024-spring-clinic folder. It should be renamed to SIC6_codes.csv This file should be saved in data/raw_classification. 
+
+### Features
+- SIC_code: the SIC code associated with the company. If the SIC code is shorter than 6 numbers, the code represents the first n numbers of an SIC code
+- SIC_code_description: description associated with the SIC code
+- classification: if the company is fossil fuel (f), clean energy (c), maybe fossil fuel (uf), maybe clean energy (uc)
 
 ## State Legislative Election Returns (1967-2016)
 
@@ -224,5 +267,3 @@ The dataset comprises several critical variables that capture the essentials of 
 - **outcome:** The result of the election for the candidate (e.g., won, lost).
 - **last, first:** Last and first names of the candidate.
 - **v19_20171211:** A standardized candidate name variable, updated as of December 11, 2017.
-
-
