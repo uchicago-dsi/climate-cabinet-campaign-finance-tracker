@@ -1,0 +1,26 @@
+SIC_code,SIC_code_description,classification
+13,oil and gas extraction,f
+291,petroleum refining,f
+295,asphalt,uf
+2999,"Products of petroleum and coal, not elsewhere specified",f
+4612,Crude Petroleum Pipelines: Establishments primarily engaged in the pipeline transportation of crude petroleum.,f
+4613,"Refined Petroleum Pipelines: Establishments primarily engaged in the pipeline transportation of refined products of petroleum, such as gasoline and fuel oil",f
+517,Wholesale Trade Non-Durable goods: Petroleum and petroleum products,uf
+554,gasoline service stations,f
+598,miscellaneous retailers: fuel dealers,f
+3533,Oil and Gas Field Machinery and Equipment,f
+873103,Solar Energy Research and Development,c
+343305,Solar Energy Equipment (Manufacturing),c
+871139,Engineers Solar,c
+507505,Solar energy equipment: wholesale,c
+343304,Solar energy equipment: manufacturing,c
+507407,Solar Energy Eqpt/Syst-Supl/Parts (Wholesale),c
+154236, Contractors-Green Building,uc
+171164,Wind Power,c
+507416,Wind Energy Systems (Wholesale),c
+351102,Generators-Wind Powered (Manufacturing),c
+4922,Natural Gas Transmission,f
+4923,Natural Gas Transmission & Distribution,f
+4924,Natural Gas Distribution,f
+4925,"Mixed, Manufactured, or Liquefied Petroleum Gas Production and/or Distribution",f
+5984,"5984 - Liquefied Petroleum Gas (Bottled Gas) DealersEstablishments primarily engaged in the retail sale of bottled or bulk liquefied petroleum (LP) gas.…Examples: Bottled gas - retail, Butane gas, bottled - retail, Liquefied petroleum (LP) gas delivered to",f
