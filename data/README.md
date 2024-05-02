@@ -203,6 +203,7 @@ This dataset accompanies the State Legislative Election Returns dataset, which c
 
 ### Data Source
 The dataset aggregates data from multiple authoritative sources, including state election boards and historical archives, to ensure comprehensive coverage and accuracy. It provides an invaluable resource for researchers focusing on political science, electoral behavior, and governance.
+# TODO: #106 add a link to where this came from and where it is expected to be saved to run the pipeline
 
 ### Features
 - **Temporal Coverage:** Includes data from 1967 to 2016, capturing a broad spectrum of political and historical contexts.
