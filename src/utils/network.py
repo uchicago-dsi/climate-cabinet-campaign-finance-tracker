@@ -1,11 +1,14 @@
-"""Buidling, visualizing, and analyzing networks"""
+"""Buidling, visualizing, and analyzing networks (micro-level)"""
 
 import itertools
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import networkx as nx
+
+# import numpy as np
 import pandas as pd
-import plotly.graph_objects as go  # TODO: #100 explore other libraries
+import plotly.graph_objects as go
 
 
 def name_identifier(uuid: str, dfs: list[pd.DataFrame]) -> str:
@@ -89,7 +92,7 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     return aggreg_df
 
 
-# OLD VERSION
+# RETAINED
 def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     """Creates network with entities as nodes, transactions as edges
 
@@ -127,270 +130,105 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
-# NEW VERSION of this function - Bhavya on 4/8 - COMMENTED OUT, STILL TESTING AND MODIFYING
-# def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
-#     """Creates network with entities as nodes, transactions as edges
-
-#     Args:
-#         df: a pandas dataframe with merged information from the inds, orgs, &
-#         transactions dataframes
-
-#     Returns:
-#         A Networkx MultiDiGraph with nodes and edges
-#     """
-#     # stating the graph object
-#     G = nx.MultiDiGraph()
-#     edge_columns = [
-#         "office_sought",
-#         "purpose",
-#         "transaction_type",
-#         "year",
-#         "transaction_id",
-#         "donor_office",
-#         "amount",
-#     ]
-
-#     # stating that 'classification' is a column in df
-#     node_attr_columns = df.columns.difference(
-#         edge_columns + ["classification"]
-#     ).tolist()
-#     if "classification" in node_attr_columns:
-#         node_attr_columns.remove("classification")
-
-#     for _, row in df.iterrows():
-#         # extracting node attributes while excluding 'classification' if it's there
-#         node_attributes = row[node_attr_columns].dropna().to_dict()
-
-#         # adding donor node
-#         donor_classification = row.get(
-#             "classification", "neutral"
-#         )  # assuming here that classification is in df
-#         G.add_node(
-#             row["full_name"], classification=donor_classification, **node_attributes
-#         )
-
-#         # adding the recipient node - the function is assuming recipients are always 'neutral' - WHY???
-#         # in case recipients have their own classification, fetch it similar to donor_classification
-
-#         # recipient_classification = row.get("classification", "neutral")
-#         # G.add_node(row["recipient_name"], classification=recipient_classification)
-
-#         # edge_attributes = row[edge_columns].dropna().to_dict()
-#         # G.add_edge(row["full_name"], row["recipient_name"], **edge_attributes)
-
-#         # WHY DID THE PREVIOUS VERSION OF THE FUNCTION DEFAULT TO CLASSIFICATION NEUTRAL?
-#         # NOT SURE ABOUT THIS FUNCTION -- NEEDS LOOKING AT AND CHANGING TO CORRESPOND TO ACTUAL CLASSIFICATIONS
-#         # WHY IS DATA ONLY CLASSIFIED AS NEUTRAL? NEED TO RUN PIPELINE AGAIN TO CHECK -- LOOKING AT THIS CODE, NETWORKX DOCUMENTATION NOW
-
-#         recipient_classification = "neutral"
-#         if "recipient_name" in row and row["recipient_name"] in G.nodes:
-#             recipient_classification = G.nodes[row["recipient_name"]].get(
-#                 "classification", "neutral"
-#             )
-#         G.add_node(row["recipient_name"], classification=recipient_classification)
-
-#         # Add edge attributes
-#         edge_attributes = row[edge_columns].dropna().to_dict()
-#         G.add_edge(row["full_name"], row["recipient_name"], **edge_attributes)
-
-#     return G
-
-
-# OLD VERSION
-# def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
-#     """Creates a plotly visualization of the nodes and edges
-
-#     Args:
-#         G: A networkX MultiDiGraph with edges including the attribute 'amount'
-#         start_year: the start range of the desired data, used in graph title
-#         end_year: the end range of the desired data, used in graph title
-
-#     Returns: None. Creates a plotly graph
-#     """
-#     edge_trace = go.Scatter(
-#         x=(),
-#         y=(),
-#         line={"color": "#888", "width": 1.5},
-#         hoverinfo="text",
-#         mode="lines+markers",
-#     )
-#     hovertext = []
-#     ## what is pos?
-#     pos = nx.spring_layout(G)
-
-#     for edge in G.edges(data=True):
-#         source = edge[0]
-#         target = edge[1]
-#         hovertext.append(f"Amount: {edge[2]['amount']:.2f}")
-#         # Adding coordinates of source and target nodes to edge_trace
-#         edge_trace["x"] += (
-#             pos[source][0],
-#             pos[target][0],
-#             None,
-#         )  # None creates a gap between line segments
-#         edge_trace["y"] += (pos[source][1], pos[target][1], None)
-
-#     edge_trace["hovertext"] = hovertext
-
-#     # Define arrow symbol for edges
-#     # TODO: understand difference between edge_trace and node_trace - ADDRESSED
-#     # EDGETRACE had an issue w the shape of the marker as arrow, changed to diamond
-#     # Since this a directed graph we need indication of directionality
-#     # (such as the arrowhead, which Plotly does not support directly in scatter traces, so it requires a workaround)
-#     edge_trace["marker"] = {
-#         "symbol": "diamond",
-#         "color": "#888",
-#         "size": 10,
-#         # "angleref": "previous",
-#         # commented this out since it was a bad property, only `sizeref` is acceptable
-#     }
-
-#     node_trace = go.Scatter(
-#         x=[],
-#         y=[],
-#         text=[],
-#         mode="markers",
-#         hoverinfo="text",
-#         marker={"showscale": True, "colorscale": "YlGnBu", "size": 10},
-#     )
-
-#     node_trace["marker"]["color"] = []
-
-#     for node in G.nodes():
-#         node_info = f"Name: {node}<br>"
-#         # rename key, value to be more descriptive
-#         for key, value in G.nodes[node].items():
-#             node_info += f"{key}: {value}<br>"
-#         node_trace["text"] += ([node_info],)
-#         # Get the classification value for the node
-#         ## what are the classification values?
-#         classification = G.nodes[node].get("classification", "neutral")
-#         # Assign a color based on the classification value
-#         if classification == "c":
-#             color = "blue"
-#         elif classification == "f":
-#             color = "red"
-#         else:
-#             color = "green"  # Default color for unknown classification
-#         node_trace["marker"]["color"] += ([color],)
-
-#         # Add node positions to the trace
-#         node_trace["x"] += ([pos[node][0]],)
-#         node_trace["y"] += ([pos[node][1]],)
-
-#     # Define layout settings
-#     layout = go.Layout(
-#         title=f"Network Graph Indicating Campaign Contributions from {start_year}-{end_year}",
-#         titlefont={"size": 16},
-#         showlegend=True,
-#         hovermode="closest",
-#         margin={"b": 20, "l": 5, "r": 5, "t": 40},
-#         xaxis={"showgrid": True, "zeroline": True, "showticklabels": False},
-#         yaxis={"showgrid": True, "zeroline": True, "showticklabels": False},
-#     )
-#     # print("I'm here")
-#     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
-
-#     # saving generated plots in a folder
-#     # graphs_directory = "graph"
-#     # # making sure the directory exists; create it if it doesn't
-#     # graphs_directory.mkdir(parents=True, exist_ok=True)
-#     # # creating the filename with start and end years, and specify the full path
-#     # filename = graphs_directory / f"network_graph_{start_year}_to_{end_year}.html"
-#     # fig.write_html(str(filename))
-#     # print(f"Graph saved to {filename}")
-#     fig.show()
-
-
-# TODO: #99 delete old version of graph code when finished experimenting
-# NEW VERSION
 def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
-    """Creates a plotly visualization of the nodes and edges."""
-    pos = nx.spring_layout(G)  # position nodes using the spring layout
+    """Creates a plotly visualization of the nodes and edges with arrows indicating direction, and colors indicating classification."""
+    pos = nx.spring_layout(
+        G
+    )  # position nodes using the spring layout - retained from original code
 
     edge_x = []
     edge_y = []
+    annotations = []
+
+    # looping through edges to add lines and annotations for arrows
     for edge in G.edges():
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
-        edge_x.extend([x0, x1, None])  # none stated to create a line segment
-        edge_y.extend([y0, y1, None])
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
 
-    # adding edges
-    edge_trace = go.Scatter(
-        x=edge_x,
-        y=edge_y,
-        line=go.scatter.Line(width=0.5, color="#888"),
-        hoverinfo="none",
-        mode="lines",
-    )
+        # adding arrows with annotations for each line segment
+        annotations.append(
+            {
+                "ax": x0,  # arrow tail location (x)
+                "ay": y0,  # arrow tail location (y)
+                "axref": "x",
+                "ayref": "y",
+                "x": x1,  # arrow head location (x)
+                "y": y1,  # arrow head location (y)
+                "xref": "x",
+                "yref": "y",
+                "showarrow": True,
+                "arrowhead": 3,  # size of the arrow head
+                "arrowsize": 1,
+                "arrowwidth": 2,
+                "arrowcolor": "#636363",
+            }
+        )
 
-    # adding nodes
+    # nodes
     node_x = []
     node_y = []
-    node_color = []
-    hover_text = []
+    node_text = []
+    node_color = []  # list for storing colors based on classification
+
     for node in G.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        hover_text.append(f"Name: {node}")
-        # assigning color based on classification
-        classification = G.nodes[node].get(
-            "classification", "neutral"
-        )  # default set to 'neutral' if not specified
+        node_x.append(pos[node][0])
+        node_y.append(pos[node][1])
+        node_text.append(node)
+        # set color based on classification, default to 'lightgrey' if not specified
+        classification = G.nodes[node].get("classification", "neutral")
         if classification == "c":
             node_color.append("blue")
         elif classification == "f":
             node_color.append("red")
         else:
-            node_color.append("green")  # green is default
+            node_color.append("green")  # default color for 'neutral' and others
 
-    # adding a marker for node color to vary by classification - ONLY GREEN VISIBLE SO FAR - something up with the data?
     node_trace = go.Scatter(
         x=node_x,
         y=node_y,
         mode="markers",
         hoverinfo="text",
-        text=hover_text,
-        marker=go.scatter.Marker(
-            showscale=True,
-            colorscale="YlGnBu",
-            size=10,
-            color=node_color,
-            line=go.scatter.marker.Line(width=2),
+        text=node_text,
+        marker={
+            "showscale": True,
+            "colorscale": "Viridis",  # experimenting w colors here
+            "size": 10,
+            "color": node_color,
+            "colorbar": {"title": "Classification"},
+            "line_width": 2,
+        },
+    )
+
+    # setting up figure
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=edge_x, y=edge_y, mode="lines", line={"color": "#888", "width": 2}
+            )
+        ],
+        layout=go.Layout(
+            title=f"Network Graph Indicating Campaign Contributions from {start_year} to {end_year}",
+            titlefont_size=16,
+            showlegend=False,
+            hovermode="closest",
+            margin={"b": 20, "l": 5, "r": 5, "t": 40},
+            annotations=annotations,
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
         ),
     )
 
-    # creating the figure object
-    fig = go.Figure(data=[edge_trace, node_trace])
+    # adding node trace separately to have nodes appear above the lines
+    fig.add_trace(node_trace)
 
-    # updating the layout to add interactivity and annotations as needed
-    fig.update_layout(
-        title=f"Network Graph Indicating Campaign Contributions from {start_year} to {end_year}",
-        titlefont_size=16,
-        showlegend=False,
-        hovermode="closest",
-        margin={"b": 20, "l": 5, "r": 5, "t": 40},
-        annotations=[
-            go.layout.Annotation(
-                showarrow=False, xref="paper", yref="paper", x=0.005, y=-0.002
-            )
-        ],
-        xaxis=go.layout.XAxis(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=go.layout.YAxis(showgrid=False, zeroline=False, showticklabels=False),
-    )
-
-    # specify the directory and filename to save output
+    # saving and show figure
     graphs_directory = Path("output/network_graphs")
-    graphs_directory.mkdir(
-        parents=True, exist_ok=True
-    )  # creating the directory if it doesn't exist
+    graphs_directory.mkdir(parents=True, exist_ok=True)
     filename = graphs_directory / f"network_graph_{start_year}_to_{end_year}.html"
-
-    # saving the plot and showing it in a browser window as an interactive visualization
     fig.write_html(str(filename))
-    # print(f"Graph saved to {filename}")
+    print(f"Graph saved to {filename}")
     fig.show()
 
 
@@ -440,17 +278,29 @@ def network_metrics(net_graph: nx.Graph) -> None:
         )  # creates clusters of nodes with high interactions where granularity = 5
     communities = sorted(communities, key=len, reverse=True)
 
-    with Path("output/network_metrics.txt").open("w") as file:
-        file.write(f"in degree centrality: {in_degree}\n")
-        file.write(f"out degree centrality: {out_degree}\n")
-        file.write(f"eigenvector centrality: {eigenvector}\n")
-        file.write(f"betweenness centrality: {betweenness}\n\n")
+    # Package metrics in a dictionary
+    metrics = {
+        "in_degree": in_degree,
+        "out_degree": out_degree,
+        "eigenvector": eigenvector,
+        "betweenness": betweenness,
+        "assortativity": assortativity,
+        "density": density,
+    }
 
-        file.write(f"assortativity based on 'classification': {assortativity}\n\n")
+    # with Path("output/network_metrics.txt").open("w") as file:
+    #     file.write(f"in degree centrality: {in_degree}\n")
+    #     file.write(f"out degree centrality: {out_degree}\n")
+    #     file.write(f"eigenvector centrality: {eigenvector}\n")
+    #     file.write(f"betweenness centrality: {betweenness}\n\n")
 
-        file.write(f"density': {density}\n\n")
+    #     file.write(f"assortativity based on 'classification': {assortativity}\n\n")
 
-        file.write(f"communities where k = 5': {communities}\n\n")
+    #     file.write(f"density': {density}\n\n")
+
+    #     file.write(f"communities where k = 5': {communities}\n\n")
+
+    return metrics, communities
 
 
 def run_network_graph_pipeline(
@@ -474,6 +324,112 @@ def run_network_graph_pipeline(
     aggreg_df = combine_datasets_for_network_graph([inds_df, orgs_df, transactions_df])
     G = create_network_graph(aggreg_df)  # G: graph
     network_metrics(G)
-    ### why execute this function twice? and also how is the plot viewed? - NOT NEEDED TWICE, ADDRESSED
-    # plot_network_graph(G, start_year, end_year)
+    additional_network_metrics(G)
     plot_network_graph(G, start_year, end_year)
+
+
+# added for macro-level viz - Work in Progress
+def additional_network_metrics(G: nx.Graph) -> None:
+    """Calculate and print additional network metrics
+
+    Args:
+        G: network graph created
+    Returns:
+        some metrics requried for clustering viz
+    """
+    # switch the MultiDiGraph to DiGraph for computing
+    simple_graph = nx.DiGraph(G)
+    # considering 'amount' as the weight attribute, computing weighted sums of edges
+    for u, v, data in G.edges(data=True):
+        if simple_graph.has_edge(u, v):
+            simple_graph[u][v]["amount"] += data["amount"]
+        else:
+            simple_graph.add_edge(u, v, amount=data["amount"])
+
+    # get the clustering coefficient based on this computation
+    clustering_coeff = nx.average_clustering(simple_graph)
+    print("Average Clustering Coefficient:", clustering_coeff)
+
+
+# for testing
+individuals = pd.read_csv("output/cleaned/individuals_table.csv")
+organizations = pd.read_csv("output/cleaned/organizations_table.csv")
+transactions = pd.read_csv("output/cleaned/transactions_table.csv")
+run_network_graph_pipeline(2018, 2021, [individuals, organizations, transactions])
+
+
+def plot_macro_level_graph(
+    net_graph: nx.Graph, communities: list, centrality_metrics: list
+) -> None:
+    """Plots a macro-level view of the network graph highlighting communities and key nodes.
+
+    Args:
+        net_graph (nx.Graph): The networkx graph object.
+        communities (list of lists): Each sublist contains nodes that form a community.
+        centrality_metrics (dict): Dictionary containing various centrality measures.
+    """
+    pos = nx.spring_layout(net_graph)
+    plt.figure(figsize=(12, 8))
+
+    # mapping each node to its community
+    # community_map = {
+    #     node: idx for idx, community in enumerate(communities) for node in community
+    # }
+    # obtaining colors for each community
+    # community_colors = np.array([community_map[node] for node in net_graph.nodes()])
+
+    # putting down nodes
+    node_sizes = [
+        5 * centrality_metrics["betweenness"][node] * 1000 for node in net_graph.nodes()
+    ]  # scaling node size by betweenness centrality
+    nx.draw_networkx_nodes(
+        net_graph,
+        pos,
+        # node_color=community_colors,
+        node_size=node_sizes,
+        cmap=plt.cm.jet,
+        alpha=0.7,
+    )
+
+    # drawing edges
+    nx.draw_networkx_edges(net_graph, pos, alpha=0.5)
+
+    # labels for high centrality nodes
+    high_centrality_nodes = [
+        node
+        for node in centrality_metrics["betweenness"]
+        if centrality_metrics["betweenness"][node]
+        > sorted(centrality_metrics["betweenness"].values())[-10]
+    ]  # have to adjust threshold
+    nx.draw_networkx_labels(
+        net_graph,
+        pos,
+        labels={node: node for node in high_centrality_nodes},
+        font_size=10,
+    )
+
+    plt.title("Macro-Level Clustering View of Network Graph")
+    # plt.colorbar(
+    #     plt.cm.ScalarMappable(cmap=plt.cm.jet),
+    #     orientation="horizontal",
+    #     label="Community ID",
+    # )
+    plt.axis("off")
+    plt.show()
+
+
+# testing usage of macro level viz function - change paths if needed and RUN IN AN INTERACTIVE WINDOW TO DISPLAY GRAPH
+# TODO: make default paths more robust
+# TODO: move script to scripts directory
+individuals = pd.read_csv("/project/output/cleaned/individuals_table.csv")
+organizations = pd.read_csv("/project/output/cleaned/organizations_table.csv")
+transactions = pd.read_csv("/project/output/cleaned/transactions_table.csv")
+
+aggreg_df = combine_datasets_for_network_graph(
+    [individuals, organizations, transactions]
+)
+G = create_network_graph(aggreg_df)
+centrality_metrics, communities = network_metrics(G)
+plot_macro_level_graph(
+    G, communities, {"betweenness": nx.betweenness_centrality(G, weight="amount")}
+)
