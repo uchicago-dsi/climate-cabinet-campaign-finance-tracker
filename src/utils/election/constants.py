@@ -36,7 +36,7 @@ HV_INDIVIDUAL_COLS = [
 type_mapping = {
     "year": "int",
     "month": "int",
-    "day": "int", 
+    "day": "int",
     "state": "string",
     "county": "string",
     "district_designation_ballot": "string",
@@ -58,7 +58,7 @@ type_mapping = {
 party_map = {"d": "democratic", "r": "republican", "partymiss": np.nan}
 
 election_settings = {
-    "link_type" : "dedupe_only",
+    "link_type": "dedupe_only",
     "blocking_rules_to_generate_predictions": [
         "l.first_name = r.first_name",
         "l.single_last_name = r.single_last_name",
@@ -72,7 +72,7 @@ election_settings = {
         cl.jaro_winkler_at_thresholds(
             "state", [0.9, 0.8]
         ),  # threshold will catch typos and shortenings
-        cl.jaro_winkler_at_thresholds("party", [0.9, 0.7]), # people may change party
+        cl.jaro_winkler_at_thresholds("party", [0.9, 0.7]),  # people may change party
     ],
     # DEFAULT
     "retain_matching_columns": True,

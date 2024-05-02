@@ -6,11 +6,12 @@ from utils.election.harvard import HarvardTransformer
 
 ALL_ELECTION_CLEANERS = [
     HarvardTransformer(),
-    ]
+]
+
 
 def transform_and_merge(
-        election_cleaners: list[ElectionResultTransformer] = None,
-        ) -> pd.DataFrame: 
+    election_cleaners: list[ElectionResultTransformer] = None,
+) -> pd.DataFrame:
     """From raw datafiles, clean, merge, and reformat election result data .
 
     Args:
@@ -26,8 +27,8 @@ def transform_and_merge(
     single_source_election_tables = []
     for election_cleaner in election_cleaners:
         print("Cleaning...")
-        (election_result_table) = election_cleaner.clean_state() 
+        (election_result_table) = election_cleaner.clean_state()
         single_source_election_tables.append(election_result_table)
     complete_election_result_table = pd.concat(single_source_election_tables)
-    
+
     return complete_election_result_table

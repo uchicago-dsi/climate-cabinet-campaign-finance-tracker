@@ -15,7 +15,7 @@ class ElectionResultTransformer(ABC):
     - renaming / reshaping data to fit a single schema
     - validating data to fit schema
     - adding uuids based on the Individual table uuids
-    
+
     The methods in this class are meant to be very conservative. Raw data should
     not be modified, only transformed. Rows cannot be changed, only deleted in
     obviously erroneous cases.
@@ -33,7 +33,7 @@ class ElectionResultTransformer(ABC):
                 defined per dataframe.
 
         Returns:
-            One dataframe with all relevant information 
+            One dataframe with all relevant information
         """
         pass
 
@@ -47,7 +47,7 @@ class ElectionResultTransformer(ABC):
         Inputs:
             data: Dataframe as output from preprocess method.
 
-        Returns: Dataframe 
+        Returns: Dataframe
         """
         pass
 
@@ -61,10 +61,9 @@ class ElectionResultTransformer(ABC):
         Inputs:
             data: dataframe as outputted from clean method.
 
-        Returns: Dataframe 
+        Returns: Dataframe
         """
         pass
-
 
     @abstractmethod
     def create_table(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -77,13 +76,11 @@ class ElectionResultTransformer(ABC):
         """
         pass
 
-
     @abstractmethod
     def clean_state(self) -> pd.DataFrame:
         """Runs the ElectionResultCleaner pipeline returning a cleaned dataframes
 
-        Returns: cleans the state and returns the standardized table showing 
+        Returns: cleans the state and returns the standardized table showing
         the election results.
         """
         pass
-

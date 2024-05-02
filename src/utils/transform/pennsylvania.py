@@ -228,7 +228,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         new_cols = ["first_name", "last_name", "company"]
         all_individuals = all_individuals.assign(**{col: None for col in new_cols})
         all_individuals["state"] = "PA"
-        all_individuals = all_individuals.apply(standardize_individual_names, axis = 1)
+        all_individuals = all_individuals.apply(standardize_individual_names, axis=1)
 
         return all_individuals
 

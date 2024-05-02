@@ -640,7 +640,7 @@ class MichiganTransformer(StateTransformer):
                 "candidate_full_name": "full_name",
             }
         )
-        individuals = individuals.apply(standardize_individual_names,axis = 1)
+        individuals = individuals.apply(standardize_individual_names, axis=1)
         individuals_df = pd.concat(
             [
                 individuals,
@@ -653,7 +653,6 @@ class MichiganTransformer(StateTransformer):
         individuals_df["state"] = individuals_df["state"].fillna("MI")
 
         return individuals_df
-
 
     def create_filtered_individuals_tables(
         self, standardized_dataframe_lst: list[pd.DataFrame]

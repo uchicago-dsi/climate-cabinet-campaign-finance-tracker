@@ -46,4 +46,4 @@ complete_transactions_table.to_csv(transactions_output_path)
 
 # The AZ data should be editted -> the resulted full name is wrong (address in name col)
 # Individuals names not following the same format
-# 
+#
