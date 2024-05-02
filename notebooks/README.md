@@ -7,3 +7,6 @@
 * `MN_EDA.ipynb` : Notebook containing the EDA and visualizations for Minnesota contribution and expenditure data
 
 * `PA_EDA.ipynb` : This notebook contains the EDA for Pennsylvania datasets on contributions, filer information, and expenditure data from 2018-2023.
+
+* `harvard_eda.ipynb`: This notebook contains the EDA for the Harvard datasets on election results from 1967 - 2016
+

@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from utils.constants import BASE_FILEPATH
+from utils.ind_transform import standardize_individual_names
 from utils.transform import clean
 from utils.transform import constants as const
 
@@ -227,6 +228,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
         new_cols = ["first_name", "last_name", "company"]
         all_individuals = all_individuals.assign(**{col: None for col in new_cols})
         all_individuals["state"] = "PA"
+        all_individuals = all_individuals.apply(standardize_individual_names, axis=1)
 
         return all_individuals
 

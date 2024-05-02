@@ -304,7 +304,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
     names = names.title().replace("  ", " ").split(" ")
     final_name = []
     [final_name.append(x) for x in names if x not in final_name]
-    return " ".join(final_name).strip()
+    return " ".join(final_name).strip().strip().upper()
 
 
 def get_street_from_address_line_1(address_line_1: str) -> str:

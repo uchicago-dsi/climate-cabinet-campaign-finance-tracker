@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from utils.constants import BASE_FILEPATH
+from utils.ind_transform import standardize_individual_names
 from utils.transform.clean import StateTransformer
 from utils.transform.constants import (
     MI_CON_FILEPATH,
@@ -639,6 +640,7 @@ class MichiganTransformer(StateTransformer):
                 "candidate_full_name": "full_name",
             }
         )
+        individuals = individuals.apply(standardize_individual_names, axis=1)
         individuals_df = pd.concat(
             [
                 individuals,

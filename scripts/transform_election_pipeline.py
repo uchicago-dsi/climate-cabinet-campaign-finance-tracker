@@ -1,9 +1,9 @@
-"""Script for running cleaning pipeline"""
+"""Script for running cleaning pipeline for election results"""
 
 import argparse
 
 from utils.constants import BASE_FILEPATH
-from utils.transform.pipeline import transform_and_merge
+from utils.election.election_pipeline import transform_and_merge
 
 parser = argparse.ArgumentParser()
 
@@ -32,18 +32,9 @@ else:
 input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
 
-individuals_output_path = output_directory / "individuals_table.csv"
-organizations_output_path = output_directory / "organizations_table.csv"
-transactions_output_path = output_directory / "transactions_table.csv"
-(
-    complete_individuals_table,
-    complete_organizations_table,
-    complete_transactions_table,
-) = transform_and_merge()
-complete_individuals_table.to_csv(individuals_output_path)
-complete_organizations_table.to_csv(organizations_output_path)
-complete_transactions_table.to_csv(transactions_output_path)
+election_results_output_path = output_directory / "election_results_table.csv"
 
-# The AZ data should be editted -> the resulted full name is wrong (address in name col)
-# Individuals names not following the same format
-#
+complete_election_resutls_table = transform_and_merge()
+
+complete_election_resutls_table.to_csv(election_results_output_path)
+print(complete_election_resutls_table.dtypes)

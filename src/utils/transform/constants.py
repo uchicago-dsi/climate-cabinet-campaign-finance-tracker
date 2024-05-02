@@ -192,7 +192,6 @@ MI_EXP_DROP_COLS = [
     "fundraiser",
 ]
 
-
 # PA EDA constants:
 
 PA_SCHEMA_CHANGE_YEAR = 2022
