@@ -199,7 +199,7 @@ Legal name: The legal name of the company (can differ from the company name)
 ## State Legislative Election Returns (1967-2016)
 
 ### Overview
-This dataset accompanies the State Legislative Election Returns dataset, which chronicles detailed election outcomes for individual candidates in state legislative races across the United States, covering the period from 1967 to 2016. This extensive dataset allows for historical analysis of electoral trends, candidate performance, and legislative turnover.
+This [dataset](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/3WZFK9) accompanies the State Legislative Election Returns dataset, which chronicles detailed election outcomes for individual candidates in state legislative races across the United States, covering the period from 1967 to 2016. This extensive dataset allows for historical analysis of electoral trends, candidate performance, and legislative turnover.
 
 ### Data Source
 The dataset aggregates data from multiple authoritative sources, including state election boards and historical archives, to ensure comprehensive coverage and accuracy. It provides an invaluable resource for researchers focusing on political science, electoral behavior, and governance.
