@@ -7,7 +7,6 @@ from utils.election.election_linkage import (
     create_single_last_name,
     decide_foreign_key,
     extract_first_name,
-    splink_dedupe,
 )
 
 
