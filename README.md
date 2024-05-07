@@ -30,6 +30,10 @@ The main components of the package are broken up into subpackages which can be i
 
 For developing, please use either a Docker dev container or slurm computer cluster. See more details in `CONTRIBUTING.md`
 
+### Network Visualization
+
+# TODO: #101 document what we want to see in the visualization and decide how many types of visual are needed
+
 
 ## Repository Structure
 

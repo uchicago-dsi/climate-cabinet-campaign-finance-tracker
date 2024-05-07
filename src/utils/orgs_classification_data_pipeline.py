@@ -333,6 +333,7 @@ def get_classification(row: pd.Series) -> str:
         return "ambiguous"
 
 
+# TODO: make a pipeline that skips the infogroup processing
 def prepare_infogroup_data(
     infogroup_csv: str, SIC6_codes_df: pd.DataFrame, testing: bool = False
 ) -> pd.DataFrame:
@@ -883,6 +884,7 @@ def match_organizations(
     return None
 
 
+# TODO: #105 move company info pipeline to a script
 # # executing a test of the pipeline
 # FFF_dict = {FFF_oil_company_csv: "f", FFF_coal_company_csv: "f"}
 # company_classification_df = merge_company_dfs(

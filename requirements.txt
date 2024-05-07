@@ -26,4 +26,6 @@ scipy
 requests==2.31.0
 yfinance==0.2.37
 spacy>=3.0.0,<4.0.0
-#en-core-web-sm>=3.0.0,<3.1.0
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+scikit-learn
+matplotlib
