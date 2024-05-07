@@ -4,6 +4,10 @@ import numpy as np
 import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
 from utils.constants import BASE_FILEPATH
+import splink.duckdb.comparison_library as cl
+import splink.duckdb.comparison_template_library as ctl
+from splink.duckdb.blocking_rule_library import block_on
+
 
 HV_FILEPATH = BASE_FILEPATH / "data" / "raw" / "HV" / "196slers1967to2016_20180908.dta"
 
@@ -57,34 +61,23 @@ type_mapping = {
 }
 party_map = {"d": "democratic", "r": "republican", "partymiss": np.nan}
 
-election_settings = {
-    "link_type" : "dedupe_only",
+settings = {
+    "link_type": "dedupe_only",
     "blocking_rules_to_generate_predictions": [
-        "l.first_name = r.first_name",
-        "l.single_last_name = r.single_last_name",
+        block_on(["first_name", "last_name", "year","month","county"]),
     ],
     "comparisons": [
-        ctl.name_comparison("full_name"),
-        ctl.name_comparison("last_name"),
+        ctl.name_comparison("first_name", term_frequency_adjustments=True),
+        ctl.name_comparison("last_name", term_frequency_adjustments=True),
         cl.exact_match("year", term_frequency_adjustments=True),
-        cl.exact_match("month", term_frequency_adjustments=True),
-        cl.exact_match("state", term_frequency_adjustments=True),
-        cl.jaro_winkler_at_thresholds(
-            "state", [0.9, 0.8]
-        ),  # threshold will catch typos and shortenings
-        cl.jaro_winkler_at_thresholds("party", [0.9, 0.7]), # people may change party
+        cl.exact_match("month",  term_frequency_adjustments=True),
+        cl.exact_match("county",  term_frequency_adjustments=True),
     ],
-    # DEFAULT
     "retain_matching_columns": True,
     "retain_intermediate_calculation_columns": True,
     "max_iterations": 10,
-    "em_convergence": 0.01,
+    "em_convergence": 0.01
 }
-
-
-election_blocking = [
-    "l.first_name = r.first_name",
-    "l.single_last_name = r.single_last_name",
-    "l.year = r.year",
-    "l.month = r.month",
+blocking = [
+    "l.first_name = r.first_name and l.last_name = r.last_name and l.county = r.county and l.year = r.year and l.month = r.month"
 ]

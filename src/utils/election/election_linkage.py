@@ -1,8 +1,9 @@
 """Module for performing record linakge on individual record and election results"""
 
+import warnings
+
 import pandas as pd
 from splink.duckdb.linker import DuckDBLinker
-from utils.election.constants import INDIVIDUALS_FILEPATH
 
 
 def contains_custom_special_characters(s:str) -> bool:
@@ -96,10 +97,9 @@ def decide_foreign_key(election_data: pd.DataFrame, ind_df: pd.DataFrame) -> tup
 
 def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
     """Use splink to deduplicate dataframe based on settings
-    
+
     Configuration settings and blocking can be found in constants.py as
-    individuals_settings, individuals_blocking, organizations_settings,
-    organizations_blocking
+    individuals_settings, organizations_settings
 
     Uses the splink library which employs probabilistic matching for
     record linkage
@@ -119,43 +119,51 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
     # Initialize the linker object
     linker = DuckDBLinker(df, settings)
 
-    # Estimate probability that two random records match
-    linker.estimate_probability_two_random_records_match(
-        blocking, recall=0.80
-    )
+    # Use warnings to manage any potential issues during processing
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")  # Capture all warnings
 
-    # Estimate the parameter u using random sampling
-    linker.estimate_u_using_random_sampling(max_pairs=5e6)
+        # Estimate probability that two random records match
+        linker.estimate_probability_two_random_records_match(
+            blocking, recall=0.6
+        )
 
-    # Run expectation maximisation on each block
-    for block in blocking:
-        linker.estimate_parameters_using_expectation_maximisation(block)
+        # Check for warnings and stop if any are raised
+        if len(w) > 0:
+            print("Warning detected, stopping the process and returning original dataframe.")
+            return df
 
-    # Predict matches
-    df_predict = linker.predict()
+        # Estimate the parameter u using random sampling
+        linker.estimate_u_using_random_sampling(max_pairs=5e6)
 
-    # Cluster predictions and threshold
-    clusters = linker.cluster_pairwise_predictions_at_threshold(
-        df_predict, threshold_match_probability=0.7
-    )
-    clusters_df = clusters.as_pandas_dataframe()
+        # Run expectation maximisation on each block
+        for block in blocking:
+            linker.estimate_parameters_using_expectation_maximisation(block)
 
-    match_list_df = (
-        clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
-    )
-    match_list_df = match_list_df.rename(columns={"unique_id": "duplicated"})
+        # Predict matches
+        df_predict = linker.predict()
 
-    deduped_df = df.merge(
-        match_list_df,
-        left_on="unique_id",
-        right_on="duplicated",
-        how="left"
-    )
+        # Cluster predictions and threshold
+        clusters = linker.cluster_pairwise_predictions_at_threshold(
+            df_predict, threshold_match_probability=0.7
+        )
+        clusters_df = clusters.as_pandas_dataframe()
 
-    deduped_df["matching_id"] = deduped_df["cluster_id"]
+        match_list_df = (
+            clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
+        )
+        match_list_df = match_list_df.rename(columns={"unique_id": "duplicated"})
 
+        deduped_df = df.merge(
+            match_list_df,
+            left_on="unique_id",
+            right_on="duplicated",
+            how="left"
+        )
 
-    deduped_df = deduped_df.drop(columns=["duplicated", "cluster_id"])
+        deduped_df["matching_id"] = deduped_df["cluster_id"]
+
+        deduped_df = deduped_df.drop(columns=["duplicated", "cluster_id"])
 
     return deduped_df
 
