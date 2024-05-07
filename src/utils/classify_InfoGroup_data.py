@@ -1,3 +1,5 @@
+"""Script to get relevant InfoGroup data for classification in the pipeline"""
+
 import re
 
 # TODO: #92 Make orgs classification script into more well-defined pipeline
@@ -100,10 +102,11 @@ def prepare_infogroup_data(
     Args:
         infogroup_csv: the InfoGroup csv file
         SIC6_codes_df: DataFrame of the relevant SIC6 codes w/ corresponding regex codes and descriptions
+        output_file_path: the resulting df will be written as a csv to this file path location
         testing: Boolean - True if code is being tested on only several chunks, False if whole InfoGroup csv should be used
         chunksize: the number of rows per chunk in the IG dataset (default 10,000 but can be changed for testing purposes)
         num_testing_chunks: number of chunks to iterate through when testing = True
-        output_file_path: the resulting df will be written as a csv to this file path location
+
     Returns:
         a DataFrame with information for only the relevant companies from the InfoGroup
         dataset that is formatted in the same schema as the aggregated company df for downstream
