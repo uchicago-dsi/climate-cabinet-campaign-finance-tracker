@@ -2,11 +2,7 @@
 
 import pandas as pd
 
-from utils.transform.arizona import ArizonaTransformer
 from utils.transform.clean import StateTransformer
-from utils.transform.michigan import MichiganTransformer
-from utils.transform.minnesota import MinnesotaTransformer
-from utils.transform.pennsylvania import PennsylvaniaTransformer
 from utils.transform.texas import TexasTransformer
 
 ALL_STATE_CLEANERS = [
@@ -35,24 +31,24 @@ def transform_and_merge(
     single_state_individuals_tables = []
     single_state_organizations_tables = []
     single_state_transactions_tables = []
+    single_state_id_tables = []
     for state_cleaner in state_cleaners:
         print("Cleaning...")
-        (
-            individuals_table,
-            organizations_table,
-            transactions_table,
-        ) = state_cleaner.clean_state()
+        (individuals_table, organizations_table, transactions_table, ids_table) = (
+            state_cleaner.clean_state()
+        )
         single_state_individuals_tables.append(individuals_table)
         single_state_organizations_tables.append(organizations_table)
         single_state_transactions_tables.append(transactions_table)
+        single_state_id_tables.append(ids_table)
 
     complete_individuals_table = pd.concat(single_state_individuals_tables)
     complete_organizations_table = pd.concat(single_state_organizations_tables)
     complete_transactions_table = pd.concat(single_state_transactions_tables)
+    complete_id_table = pd.concat(single_state_id_tables)
     return (
         complete_individuals_table,
         complete_organizations_table,
         complete_transactions_table,
+        complete_id_table,
     )
-
-

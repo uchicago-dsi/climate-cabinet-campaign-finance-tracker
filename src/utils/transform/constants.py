@@ -3,18 +3,31 @@
 from utils.constants import BASE_FILEPATH
 
 INIDIVIDUAL_COLUMNS = [
-    "DONOR",
-    "DONOR_ID",
-    "DONOR_PARTY",
-    "DONOR_TYPE",
-    "DONOR_FIRST_NAME",
-    "DONOR_LAST_NAME",
-    "DONOR_EMPLOYER",
-    "RECIPIENT",
-    "RECIPIENT_ID",
-    "RECIPIENT_PARTY",
-    "RECIPIENT_TYPE",
+    "FIRST_NAME",
+    "LAST_NAME",
+    "FULL_NAME",
+    "INDIVIDUAL_TYPE",
+    "ADDRESS_LINE_1",
+    "ADDRESS_LINE_2",
+    "CITY",
+    "ZIP_CODE",
+    "STATE",
+    "EMPLOYER",
+    "OCCUPATION",
+    "OFFICE_SOUGHT",
+    "DISTRICT",
 ]
+
+ORGANIZATION_COLUMNS = [
+    "FULL_NAME",
+    "ORGANIZATION_TYPE",
+    "ADDRESS_LINE_1",
+    "ADDRESS_LINE_2",
+    "CITY",
+    "ZIP_CODE",
+    "STATE",
+]
+
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
 MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
