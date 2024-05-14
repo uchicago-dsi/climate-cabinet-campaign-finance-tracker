@@ -38,7 +38,7 @@ def set_parent_company(row: pd.Series, company_df: pd.DataFrame) -> None:
         return None
 
 
-def get_symbol_from_company(company_name: str) -> str:
+def get_stock_symbol_from_company(company_name: str) -> str:
     """Gets the stock symbol based on the name of the company for use in record linkage.
 
     Function should be used with .apply() on a company name column. Function taken from
@@ -132,7 +132,7 @@ def transform_aggregated_company_df(
     # getting the stock symbols for companies that are parent companies
     # and are not from the FFF dataset
     company_df["stock_symbol"] = company_df.apply(
-        lambda row: get_symbol_from_company(row["company_name"])
+        lambda row: get_stock_symbol_from_company(row["company_name"])
         if (row["parent_company_unique_id"] is None) & (pd.isna(row["stock_symbol"]))
         else row["stock_symbol"],
         axis=1,
