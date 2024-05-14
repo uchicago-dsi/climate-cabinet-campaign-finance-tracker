@@ -443,7 +443,7 @@ class PennsylvaniaTransformer(clean.StateTransformer):
                 return "Organization"
             loc += 1
         return "Individual"
-
+    # TODO: why occupation is drop here?
     def pre_process_contributor_dataset(
         self, contributor_df: pd.DataFrame
     ) -> pd.DataFrame:
