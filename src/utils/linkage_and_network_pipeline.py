@@ -25,6 +25,8 @@ from utils.linkage import (
 from utils.network import (
     combine_datasets_for_network_graph,
     create_network_graph,
+    network_metrics,
+    plot_macro_level_graph,
     run_network_graph_pipeline,
 )
 
@@ -217,5 +219,12 @@ def clean_data_and_build_network(
     g = create_network_graph(aggreg_df)
     g_output_path = BASE_FILEPATH / "output" / "g.gml"
     nx.write_graphml(g, g_output_path)
+    centrality_metrics, communities = network_metrics(g)
 
-    run_network_graph_pipeline(2018, 2022, [individuals, organizations, transactions])
+    # this creates the micro-level visualization which is stored in the output/network_graphs location
+    run_network_graph_pipeline(2018, 2023, [individuals, organizations, transactions])
+
+    # this creates the macro-level visualization - run this file in an interactive window in case the output figure is not displayed
+    plot_macro_level_graph(
+        g, communities, {"betweenness": nx.betweenness_centrality(g, weight="amount")}
+    )
