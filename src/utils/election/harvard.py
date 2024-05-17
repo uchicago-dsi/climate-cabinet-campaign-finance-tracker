@@ -1,4 +1,4 @@
-"""Election result transformer implementation for Harvard dataset""" 
+"""Election result transformer implementation for Harvard dataset"""
 
 import uuid
 
@@ -30,7 +30,6 @@ class HarvardTransformer(ElectionResultTransformer):
         raw_df = pd.read_stata(HV_FILEPATH)
 
         return raw_df
-    
 
     def clean(self, data: pd.DataFrame) -> pd.DataFrame:
         """Cleans the dataframe as needed and returns the dataframe
@@ -41,11 +40,15 @@ class HarvardTransformer(ElectionResultTransformer):
         Inputs:
             data: Dataframe as output from preprocess method.
 
-        Returns: Dataframe 
+        Returns: Dataframe
         """
         clean_df = data.copy(deep=True)
-        clean_df = clean_df[HV_INDIVIDUAL_COLS] 
-        clean_df = clean_df[(clean_df["year"] <=2016) & (clean_df["year"] >=2014)]
+        clean_df = clean_df[HV_INDIVIDUAL_COLS]
+        year_start = 2014
+        year_end = 2016
+        clean_df = clean_df[
+            (clean_df["year"] <= year_end) & (clean_df["year"] >= year_start)
+        ]
 
         clean_df = clean_df[~(clean_df["last"] == "scattering")]
         # the data is cleaned in the original dataset -- if last or first name is missing
@@ -57,17 +60,16 @@ class HarvardTransformer(ElectionResultTransformer):
         print("check")
         print(clean_df[clean_df["first"].isna()])
 
-        clean_df.loc[clean_df["first"] == "", "first"] = clean_df["cand"].apply(extract_first_name)
+        clean_df.loc[clean_df["first"] == "", "first"] = clean_df["cand"].apply(
+            extract_first_name
+        )
 
         clean_df["cand"] = np.where(
-            clean_df["v19_20171211"].notna(), 
-            clean_df["v19_20171211"], 
-            clean_df["cand"]
+            clean_df["v19_20171211"].notna(), clean_df["v19_20171211"], clean_df["cand"]
         )
-        clean_df = clean_df.drop(["v19_20171211"],axis = 1)
+        clean_df = clean_df.drop(["v19_20171211"], axis=1)
 
         return clean_df
-    
 
     def standardize(self, data: pd.DataFrame) -> pd.DataFrame:
         """Standardizes the dataframe into the necessary format for the schema
@@ -77,36 +79,36 @@ class HarvardTransformer(ElectionResultTransformer):
         Inputs:
             data: dataframe as outputted from clean method.
 
-        Returns: Dataframe 
+        Returns: Dataframe
         """
         # here last, first name should be remodified
         data["sab"] = data["sab"].str.upper()
         data["last"] = data["last"].str.lower()
         data["first"] = data["first"].str.lower()
         data["cand"] = data["cand"].str.lower()
-        data["cand"] = data["cand"].astype(str)[
-            data["cand"].notna()
-        ]
+        data["cand"] = data["cand"].astype(str)[data["cand"].notna()]
 
         data["partyt"] = data["partyt"].map(party_map)
 
-        data = data.rename(columns={
-            "ddez": "district_designation_ballot",
-            "dname": "district",
-            "dno": "district_number",
-            "geopost": "geographic_post",
-            "mmdpost": "mmd_post",
-            "cname": "county",
-            "sen": "senate",
-            "candid": "candidate_id",
-            "sab": "state",
-            "last": "last_name",
-            "first": "first_name",
-            "cand" : "full_name",
-            "partyt":"party",
-            "termz" : "term",
-            "dseats": "district_seat_number"
-        })
+        data = data.rename(
+            columns={
+                "ddez": "district_designation_ballot",
+                "dname": "district",
+                "dno": "district_number",
+                "geopost": "geographic_post",
+                "mmdpost": "mmd_post",
+                "cname": "county",
+                "sen": "senate",
+                "candid": "candidate_id",
+                "sab": "state",
+                "last": "last_name",
+                "first": "first_name",
+                "cand": "full_name",
+                "partyt": "party",
+                "termz": "term",
+                "dseats": "district_seat_number",
+            }
+        )
 
         data["day"] = data["day"].fillna(0)
         data["county"] = data["county"].fillna("Unknown")
@@ -115,14 +117,15 @@ class HarvardTransformer(ElectionResultTransformer):
         data["geographic_post"] = data["geographic_post"].fillna(0)
         data["mmd_post"] = data["mmd_post"].fillna(0)
         data["vote"] = data["vote"].fillna(0)
-        data["full_name"] = data["full_name"].fillna("Unknown")  # Fixed from mistakenly using 'district'
+        data["full_name"] = data["full_name"].fillna(
+            "Unknown"
+        )  # Fixed from mistakenly using 'district'
         data["party"] = data["party"].fillna("Unknown")
 
         data = data.astype(type_mapping)
         print("standardize result", data.dtypes)
         return data
-    
-    
+
     def create_table(self, data: pd.DataFrame) -> pd.DataFrame:
         """Creates the election result table and create uuid
 
@@ -137,28 +140,27 @@ class HarvardTransformer(ElectionResultTransformer):
         final_table = self.create_election_result_uuid(final_table)
 
         return final_table
-    
+
     def create_election_result_uuid(self, data: pd.DataFrame) -> pd.DataFrame:
         """Add uuid to each election result record
-        
-        Inputs: 
+
+        Inputs:
             data: standarized data frame
-            
+
         Returns:
             A dataframe with case_id column added
         """
         data["unique_id"] = [uuid.uuid4() for _ in range(len(data))]
-        
+
         return data
-    
+
     def clean_state(self) -> pd.DataFrame:
         """Runs the ElectionResultCleaner pipeline returning a cleaned dataframes
 
-        Returns: cleans the state and returns the standardized table showing 
+        Returns: cleans the state and returns the standardized table showing
         the election results.
         """
         raw_df = self.preprocess()
         clean_df = self.clean(raw_df)
         standardized_df = self.standardize(clean_df)
         return self.create_table(standardized_df)
-

@@ -370,7 +370,7 @@ class MinnesotaTransformer(StateTransformer):
             }
         )
         ind_df = pd.concat([ind_recipient_df, ind_donor_df], ignore_index=True)
-        ind_df = ind_df.apply(standardize_individual_names,axis = 1)
+        ind_df = ind_df.apply(standardize_individual_names, axis=1)
 
         # Create organization table from both recipient and donor entries
         org_recipient_df = pd.DataFrame(

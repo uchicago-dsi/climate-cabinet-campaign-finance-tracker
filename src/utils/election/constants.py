@@ -3,11 +3,8 @@
 import numpy as np
 import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
-from utils.constants import BASE_FILEPATH
-import splink.duckdb.comparison_library as cl
-import splink.duckdb.comparison_template_library as ctl
 from splink.duckdb.blocking_rule_library import block_on
-
+from utils.constants import BASE_FILEPATH
 
 HV_FILEPATH = BASE_FILEPATH / "data" / "raw" / "HV" / "196slers1967to2016_20180908.dta"
 
@@ -40,7 +37,7 @@ HV_INDIVIDUAL_COLS = [
 type_mapping = {
     "year": "int",
     "month": "int",
-    "day": "int", 
+    "day": "int",
     "state": "string",
     "county": "string",
     "district_designation_ballot": "string",
@@ -64,19 +61,19 @@ party_map = {"d": "democratic", "r": "republican", "partymiss": np.nan}
 settings = {
     "link_type": "dedupe_only",
     "blocking_rules_to_generate_predictions": [
-        block_on(["first_name", "last_name", "year","month","county"]),
+        block_on(["first_name", "last_name", "year", "month", "county"]),
     ],
     "comparisons": [
         ctl.name_comparison("first_name", term_frequency_adjustments=True),
         ctl.name_comparison("last_name", term_frequency_adjustments=True),
         cl.exact_match("year", term_frequency_adjustments=True),
-        cl.exact_match("month",  term_frequency_adjustments=True),
-        cl.exact_match("county",  term_frequency_adjustments=True),
+        cl.exact_match("month", term_frequency_adjustments=True),
+        cl.exact_match("county", term_frequency_adjustments=True),
     ],
     "retain_matching_columns": True,
     "retain_intermediate_calculation_columns": True,
     "max_iterations": 10,
-    "em_convergence": 0.01
+    "em_convergence": 0.01,
 }
 blocking = [
     "l.first_name = r.first_name and l.last_name = r.last_name and l.county = r.county and l.year = r.year and l.month = r.month"

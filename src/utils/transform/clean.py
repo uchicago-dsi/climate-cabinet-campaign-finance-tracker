@@ -103,7 +103,6 @@ class StateTransformer(ABC):
             )
         )
         return entity
-    
 
     @abstractmethod
     def create_tables(
@@ -137,6 +136,3 @@ class StateTransformer(ABC):
         [ind->ind, ind->org, org->ind, org->org] tables in a tuple
         """
         pass
-
-
-
