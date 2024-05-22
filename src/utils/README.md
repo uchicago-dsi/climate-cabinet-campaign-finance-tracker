@@ -79,3 +79,16 @@ dataframes from the deduplication and linkage pipeline.
 In particular, individuals are classified based on their employment by fossil fuels companies, 
 and organizations are classified by their names, prioritizing high profile corporations/PACs 
 and those which were found by a manual search of the largest donors/recipients in the dataset
+
+## Company Classification Utils
+### classify_fff_data.py
+These functions clean, standardize, and merge Fossil Fuel Funds data that has label classifications for fossil fuel or clean energy. Also performs record linkage to dedupe and creates unique ids for each company. 
+
+### classify_infogroup_data.py
+These functions clean, standardize, and merge InfoGroup data. It cleans the large 2023 InfoGroup text file and subsets the data with SIC codes that are relevant to fossil fuel or clean energy. Also performs record linkage to dedupe and creates unique ids for each company. 
+
+### merge_transform_company_data.py
+These functions merge the FFF and Infogroup data and transforms the df to create a reference to InfoGroup's parent company UUID if found. 
+
+
+

@@ -42,7 +42,7 @@ COMPANY_TYPES = {
     "PAC": "POLITICAL ACTION COMMITTEE",
 }
 
-individuals_settings = {
+INDIVIDUALS_SETTINGS = {
     "link_type": "dedupe_only",
     "blocking_rules_to_generate_predictions": [
         "l.first_name = r.first_name",
@@ -64,12 +64,12 @@ individuals_settings = {
     "em_convergence": 0.01,
 }
 
-individuals_blocking = [
+INDIVIDUALS_BLOCKING = [
     "l.first_name = r.first_name",
     "l.last_name = r.last_name",
 ]
 
-organizations_settings = {
+ORGANIZATIONS_SETTINGS = {
     "link_type": "link_only",
     "blocking_rules_to_generate_predictions": [
         "l.company_name[0] = r.company_name[0] AND l.zipcode = r.zipcode",
@@ -77,19 +77,16 @@ organizations_settings = {
     "comparisons": [
         cl.jaro_winkler_at_thresholds(
             "company_name", [0.9, 0.6]
-        ),  # threshold will catch typos and shortenings,
-        # cl.exact_match(
-        #     "zipcode"
-        # ),  # want to get rid of this actually bc too many false positives
+        ),  # threshold will catch variations in company names
         cl.jaro_winkler_at_thresholds("address", [0.9, 0.6]),
     ],
 }
 
 # where left is the organizations table and right is the classified company table
-organizations_blocking = "l.zipcode = r.zipcode"
+ORGANIZATIONS_BLOCKING = "l.zipcode = r.zipcode"
 
 
-FFF_company_classification_settings = {
+FFF_COMPANY_CLASSIFICATION_SETTINGS = {
     "link_type": "dedupe_only",
     "probability_two_random_records_match": 0.001,
     "blocking_rules_to_generate_predictions": [
@@ -111,7 +108,10 @@ FFF_company_classification_settings = {
                     "tf_minimum_u_value": 0.001,
                 },
                 {
-                    "sql_condition": "jaro_winkler_similarity(company_name_l, company_name_r) > 0.5",
+                    "sql_condition": (
+                        "jaro_winkler_similarity(company_name_l, company_name_r)"
+                        "> 0.5"
+                    ),
                     "label_for_charts": "similar",
                     "tf_adjustment_column": "company_name",
                     "tf_minimum_u_value": 0.003,
@@ -164,13 +164,17 @@ FFF_company_classification_settings = {
     ],
 }
 
-FFF_company_classification_blocking = "l.stock_symbol = r.stock_symbol"
+FFF_COMPANY_CLASSIFICATION_BLOCKING = "l.stock_symbol = r.stock_symbol"
 
-InfoGroup_company_classification_settings = {
+INFOGROUP_COMPANY_CLASSIFICATION_SETTINGS = {
     "link_type": "dedupe_only",
     "probability_two_random_records_match": 0.0001,
     "blocking_rules_to_generate_predictions": [
-        "l.company_name[0] = r.company_name[0] AND l.zipcode = r.zipcode AND l.primary_SIC_code = r.primary_SIC_code"
+        (
+            "l.company_name[0] = r.company_name[0] AND"
+            "l.zipcode = r.zipcode"
+            "AND l.primary_SIC_code = r.primary_SIC_code"
+        )
     ],
     "comparisons": [
         {
@@ -188,7 +192,10 @@ InfoGroup_company_classification_settings = {
                     "tf_minimum_u_value": 0.001,
                 },
                 {
-                    "sql_condition": "jaro_winkler_similarity(company_name_l, company_name_r) > 0.5",
+                    "sql_condition": (
+                        "jaro_winkler_similarity(company_name_l, company_name_r)"
+                        "> 0.5"
+                    ),
                     "label_for_charts": "similar",
                     "tf_adjustment_column": "company_name",
                     "tf_minimum_u_value": 0.003,
@@ -217,10 +224,10 @@ InfoGroup_company_classification_settings = {
     ],
 }
 
-InfoGroup_company_classification_blocking = "l.zipcode = r.zipcode"
+INFOGROUP_COMPANY_CLASSIFICATION_BLOCKING = "l.zipcode = r.zipcode"
 
 # individuals compnay f names
-f_companies = [
+F_COMPANIES = [
     "exxon",
     "chevron",
     "southwest gas",
@@ -233,7 +240,7 @@ f_companies = [
 ]
 
 # organizations f names
-f_org_names = [
+F_ORG_NAMES = [
     "koch industries",
     "koch pac",
     "kochpac",
@@ -244,7 +251,7 @@ f_org_names = [
 ]
 
 # organizations c names
-c_org_names = [
+C_ORG_NAMES = [
     "clean energy",
     "vote solar action",
     "renewable",
@@ -254,7 +261,7 @@ c_org_names = [
     "league of conservation",
 ]
 
-suffixes = [
+SUFFIXES = [
     "sr",
     "jr",
     "i",
@@ -269,7 +276,7 @@ suffixes = [
     "x",
 ]
 
-titles = [
+TITLES = [
     "mr",
     "ms",
     "mrs",
@@ -282,7 +289,7 @@ titles = [
     "professor",
 ]
 
-company_classification_output_schema = {
+COMPANY_CLASSIFICATION_OUTPUT_SCHEMA = {
     "company_name": str,
     "stock_symbol": str,
     "legal_name": str,
@@ -306,7 +313,7 @@ company_classification_output_schema = {
 }
 
 # columns of interest in the InfoGroup DataFrame
-relevant_InfoGroup_columns = [
+RELEVANT_INFOGROUP_COLUMNS = [
     "COMPANY",
     "ADDRESS LINE 1",
     "CITY",
@@ -322,7 +329,7 @@ relevant_InfoGroup_columns = [
     "PARENT NUMBER",
 ]
 
-InfoGroup_column_mapper = {
+INFOGROUP_COLUMN_MAPPER = {
     "COMPANY": "company_name",
     "ADDRESS LINE 1": "address",
     "CITY": "city",

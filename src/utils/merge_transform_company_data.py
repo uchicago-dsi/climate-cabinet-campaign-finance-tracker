@@ -23,24 +23,24 @@ def set_parent_company(row: pd.Series, company_df: pd.DataFrame) -> None:
         Returns the parent company's InfoGroup UUID. If there is no corresponding parent
         company, returns None
     """
-    parent_company_ABI = row["parent_company_ABI"]
-    if parent_company_ABI is None:
+    parent_company_abi = row["parent_company_ABI"]
+    if parent_company_abi is None:
         return None
-    parent_ABIs = company_df[company_df["ABI"] == parent_company_ABI]
-    if len(parent_ABIs) > 0:
+    parent_abis = company_df[company_df["ABI"] == parent_company_abi]
+    if len(parent_abis) > 0:
         # find UUID that corresponds to this ABI
-        parent = parent_ABIs.iloc[0]
-        parent_UUID = parent["unique_id"]
-        return parent_UUID
-    else:
-        return None
+        parent = parent_abis.iloc[0]
+        parent_uuid = parent["unique_id"]
+        return parent_uuid
+    return None
 
 
 def get_stock_symbol_from_company(company_name: str) -> str:
     """Gets the stock symbol based on the name of the company for use in record linkage.
 
     Function should be used with .apply() on a company name column. Function taken from
-    stack overflow article: https://stackoverflow.com/questions/38967533/retrieve-company-name-with-ticker-symbol-input-yahoo-or-google-api
+    stack overflow article:
+    https://stackoverflow.com/questions/38967533/retrieve-company-name-with-ticker-symbol-input-yahoo-or-google-api
     Companies that return 'None' are either not found in the Yahoo Finance API or they
     are not publicly traded companies
     Args:
@@ -124,28 +124,21 @@ def transform_aggregated_company_df(
         lambda row: set_parent_company(row, company_df), axis=1
     )
 
-    # # getting the stock symbols for companies that are parent companies
-    # # and are not from the FFF dataset
-    # company_df["stock_symbol"] = company_df.apply(
-    #     lambda row: get_stock_symbol_from_company(row["company_name"])
-    #     if (row["parent_company_unique_id"] is None) & (pd.isna(row["stock_symbol"]))
-    #     else row["stock_symbol"],
-    #     axis=1,
-    # )
     return company_df
 
 
 def merge_company_dfs(
     output_file_path: str,
-    cleaned_FFF_df: pd.DataFrame = None,
-    cleaned_InfoGroup_df: pd.DataFrame = None,
+    cleaned_fff_df: pd.DataFrame = None,
+    cleaned_infogroup_df: pd.DataFrame = None,
 ) -> pd.DataFrame:
-    """Merges, trasnforms, and cleans all company DataFrames from FFF and InfoGroup into one DataFrame
+    """Merges, trasnforms, and cleans all company DataFrames from FFF and InfoGroup into one df
 
     Args:
         output_file_path: the file location where the resulting df will be written to as a CSV
-        cleaned_FFF_df: a prepared, cleaned and merged FFF dataframe
-        cleaned_InfoGroup_df: a prepared and cleaned InfoGroup dataframe with only relevant companies
+        cleaned_fff_df: a prepared, cleaned and merged FFF dataframe
+        cleaned_infogroup_df: a prepared and cleaned InfoGroup dataframe with only relevant
+            companies
 
     Returns:
         a merged DataFrame from FFF and InfoGroup data. also writes this to a CSV
@@ -154,10 +147,10 @@ def merge_company_dfs(
     # merge the data into one DataFrame
     print("merging the FFF and InfoGroup data...")
     # ensure that indexes are diff for concatenation
-    cleaned_FFF_df = cleaned_FFF_df.reset_index(drop=True)
-    cleaned_InfoGroup_df = cleaned_InfoGroup_df.reset_index(drop=True)
+    cleaned_fff_df = cleaned_fff_df.reset_index(drop=True)
+    cleaned_infogroup_df = cleaned_infogroup_df.reset_index(drop=True)
 
-    merged_dfs = pd.concat([cleaned_FFF_df, cleaned_InfoGroup_df])
+    merged_dfs = pd.concat([cleaned_fff_df, cleaned_infogroup_df])
 
     # transform the merged DataFrame
     transformed_merged_dfs = transform_aggregated_company_df(merged_dfs)

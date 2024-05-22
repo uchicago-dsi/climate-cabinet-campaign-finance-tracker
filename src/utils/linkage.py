@@ -9,7 +9,7 @@ import textdistance as td
 import usaddress
 from splink.duckdb.linker import DuckDBLinker
 
-from utils.constants import BASE_FILEPATH, COMPANY_TYPES, suffixes, titles
+from utils.constants import BASE_FILEPATH, COMPANY_TYPES, SUFFIXES, TITLES
 
 
 def get_address_line_1_from_full_address(address: str) -> str:
@@ -114,7 +114,7 @@ def calculate_row_similarity(
     likely be easier and more efficient.
     """
     row_length = len(weights)
-    if not (row1.shape[1] == row2.shape[1] == row_length):
+    if not row1.shape[1] == row2.shape[1] == row_length:
         raise ValueError("Number of columns and weights must be the same")
 
     similarity = np.zeros(row_length)
@@ -144,7 +144,6 @@ def row_matches(
     all_indices = np.array(list(df.index))
 
     index_dict = {}
-    [index_dict.setdefault(x, []) for x in all_indices]
 
     discard_indices = []
 
@@ -233,7 +232,7 @@ def determine_comma_role(name: str) -> str:
 
     if not remainder:
         return name.title()
-    if remainder.lower() in suffixes:
+    if remainder.lower() in SUFFIXES:
         return name.title()
     return f"{remainder.title()} {last_name.title()}".strip()
 
@@ -295,7 +294,7 @@ def get_likely_name(first_name: str, last_name: str, full_name: str) -> str:
             names[i] = determine_comma_role(names[i])
 
         names[i] = names[i].replace(".", "").split(" ")
-        names[i] = [name_part for name_part in names[i] if name_part not in titles]
+        names[i] = [name_part for name_part in names[i] if name_part not in TITLES]
         names[i] = " ".join(names[i])
 
     # one last check to remove any pieces that might add extra whitespace
@@ -356,7 +355,7 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
 
 
 def convert_duplicates_to_dict(
-    df_with_matches: pd.DataFrame, output_file_path: str
+    df_with_matches: pd.DataFrame, output_file_path: str = "deduplicated_UUIDs.csv"
 ) -> None:
     """Map each uuid to all other uuids for which it has been deemed a match
 
@@ -378,10 +377,10 @@ def convert_duplicates_to_dict(
     """
     deduped_dict = {}
     for i in range(len(df_with_matches)):
-        deduped_uudis = df_with_matches.iloc[i]["duplicated"]
-        for j in range(len(deduped_uudis)):
+        deduped_uuids = df_with_matches.iloc[i]["duplicated"]
+        for j in range(len(deduped_uuids)):
             deduped_dict.update(
-                {deduped_uudis[j]: df_with_matches.iloc[i]["unique_id"]}
+                {deduped_uuids[j]: df_with_matches.iloc[i]["unique_id"]}
             )
 
     # now convert dictionary into a csv file
@@ -466,14 +465,14 @@ def cleaning_company_column(company_entry: str) -> str:
     ):
         return "Retired"
 
-    elif (
+    if (
         "self employe" in company_edited
         or "freelance" in company_edited
         or company_edited == "self"
         or company_edited == "independent contractor"
     ):
         return "Self Employed"
-    elif (
+    if (
         "unemploye" in company_edited
         or company_edited == "none"
         or company_edited == "not employed"
@@ -481,8 +480,7 @@ def cleaning_company_column(company_entry: str) -> str:
     ):
         return "Unemployed"
 
-    else:
-        return company_edited
+    return company_edited
 
 
 def standardize_corp_names(company_name: str) -> str:
@@ -544,13 +542,16 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     for i in range(len(address_line_1_components)):
         if address_line_1_components[i][1] == "AddressNumber":
             return address_line_1_components[i][0]
-        elif address_line_1_components[i][1] == "USPSBoxID":
+        if address_line_1_components[i][1] == "USPSBoxID":
             return address_line_1_components[i][0]
     raise ValueError("Cannot find Address Number")
 
 
 def splink_dedupe(
-    df: pd.DataFrame, settings: dict, blocking: str, mapped_UUID_file_path_name: str
+    df: pd.DataFrame,
+    settings: dict,
+    blocking: str,
+    mapped_uuid_file_path_name: str = "deduplicated_UUIDs.csv",
 ) -> pd.DataFrame:
     """Use splink to deduplicate dataframe based on settings
 
@@ -569,7 +570,7 @@ def splink_dedupe(
             (based on splink documentation and dataframe columns)
         blocking: list of columns to block on for the table
             (cuts dataframe into parts based on columns labeled blocks)
-        mapped_UUID_file_path_name: file path that contains the original UUIDs and mapped UUIDs
+        mapped_uuid_file_path_name: file path that contains the original UUIDs and mapped UUIDs
             (this file path is appended to using convert_duplicates_to_dict) within this function
 
     Returns:
@@ -617,7 +618,7 @@ def splink_dedupe(
     )
 
     duplicated_entries = deduped_df[deduped_df["duplicated"].map(len) > 1]
-    convert_duplicates_to_dict(duplicated_entries, mapped_UUID_file_path_name)
+    convert_duplicates_to_dict(duplicated_entries, mapped_uuid_file_path_name)
 
     deduped_df = deduped_df.drop(columns=["duplicated"])
     return deduped_df
@@ -628,37 +629,43 @@ def splink_link(
     linkage_dfs: list,
     settings: dict,
     blocking: str,
-    output_file_path: str,
-    threshold_match_probability: int = 0.6,
+    output_file_path: str = "deduplicated_UUIDs.csv",
 ) -> pd.DataFrame:
     """Performs record linkage on campaign finance df and other entity df.
 
-    Performs record linkage across datasets and creates a foreign key column in the input campaign finance
-    dataset referencing its corresponding matched uuids in the other entity table.
+    Performs record linkage across datasets and creates a foreign key column in the input campaign
+    finance dataset referencing its corresponding matched uuids in the other entity table.
     Assumes that linkage_dfs are pre-processed and have consistent schema.
 
     Args:
-        campaign_finance_df: the original campaign finance df. assumes that this df has a column called unique_id
-        linkage_dfs: a list of dataframes that will be used for record linkage, assumes campaign finance data is dfs[0] (left table)
+        campaign_finance_df: the original campaign finance df. assumes that this df has a column
+            called unique_id
+        linkage_dfs: a list of dataframes that will be used for record linkage, assumes campaign
+            finance data is dfs[0] (left table)
         settings: configuration settings
             (based on splink documentation and dataframe columns)
         blocking: list of columns to block on for the table
             (cuts dataframe into parts based on columns labeled blocks)
-        output_file_path: file path to the campaign finance data w/ references to linked entities from
-            the other input df
-        threshold_match_probability: optional arg for the threshold of a match between entities. default is 0.6
+        output_file_path: file path to the campaign finance data w/ references to linked entities
+            from the other input df
+        threshold_match_probability: optional arg for the threshold of a match between entities.
+            default is 0.6
     """
     # running splink and getting results df that contains matches
     linker = DuckDBLinker(linkage_dfs, settings)
     linker.estimate_u_using_random_sampling(max_pairs=5e6)
     linker.estimate_parameters_using_expectation_maximisation(blocking)
-    results = linker.predict(threshold_match_probability)
+    results = linker.predict(
+        threshold_match_probability=0.6
+    )  # can adjust this based on
+    # desired recall
     results_df = results.as_pandas_dataframe()
 
     # getting a list of all the matches associated with the campaign finance unique id
     linkages = results_df.groupby("unique_id_l")["unique_id_r"].agg(list).reset_index()
 
-    # formatting the grouped linkages to join on original campain finance dataset w/ classified_company_unique_ids as a foreign key
+    # formatting the grouped linkages to join on original campain finance dataset
+    # w/ classified_company_unique_ids as a foreign key
     linkages = linkages.rename(
         columns={
             "unique_id_l": "unique_id",
@@ -666,7 +673,8 @@ def splink_link(
         }
     )
 
-    # adding the linked unique ids of classified entities as a foreign key column in og campaign finance df
+    # adding the linked unique ids of classified entities as a foreign key column in og
+    # campaign finance df
     linked_campaign_finance_df = campaign_finance_df.merge(
         linkages, on="unique_id", how="outer"
     )

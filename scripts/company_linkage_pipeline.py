@@ -3,8 +3,8 @@
 import pandas as pd
 from utils.constants import (
     BASE_FILEPATH,
-    organizations_blocking,
-    organizations_settings,
+    ORGANIZATIONS_BLOCKING,
+    ORGANIZATIONS_SETTINGS,
 )
 from utils.linkage import splink_link
 
@@ -46,8 +46,8 @@ print("performing record linkage...")
 linked_texas_df = splink_link(
     campaign_finance_df=texas_organizations_df,
     linkage_dfs=[texas_organizations_link_df, classified_subset],
-    settings=organizations_settings,
-    blocking=organizations_blocking,
+    settings=ORGANIZATIONS_SETTINGS,
+    blocking=ORGANIZATIONS_BLOCKING,
     output_file_path="texas_data_linked.csv",
 )
 

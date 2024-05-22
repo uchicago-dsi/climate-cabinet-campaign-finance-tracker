@@ -223,6 +223,20 @@ This file is the InfoGroup historical datafile. It is directory data on U.S. bus
 ### Features
 A description of relevant features can be found in InfoGroup's variable listing here: https://uchicago.app.box.com/s/k8xr0g9ieuvohbxca2xci9r1lu2dpl5i
 
+## Texas Organizational Data
+
+This file is the campaign finance data file for Texas organizations.
+
+### How to access: 
+
+1. Navigate to data/texas_full_14-16 in the campaign-finance directory 
+2. Download the file organizations_table_TX_14-16.csv
+3. Save the file to data/classification/organizations_table_TX_14-16.csv in the repo
+
+### Features
+- FULL_NAME: the organization name
+- columns for address such as zipcode, city, state, address line 1
+
 ## Relevant SIC Codes
 
 File name: SIC6_codes.csv
