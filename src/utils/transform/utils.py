@@ -43,3 +43,15 @@ def remove_nonstandard(col: pd.Series) -> pd.Series:
     # turns oversized whitespace to single space
 
     return col
+
+
+def get_full_name(first_name: str, last_name: str, full_name: str) -> str:
+    """Returns potential full name based on first_name and last_name column
+
+    Input: First_name, last_name: strings of first name and last name
+
+    Return: String of full name
+    """
+    if pd.isna(full_name) or full_name.strip() == "":
+        return f"{first_name} {last_name}"
+    return full_name

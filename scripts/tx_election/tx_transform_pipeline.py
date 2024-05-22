@@ -1,9 +1,9 @@
-"""Script for running cleaning pipeline"""
+"""Script for running cleaning pipeline for Texas StateTransformer"""
 
 import argparse
 
 from utils.constants import BASE_FILEPATH
-from utils.transform.pipeline import transform_and_merge
+from utils.transform.tx_pipeline import transform_and_merge
 
 parser = argparse.ArgumentParser()
 
@@ -32,9 +32,9 @@ else:
 input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
 
-individuals_output_path = output_directory / "individuals_table.csv"
-organizations_output_path = output_directory / "organizations_table.csv"
-transactions_output_path = output_directory / "transactions_table.csv"
+individuals_output_path = output_directory / "tx_individuals_table.csv"
+organizations_output_path = output_directory / "tx_organizations_table.csv"
+transactions_output_path = output_directory / "tx_transactions_table.csv"
 (
     complete_individuals_table,
     complete_organizations_table,

@@ -92,3 +92,31 @@ Util functions for MN EDA
     candidates, committees, and nan. In order to fit the entries within the
     schema, I code nan entries as 'Organization'
 
+#### classify.py
+1. These functions take in the deduplicated and cleaned individuals and organizations 
+dataframes from the deduplication and linkage pipeline. 
+2. We classify based on substrings known to indicate clean energy or fossil fuels groups. 
+In particular, individuals are classified based on their employment by fossil fuels companies, 
+and organizations are classified by their names, prioritizing high profile corporations/PACs 
+and those which were found by a manual search of the largest donors/recipients in the dataset
+
+
+## Election Util:
+#### Util function for harvard.py
+1. extract_first_name
+
+#### harvard.py
+1. preprocess
+2. clean
+3. standardize
+4. create_table
+5. create_election_result_uuid
+6. clean_state
+
+## Texas Util:
+#### texas.py
+1. preprocess
+2. clean
+3. standardize
+4. create_tables
+5. clean_state
