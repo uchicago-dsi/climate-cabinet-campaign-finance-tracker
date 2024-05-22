@@ -12,6 +12,7 @@
 
 ## Setup
 
+
 ### Data Collection and Standardization Pipeline
 1. Collect the data through **<span style="color: red;">one</span>** of the steps below
     a. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN) OR

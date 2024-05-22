@@ -1,7 +1,5 @@
 """Script to merge and transform company data from FFF and InfoGroup"""
 
-import uuid
-
 import numpy as np
 import pandas as pd
 import requests
@@ -89,9 +87,9 @@ def clean_aggregated_company_df(company_df: pd.DataFrame) -> pd.DataFrame:
     Null values
 
     """
-    # standardize company names
+    # ensure that company_name is a str and standardize company names
     company_df["company_name"] = company_df["company_name"].apply(
-        lambda company: standardize_corp_names(company)
+        lambda company: standardize_corp_names(str(company))
     )
 
     # change NaNs to None
@@ -121,22 +119,19 @@ def transform_aggregated_company_df(
     """
     print("transforming the aggregated company df...")
 
-    # creating UUIDs for table
-    company_df["unique_id"] = [uuid.uuid4() for i in range(len(company_df))]
-
     # set parent company to parent company's UUID if applicable
     company_df["parent_company_unique_id"] = company_df.apply(
         lambda row: set_parent_company(row, company_df), axis=1
     )
 
-    # getting the stock symbols for companies that are parent companies
-    # and are not from the FFF dataset
-    company_df["stock_symbol"] = company_df.apply(
-        lambda row: get_stock_symbol_from_company(row["company_name"])
-        if (row["parent_company_unique_id"] is None) & (pd.isna(row["stock_symbol"]))
-        else row["stock_symbol"],
-        axis=1,
-    )
+    # # getting the stock symbols for companies that are parent companies
+    # # and are not from the FFF dataset
+    # company_df["stock_symbol"] = company_df.apply(
+    #     lambda row: get_stock_symbol_from_company(row["company_name"])
+    #     if (row["parent_company_unique_id"] is None) & (pd.isna(row["stock_symbol"]))
+    #     else row["stock_symbol"],
+    #     axis=1,
+    # )
     return company_df
 
 
@@ -158,6 +153,10 @@ def merge_company_dfs(
     """
     # merge the data into one DataFrame
     print("merging the FFF and InfoGroup data...")
+    # ensure that indexes are diff for concatenation
+    cleaned_FFF_df = cleaned_FFF_df.reset_index(drop=True)
+    cleaned_InfoGroup_df = cleaned_InfoGroup_df.reset_index(drop=True)
+
     merged_dfs = pd.concat([cleaned_FFF_df, cleaned_InfoGroup_df])
 
     # transform the merged DataFrame

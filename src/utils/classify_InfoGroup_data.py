@@ -1,8 +1,8 @@
 """Script to get relevant InfoGroup data for classification in the pipeline"""
 
 import re
+import uuid
 
-# TODO: #92 Make orgs classification script into more well-defined pipeline
 import numpy as np
 import pandas as pd
 
@@ -318,6 +318,9 @@ def prepare_infogroup_data(
                 [cleaned_aggregated_df, cleaned_parent_companies_df]
             )
             cleaned_aggregated_df = cleaned_aggregated_df.drop_duplicates()
+            cleaned_aggregated_df["unique_id"] = [
+                uuid.uuid4() for i in range(len(cleaned_aggregated_df))
+            ]
             cleaned_aggregated_df.to_csv(output_file_path, mode="w", index=False)
             return cleaned_aggregated_df
 
@@ -338,6 +341,9 @@ def prepare_infogroup_data(
         [cleaned_aggregated_df, cleaned_parent_companies_df]
     )
     cleaned_aggregated_df = cleaned_aggregated_df.drop_duplicates()
+    cleaned_aggregated_df["unique_id"] = [
+        uuid.uuid4() for i in range(len(cleaned_aggregated_df))
+    ]
 
     # write cleaned DF to output file in data/raw_classification
     cleaned_aggregated_df.to_csv(output_file_path, mode="w", index=False)

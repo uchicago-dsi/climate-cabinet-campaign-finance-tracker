@@ -1,6 +1,8 @@
 """Script to combine raw datasets from FFF into one dataset for classification in the pipeline"""
 
 # TODO: #92 Make orgs classification script into more well-defined pipeline
+import uuid
+
 import pandas as pd
 
 from utils.constants import company_classification_output_schema
@@ -58,6 +60,9 @@ def prepare_FFF_data(merged_FFF_df: pd.DataFrame) -> pd.DataFrame:
     cleaned_aggregated_df = pd.DataFrame(df_schema, index=[])
     merged_FFF_df = merged_FFF_df.drop_duplicates()
     cleaned_aggregated_df = pd.concat([cleaned_aggregated_df, merged_FFF_df])
+    cleaned_aggregated_df["unique_id"] = [
+        uuid.uuid4() for i in range(len(cleaned_aggregated_df))
+    ]
     return cleaned_aggregated_df
 
 

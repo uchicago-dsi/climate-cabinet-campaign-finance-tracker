@@ -355,7 +355,9 @@ def get_street_from_address_line_1(address_line_1: str) -> str:
     return " ".join(street_components)
 
 
-def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
+def convert_duplicates_to_dict(
+    df_with_matches: pd.DataFrame, output_file_path: str
+) -> None:
     """Map each uuid to all other uuids for which it has been deemed a match
 
     Given a dataframe where the uuids of all rows deemed similar are stored in a
@@ -366,6 +368,7 @@ def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
         df_with_matches: A pandas df containing a column called 'duplicated',
             where each row is a list of all uuids deemed a match. In each list,
             all uuids but the first have their rows already dropped.
+        output_file_path: file path of where to save the mapped uuids
 
     Returns:
         None. However it outputs a file to the output directory, with 2
@@ -377,7 +380,9 @@ def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
     for i in range(len(df_with_matches)):
         deduped_uudis = df_with_matches.iloc[i]["duplicated"]
         for j in range(len(deduped_uudis)):
-            deduped_dict.update({deduped_uudis[j]: df_with_matches.iloc[i]["id"]})
+            deduped_dict.update(
+                {deduped_uudis[j]: df_with_matches.iloc[i]["unique_id"]}
+            )
 
     # now convert dictionary into a csv file
     deduped_df = pd.DataFrame.from_dict(deduped_dict, "index")
@@ -385,7 +390,7 @@ def convert_duplicates_to_dict(df_with_matches: pd.DataFrame) -> None:
         columns={"index": "original_uuids", 0: "mapped_uuid"}
     )
     deduped_df.to_csv(
-        BASE_FILEPATH / "output" / "deduplicated_UUIDs.csv",
+        BASE_FILEPATH / "output" / output_file_path,
         index=False,
         mode="a",
     )
@@ -544,7 +549,9 @@ def get_address_number_from_address_line_1(address_line_1: str) -> str:
     raise ValueError("Cannot find Address Number")
 
 
-def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
+def splink_dedupe(
+    df: pd.DataFrame, settings: dict, blocking: str, mapped_UUID_file_path_name: str
+) -> pd.DataFrame:
     """Use splink to deduplicate dataframe based on settings
 
     Configuration settings and blocking can be found in constants.py as
@@ -557,15 +564,17 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
 
 
     Args:
-        df: dataframe
+        df: a df to dedupe
         settings: configuration settings
             (based on splink documentation and dataframe columns)
         blocking: list of columns to block on for the table
             (cuts dataframe into parts based on columns labeled blocks)
+        mapped_UUID_file_path_name: file path that contains the original UUIDs and mapped UUIDs
+            (this file path is appended to using convert_duplicates_to_dict) within this function
 
     Returns:
-        deduplicated version of initial dataframe with column 'matching_id'
-        that holds list of matching unique_ids
+        deduplicated version of initial dataframe with duplicates removed.
+        also appends to the given file of original UUIDs and mapped UUIDs
     """
     linker = DuckDBLinker(df, settings)
     linker.estimate_probability_two_random_records_match(
@@ -573,36 +582,100 @@ def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFr
     )  # default
     linker.estimate_u_using_random_sampling(max_pairs=5e6)
 
-    for i in blocking:
-        linker.estimate_parameters_using_expectation_maximisation(i)
+    linker.estimate_parameters_using_expectation_maximisation(blocking)
 
     df_predict = linker.predict()
     clusters = linker.cluster_pairwise_predictions_at_threshold(
-        df_predict, threshold_match_probability=0.7
+        df_predict, threshold_match_probability=0.6
     )  # default
     clusters_df = clusters.as_pandas_dataframe()
 
+    # grouping the clusters then creating a column called "duplicate" that contains
+    # the unique ids that share the same cluster id
     match_list_df = (
         clusters_df.groupby("cluster_id")["unique_id"].agg(list).reset_index()
     )  # dataframe where cluster_id maps unique_id to initial instance of row
     match_list_df = match_list_df.rename(columns={"unique_id": "duplicated"})
 
+    # want to save only the first instance of the duplicate columns
     first_instance_df = clusters_df.drop_duplicates(subset="cluster_id")
-    col_names = np.append("cluster_id", df.columns)
-    first_instance_df = first_instance_df[col_names]
+    # save only the relevant columns to the df, not the splink results
+    relevant_columns = np.append("cluster_id", df.columns)
+    first_instance_df = first_instance_df[relevant_columns]
 
     deduped_df = first_instance_df.merge(
         match_list_df[["cluster_id", "duplicated"]],
         on="cluster_id",
         how="left",
     )
-    deduped_df = deduped_df.rename(columns={"cluster_id": "unique_id"})
+
+    # renaming the cluster id column to the unique id column (this becomes deduped table)
+    deduped_df = deduped_df.rename(columns={"cluster_id": "unique_id_deduped"})
 
     deduped_df["duplicated"] = deduped_df["duplicated"].apply(
         lambda x: x if isinstance(x, list) else [x]
     )
-    convert_duplicates_to_dict(deduped_df)
+
+    duplicated_entries = deduped_df[deduped_df["duplicated"].map(len) > 1]
+    convert_duplicates_to_dict(duplicated_entries, mapped_UUID_file_path_name)
 
     deduped_df = deduped_df.drop(columns=["duplicated"])
-
     return deduped_df
+
+
+def splink_link(
+    campaign_finance_df: pd.DataFrame,
+    linkage_dfs: list,
+    settings: dict,
+    blocking: str,
+    output_file_path: str,
+    threshold_match_probability: int = 0.6,
+) -> pd.DataFrame:
+    """Performs record linkage on campaign finance df and other entity df.
+
+    Performs record linkage across datasets and creates a foreign key column in the input campaign finance
+    dataset referencing its corresponding matched uuids in the other entity table.
+    Assumes that linkage_dfs are pre-processed and have consistent schema.
+
+    Args:
+        campaign_finance_df: the original campaign finance df. assumes that this df has a column called unique_id
+        linkage_dfs: a list of dataframes that will be used for record linkage, assumes campaign finance data is dfs[0] (left table)
+        settings: configuration settings
+            (based on splink documentation and dataframe columns)
+        blocking: list of columns to block on for the table
+            (cuts dataframe into parts based on columns labeled blocks)
+        output_file_path: file path to the campaign finance data w/ references to linked entities from
+            the other input df
+        threshold_match_probability: optional arg for the threshold of a match between entities. default is 0.6
+    """
+    # running splink and getting results df that contains matches
+    linker = DuckDBLinker(linkage_dfs, settings)
+    linker.estimate_u_using_random_sampling(max_pairs=5e6)
+    linker.estimate_parameters_using_expectation_maximisation(blocking)
+    results = linker.predict(threshold_match_probability)
+    results_df = results.as_pandas_dataframe()
+
+    # getting a list of all the matches associated with the campaign finance unique id
+    linkages = results_df.groupby("unique_id_l")["unique_id_r"].agg(list).reset_index()
+
+    # formatting the grouped linkages to join on original campain finance dataset w/ classified_company_unique_ids as a foreign key
+    linkages = linkages.rename(
+        columns={
+            "unique_id_l": "unique_id",
+            "unique_id_r": "classified_company_unique_ids",
+        }
+    )
+
+    # adding the linked unique ids of classified entities as a foreign key column in og campaign finance df
+    linked_campaign_finance_df = campaign_finance_df.merge(
+        linkages, on="unique_id", how="outer"
+    )
+
+    # writes the linked campaign finance data to output path
+    linked_campaign_finance_df.to_csv(
+        BASE_FILEPATH / "output" / "linked" / output_file_path,
+        index=False,
+        mode="w",
+    )
+
+    return linked_campaign_finance_df
