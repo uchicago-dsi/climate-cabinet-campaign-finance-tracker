@@ -78,9 +78,9 @@ organizations_settings = {
         cl.jaro_winkler_at_thresholds(
             "company_name", [0.9, 0.6]
         ),  # threshold will catch typos and shortenings,
-        cl.exact_match(
-            "zipcode"
-        ),  # want to get rid of this actually bc too many false positives
+        # cl.exact_match(
+        #     "zipcode"
+        # ),  # want to get rid of this actually bc too many false positives
         cl.jaro_winkler_at_thresholds("address", [0.9, 0.6]),
     ],
 }
