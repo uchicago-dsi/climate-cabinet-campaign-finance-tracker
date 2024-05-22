@@ -5,6 +5,7 @@ import uuid
 import numpy as np
 import pandas as pd
 
+from utils.ind_transform import standardize_individual_names
 from utils.transform.clean import StateTransformer
 from utils.transform.constants import (
     MN_CANDIDATE_CONTRIBUTION_COL,
@@ -369,6 +370,7 @@ class MinnesotaTransformer(StateTransformer):
             }
         )
         ind_df = pd.concat([ind_recipient_df, ind_donor_df], ignore_index=True)
+        ind_df = ind_df.apply(standardize_individual_names, axis=1)
 
         # Create organization table from both recipient and donor entries
         org_recipient_df = pd.DataFrame(

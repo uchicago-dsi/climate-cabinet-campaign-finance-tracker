@@ -1,5 +1,25 @@
 # Utils README
 ---
+#### classify.py
+1. These functions take in the deduplicated and cleaned individuals and organizations 
+dataframes from the deduplication and linkage pipeline. 
+2. We classify based on substrings known to indicate clean energy or fossil fuels groups. 
+In particular, individuals are classified based on their employment by fossil fuels companies, 
+and organizations are classified by their names, prioritizing high profile corporations/PACs 
+and those which were found by a manual search of the largest donors/recipients in the dataset
+
+#### constants.py 
+Declares constants to be used in various parts of the project. Specifies relative file paths and other static information to be used 
+uniformly across all code scripts. 
+
+#### linkage.py 
+Performs record linkage across the different datasets, deduplicates records. 
+
+#### network.py 
+Writes the code for building, visualizing, and analyzing network visualizations (both micro and macro level) as the final outputs. 
+
+### linkage_and_network_pipeline.py 
+The module for running the final network visualization pipeline. Writes functions to call other relevant functions to build the networks from cleaned, transformed, and classified data. 
 
 ## Michigan Utils:
 #### preprocess_mi_campaign_data.py
@@ -91,4 +111,22 @@ These functions clean, standardize, and merge InfoGroup data. It cleans the larg
 These functions merge the FFF and Infogroup data and transforms the df to create a reference to InfoGroup's parent company UUID if found. 
 
 
+## Election Util:
+#### Util function for harvard.py
+1. extract_first_name
 
+#### harvard.py
+1. preprocess
+2. clean
+3. standardize
+4. create_table
+5. create_election_result_uuid
+6. clean_state
+
+## Texas Util:
+#### texas.py
+1. preprocess
+2. clean
+3. standardize
+4. create_tables
+5. clean_state

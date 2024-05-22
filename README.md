@@ -5,9 +5,9 @@
 1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
 2. Transform: Define database schema for storing transaction and entity information and write code to transform and validate raw data to fit appropriate schema.
 3. Clean: Perform record linkage and fix likely data entry errors.
-4. Classify: Label all entities as fossil fuel, clean energy, or other
-5. Graph: Construct a network graph of campaign finance contributions
-6. Analyze: Perform analysis on network data and join with other relevant dataset
+4. Classify: Label all entities as fossil fuel, clean energy, or other.
+5. Graph: Construct a network graph of campaign finance contributions with mirco-level and macro-level views.
+6. Analyze: Perform analysis on network data and join with other relevant dataset.
 
 
 ## Setup
@@ -33,24 +33,19 @@ For developing, please use either a Docker dev container or slurm computer clust
 
 ### Network Visualization
 
-# TODO: #101 document what we want to see in the visualization and decide how many types of visual are needed
-
+The network visualizations created and their associated relevant metrics are housed in the `\output` directory. Specifically, [this](https://github.com/dsi-clinic/2024-winter-climate-cabinet-campaign-finance-tracker/tree/main/output/network_graphs) folder. Details about the approaches adopted for these visuals are present in [this](https://github.com/dsi-clinic/2024-winter-climate-cabinet-campaign-finance-tracker/blob/main/output/network_graphs/README.md) document. 
 
 ## Repository Structure
 
 ### utils
-Project python code
+Project python code.
 
 ### notebooks
-Contains short, clean notebooks to demonstrate analysis.
+Contains short, clean notebooks to demonstrate analysis. This is a dynamic folder with notebooks added/removed as per current working processes. 
 
 ### data
 
-Contains details of acquiring all raw data used in repository. If data is small (<50MB) then it is okay to save it to the repo, making sure to clearly document how to the data is obtained.
-
-If the data is larger than 50MB than you should not add it to the repo and instead document how to get the data in the README.md file in the data directory. 
-
-This [README.md file](/data/README.md) should be kept up to date.
+Contains details of acquiring all raw data used in repository.
 
 ### output
 This folder is empty by default. The final outputs of make commands will be placed here by default.
@@ -74,7 +69,7 @@ Student Email: npashilkar@uchicago.edu
 Student Name: Yangge Xu
 Student Email: yanggexu@uchicago.edu
 
-Student Name: Bhavya Pandey    
+Student Name: Bhavya Pandey
 Student Email: bhavyapandey@uchicago.edu
 
 Student Name: Kaya Lee

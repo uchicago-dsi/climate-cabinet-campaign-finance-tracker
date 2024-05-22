@@ -6,3 +6,5 @@
 7313695f4c091a3943d17a0abea351987cc02eb6
 # ruff format src/utils/classify_infogroup_data.py
 4e4336ea0ff4af1ec6a84d309f042073b7eea25e
+# fix code style of `collect_harvard_data` branch
+4f978d2082a440f31479ca5cfbec90e8b7683b80
