@@ -128,6 +128,9 @@ def create_network_graph(df: pd.DataFrame) -> nx.MultiDiGraph:
     return G
 
 
+# Note: dict calls retained due to conventions in visualization package
+
+
 def plot_network_graph(G: nx.MultiDiGraph, start_year: int, end_year: int) -> None:
     """Creates a plotly visualization of the nodes and edges with arrows indicating direction, and colors indicating classification.
 

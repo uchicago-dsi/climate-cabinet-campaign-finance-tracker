@@ -221,10 +221,12 @@ def clean_data_and_build_network(
     nx.write_graphml(g, g_output_path)
     centrality_metrics, communities = network_metrics(g)
 
-    # this creates the micro-level visualization which is stored in the output/network_graphs location
+    # this creates the micro-level visualization which is
+    # stored in the output/network_graphs location
     run_network_graph_pipeline(2018, 2023, [individuals, organizations, transactions])
 
-    # this creates the macro-level visualization - run this file in an interactive window in case the output figure is not displayed
+    # this creates the macro-level visualization - run this file in an interactive window in
+    # case the output figure is not displayed
     plot_macro_level_graph(
         g, communities, {"betweenness": nx.betweenness_centrality(g, weight="amount")}
     )
