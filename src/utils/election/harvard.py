@@ -42,8 +42,6 @@ class HarvardTransformer(ElectionResultTransformer):
 
         Returns: Dataframe
         """
-        end_year = 2016
-        start_year = 2014
         clean_df = data.copy(deep=True)
         clean_df = clean_df[HV_INDIVIDUAL_COLS]
         year_start = 2014
