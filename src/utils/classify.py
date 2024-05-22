@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from utils.constants import c_org_names, f_companies, f_org_names
+from utils.constants import C_ORG_NAMES, F_COMPANIES, F_ORG_NAMES
 
 
 def classify_wrapper(
@@ -77,7 +77,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         an individuals dataframe updated with the fossil fuels category
     """
-    for company in f_companies:
+    for company in F_COMPANIES:
         individuals_df = apply_classification_label(
             individuals_df, company, "company", "f"
         )
@@ -100,12 +100,12 @@ def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
         an organizations dataframe updated with the fossil fuels
         and clean energy category
     """
-    for org in f_org_names:
+    for org in F_ORG_NAMES:
         organizations_df = apply_classification_label(
             organizations_df, org, "name", "f"
         )
 
-    for org in c_org_names:
+    for org in C_ORG_NAMES:
         organizations_df = apply_classification_label(
             organizations_df, org, "name", "c"
         )
