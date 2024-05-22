@@ -99,6 +99,39 @@ def decide_foreign_key(
     return merged_data, duplicated_id
 
 
+def manual_dedupe(tx_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Delete potentially duplicated columns.
+
+    This function identifies and removes duplicated records based on the
+    combination of 'first_name', 'last_name', and 'city' columns.
+
+    Inputs:
+    tx_df: pd.DataFrame - The input dataframe containing tax records.
+
+    Returns:
+    (pd.DataFrame, pd.DataFrame) - Two dataframes, one with deduplicated records
+    and one with the duplicated records.
+    """
+    duplicates = tx_df.duplicated(
+        subset=["first_name", "single_last_name"], keep="first"
+    )
+
+    deduped_df = tx_df[~duplicates]
+
+    duplicated_records_df = tx_df[duplicates].copy()
+
+    original_ids = tx_df[~duplicates][["first_name", "single_last_name", "id"]]
+
+    duplicated_records_df = duplicated_records_df.merge(
+        original_ids, on=["first_name", "single_last_name"], suffixes=("", "_original")
+    )
+
+    duplicated_records_df.rename(columns={"ID_uniform": "original_unique_id"})
+
+    return deduped_df, duplicated_records_df
+
+
+# I didn't use this code since it took too long time and there are not a lot of duplications in the existing data
 def splink_dedupe(df: pd.DataFrame, settings: dict, blocking: list) -> pd.DataFrame:
     """Use splink to deduplicate dataframe based on settings
 

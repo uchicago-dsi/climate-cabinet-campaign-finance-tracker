@@ -131,12 +131,3 @@ def extract_first_name(full_name: str) -> str:
         first_name = first_name_part.split("(")[0].strip()
         return first_name.lower()
     return ""
-
-
-# if unique, compare directly
-# if not unique, compare the first name and state
-
-
-# last name should be lower letters
-# if there is no last name,
-# if there is last name, turn it into lower and strip

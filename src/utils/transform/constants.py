@@ -494,7 +494,9 @@ MICHIGAN_CONTRIBUTION_COLS_RENAME = [
 
 TX_IND_FILEPATH = BASE_FILEPATH / "data" / "TX_full" / "individuals_table_TX_14-16.csv"
 
-TX_ORG_FILEPATH = BASE_FILEPATH / "data" / "TX_full" / "organizations_table_TX_14-16.csv"
+TX_ORG_FILEPATH = (
+    BASE_FILEPATH / "data" / "TX_full" / "organizations_table_TX_14-16.csv"
+)
 
 TX_TRA_FILEPATH = BASE_FILEPATH / "data" / "TX_full" / "transactions_table_TX_14-16.csv"
 
