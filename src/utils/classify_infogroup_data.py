@@ -60,7 +60,7 @@ def sic_matcher(if_sic_code: float, relevant_sic_code_df: pd.DataFrame) -> str:
 def get_classification(row: pd.Series) -> str:
     """Gets the final classification of the company
 
-    Returns the final classification of the company based on the Primary SIC Code and the SIC 
+    Returns the final classification of the company based on the Primary SIC Code and the SIC
     Code Column.
     Theoretically these should be the same (both fossil fuel, both clean energy, or neither)
     Function should be used with .apply() on a row of the DataFrame.
@@ -69,7 +69,7 @@ def get_classification(row: pd.Series) -> str:
         row: a row of the InfoGroup DataFrame
 
     Returns:
-        the str classification of the company (f or c). if neither SIC code is relevant, 
+        the str classification of the company (f or c). if neither SIC code is relevant,
         returns None. if they return different classifications, returns "ambiguous"
     """
     # if the same classification, just return one of them
@@ -99,12 +99,12 @@ def prepare_infogroup_data(
 
     Args:
         infogroup_csv: the InfoGroup csv file
-        sic6_codes_df: DataFrame of the relevant SIC6 codes w/ corresponding regex codes 
+        sic6_codes_df: DataFrame of the relevant SIC6 codes w/ corresponding regex codes
             and descriptions
         output_file_path: the resulting df will be written as a csv to this file path location
-        testing: Boolean - True if code is being tested on only several chunks, False if 
+        testing: Boolean - True if code is being tested on only several chunks, False if
             whole InfoGroup csv should be used
-        chunksize: the number of rows per chunk in the IG dataset (default 10,000 but can be 
+        chunksize: the number of rows per chunk in the IG dataset (default 10,000 but can be
             changed for testing purposes)
         num_testing_chunks: number of chunks to iterate through when testing = True
 
@@ -151,7 +151,7 @@ def prepare_infogroup_data(
     counter = 0  # will keep track of which chunk is being processed
     business_data_df = pd.read_csv(
         infogroup_csv, sep=",", header=0, chunksize=10000
-    ) # chunksize = 10,000
+    )  # chunksize = 10,000
     for chunk in business_data_df:
         print("processing chunk", counter, "...")
 
@@ -366,9 +366,9 @@ def get_infogroup_df(
       sic6_codes_csv: a csv of relevant SIC6 codes and NCAIS codes and their descriptions
       infogroup_csv: the InfoGroup csv file
       output_file_path: the output df will be written as a csv to this file path
-      cached: True if you want to use existing files to bypass creating the InfoGroup data. 
+      cached: True if you want to use existing files to bypass creating the InfoGroup data.
         Will return a df of the output file path in this case
-      testing_subset: Boolean - True if code is being tested on only several chunks, 
+      testing_subset: Boolean - True if code is being tested on only several chunks,
         False if whole InfoGroup csv should be used
     Returns:
         a cleaned InfoGroup DataFrame that is formatted in the same schema as the aggregated
@@ -387,4 +387,3 @@ def get_infogroup_df(
         testing=testing_subset,
     )
     return infogroup_df
-
