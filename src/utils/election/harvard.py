@@ -46,9 +46,12 @@ class HarvardTransformer(ElectionResultTransformer):
         start_year = 2014
         clean_df = data.copy(deep=True)
         clean_df = clean_df[HV_INDIVIDUAL_COLS]
+        year_start = 2014
+        year_end = 2016
         clean_df = clean_df[
-            (clean_df["year"] <= end_year) & (clean_df["year"] >= start_year)
+            (clean_df["year"] <= year_end) & (clean_df["year"] >= year_start)
         ]
+
         clean_df = clean_df[~(clean_df["last"] == "scattering")]
         # the data is cleaned in the original dataset -- if last or first name is missing
         # that implies that the full name is incomplete as well

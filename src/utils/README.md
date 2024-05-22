@@ -79,3 +79,24 @@ dataframes from the deduplication and linkage pipeline.
 In particular, individuals are classified based on their employment by fossil fuels companies, 
 and organizations are classified by their names, prioritizing high profile corporations/PACs 
 and those which were found by a manual search of the largest donors/recipients in the dataset
+
+
+## Election Util:
+#### Util function for harvard.py
+1. extract_first_name
+
+#### harvard.py
+1. preprocess
+2. clean
+3. standardize
+4. create_table
+5. create_election_result_uuid
+6. clean_state
+
+## Texas Util:
+#### texas.py
+1. preprocess
+2. clean
+3. standardize
+4. create_tables
+5. clean_state
