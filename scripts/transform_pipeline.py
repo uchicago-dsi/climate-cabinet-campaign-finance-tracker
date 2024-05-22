@@ -43,7 +43,3 @@ transactions_output_path = output_directory / "transactions_table.csv"
 complete_individuals_table.to_csv(individuals_output_path)
 complete_organizations_table.to_csv(organizations_output_path)
 complete_transactions_table.to_csv(transactions_output_path)
-
-# The AZ data should be editted -> the resulted full name is wrong (address in name col)
-# Individuals names not following the same format
-# 
