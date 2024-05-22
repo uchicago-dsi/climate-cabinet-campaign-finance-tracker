@@ -192,7 +192,6 @@ MI_EXP_DROP_COLS = [
     "fundraiser",
 ]
 
-
 # PA EDA constants:
 
 PA_SCHEMA_CHANGE_YEAR = 2022
@@ -493,6 +492,13 @@ MICHIGAN_CONTRIBUTION_COLS_RENAME = [
     "aggregate",
 ]
 
+TX_IND_FILEPATH = BASE_FILEPATH / "data" / "TX_full" / "individuals_table_TX_14-16.csv"
+
+TX_ORG_FILEPATH = (
+    BASE_FILEPATH / "data" / "TX_full" / "organizations_table_TX_14-16.csv"
+)
+
+TX_TRA_FILEPATH = BASE_FILEPATH / "data" / "TX_full" / "transactions_table_TX_14-16.csv"
 
 state_abbreviations = [
     " AK ",

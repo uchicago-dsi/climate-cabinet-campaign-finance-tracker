@@ -198,6 +198,8 @@ These companies were listed on the website in a table, which was copy and pasted
 ### How to access: 
 This file is called FFF_oil_companies.csv and can be downloaded from the climate cabinet drive in 2024-spring-clinic folder. 
 
+-Limitation: companies are global companies, so they may not all be applicable for our U.S. based analysis.
+
 This file should be saved in the path data/raw_classification/FFF_oil_companies.csv
 
 ### Features
@@ -250,3 +252,32 @@ This file is called SIC_codes and and should be downloaded as a csv from the cli
 - SIC_code: the SIC code associated with the company. If the SIC code is shorter than 6 numbers, the code represents the first n numbers of an SIC code
 - SIC_code_description: description associated with the SIC code
 - classification: if the company is fossil fuel (f), clean energy (c), maybe fossil fuel (uf), maybe clean energy (uc)
+
+## State Legislative Election Returns (1967-2016)
+
+### Overview
+This [dataset](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/3WZFK9) accompanies the State Legislative Election Returns dataset, which chronicles detailed election outcomes for individual candidates in state legislative races across the United States, covering the period from 1967 to 2016. This extensive dataset allows for historical analysis of electoral trends, candidate performance, and legislative turnover.
+
+### Data Source
+The dataset aggregates data from multiple authoritative sources, including state election boards and historical archives, to ensure comprehensive coverage and accuracy. It provides an invaluable resource for researchers focusing on political science, electoral behavior, and governance.
+# TODO: #106 add a link to where this came from and where it is expected to be saved to run the pipeline
+
+### Features
+- **Temporal Coverage:** Includes data from 1967 to 2016, capturing a broad spectrum of political and historical contexts.
+- **Utility:** Designed to support a wide range of analyses, from simple descriptive statistics to complex longitudinal studies.
+
+### Key Variables
+The dataset comprises several critical variables that capture the essentials of each election:
+- **caseid:** A unique identifier for each election entry.
+- **year, month, day:** The date on which the election was held.
+- **sab:** State abbreviation, indicating the state in which the election took place.
+- **cname:** Name of the county for localized analysis.
+- **candid:** A unique identifier for each candidate.
+- **vote:** The number of votes received by the candidate.
+- **termz:** The actual length of term the elected candidate served.
+- **cand:** Name of the candidate.
+- **sen:** Indicates whether the election was for the state senate.
+- **partyt:** The political party affiliation of the candidate.
+- **outcome:** The result of the election for the candidate (e.g., won, lost).
+- **last, first:** Last and first names of the candidate.
+- **v19_20171211:** A standardized candidate name variable, updated as of December 11, 2017.
