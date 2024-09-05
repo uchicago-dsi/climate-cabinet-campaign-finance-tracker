@@ -52,6 +52,43 @@ This folder is empty by default. The final outputs of make commands will be plac
 
 
 
+transactor-election-year
+
+
+name
+type
+address
+
+
+
+
+## Steps
+
+### Step 1: Collect Data
+#### Implemented in `collect` 
+Retrieve data from state agencies and store in flat files
+
+### Step 2: Normalize Transaction Data
+#### Implemented in `normalize`
+Convert raw data into a standardized simple schema centered around a `transactions` table.
+The `transactions` represents monetary transactions and each row, at minimum, specifies
+a donor, recipient, date, and amount. Donor and recipient are foreign keys to a `transactors`
+table which is related to `organizations` and `individuals` tables. See schema here TODO. 
+
+The only modifications to source data here are dropping of invalid rows and changing of data types (i.e. 20240627 and June 27, 2024 will both be standardized as datetimes.)
+
+### Step 3: Clean Transaction Data
+#### Implemented in `clean`
+Modify raw data where appropriate to fix mistakes with high confidence. 
+
+### Step 4: Record Linkage
+#### Implemented in `link`
+Perform record linkage for individuals and organization. Further normalize the table to include `memberships` and `addresses` tables.
+
+### Step 5: Incorporate Elections
+#### Implemented in 
+
+
 ## Team Member
 
 Student Name: Nicolas Posner

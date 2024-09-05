@@ -32,18 +32,11 @@ else:
 input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
 
-individuals_output_path = output_directory / "individuals_table_TX.csv"
-organizations_output_path = output_directory / "organizations_table_TX.csv"
-transactions_output_path = output_directory / "transactions_table_TX.csv"
-id_table_output_path = output_directory / "id_map.csv"
-(
-    complete_individuals_table,
-    complete_organizations_table,
-    complete_transactions_table,
-    complete_id_table,
-) = transform_and_merge()
-complete_individuals_table.to_csv(individuals_output_path)
-complete_organizations_table.to_csv(organizations_output_path)
-complete_transactions_table.to_csv(transactions_output_path)
-complete_id_table.to_csv(id_table_output_path)
+individuals_output_path = output_directory / "individuals_table-*.csv"
+organizations_output_path = output_directory / "organizations_table-*.csv"
+transactions_output_path = output_directory / "transactions_table-*.csv"
+id_table_output_path = output_directory / "id_map-*.csv"
+database = transform_and_merge()
+for table_type in database:
+    database[table_type].to_csv(output_directory / f"{table_type}.csv")
 print("pipeline finished and save data to csv.")

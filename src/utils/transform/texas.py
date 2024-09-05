@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import dask.dataframe as dd
 import pandas as pd
 
 from utils.constants import BASE_FILEPATH
@@ -55,10 +56,10 @@ class TexasTransformer(clean.StateTransformer):
             id_maps.append(form.uuid_lookup_table)
 
         return (
-            pd.concat(individual_tables),
-            pd.concat(organization_tables),
-            pd.concat(transaction_tables),
-            pd.concat(id_maps),
+            dd.concat(individual_tables),
+            dd.concat(organization_tables),
+            dd.concat(transaction_tables),
+            dd.concat(id_maps),
         )
 
     def clean(self, data: list[pd.DataFrame]) -> list[pd.DataFrame]:

@@ -1,7 +1,35 @@
+"""Defines base class for representing and normalizing raw campaign finance data"""
+
 import abc
 import uuid
+from collections import defaultdict
 
+import dask.dataframe as dd
+import numpy as np
 import pandas as pd
+
+"""
+START HERE
+I feel like I'm oscillating between a 'form' based representation
+and a 'table' based representation. i'm not sure if this is bad...
+
+maybe... add a 'validate_table' method to the EntityType class and
+that kind of stuff isn't handled by the form. I think this is a good 
+idea. 
+
+
+7/3
+
+Form just takes you from the form to a familiar table.
+
+7/9
+So form reads in table, sets types, renames columns, renames enums.
+
+table handles transition to 1nf, transactor-transaction, 3nf
+    functions for pulling out prepended
+
+
+"""
 
 
 class Form(abc.ABC):
@@ -35,6 +63,7 @@ class Form(abc.ABC):
     @property
     def allowed_columns(self) -> list[str]:
         """Columns that are allowed to be in the returned dataframe"""
+        # TODO: standardized allowed columns -- prefixes for relations that shouldnt' be there and a function for separating and replacinging with a key
         return self._required_columns
 
     @property
@@ -47,6 +76,7 @@ class Form(abc.ABC):
         """
         return self._entity_type_mapper
 
+    # TODO: delete org and ind types, replaced with transactor_type
     organization_entity_types = [
         "Organization",
         "Vendor",
@@ -85,6 +115,39 @@ class Form(abc.ABC):
     def transform_data(self, paths: list[str]) -> dict[str, pd.DataFrame]:
         """Convert raw data of form type located at paths to dict of transformed tables
 
+        The common steps for transformation are:
+            1. read_tables: Read (TODO all?) data into a tabular format
+            2. standardize_columns:
+                rename columns, remove unused columns, add extra columns.
+                This is done after first normal form as now the columns proper
+                columns should exist and getting standard names now should allow
+                for significant overlap in additional normalization steps.
+            3. first_normal_form:
+                Transform data to First Normal Form. This means the data should
+                not have repeating groups (i.e. amount1, amount2, ... amountn
+                columns unless each row will have exactly n values as part of
+                 business logic) or non-atomic values (a cell should not contain
+                 a list or another table)
+            4. normalize_table:
+                Transform data into Third Normal Form. (TODO: separate 2NF?)
+            5. TODO: 4nf?
+
+
+        Column Names: after initial conversion, column names will all match
+        a list of allowed attributes for each entity type with potential
+        suffixes and prefixes before normalization. Before converting to 1NF
+        suffixes enumerating repeating columns may be used. Before converting
+        to 3NF, columns that are not dependent on the candidate key will be
+        prefixed with the name of the column they are dependent on. For
+        example, a transactions table with columns for a donor's name,
+        employer, and employer's address would be given DONOR_NAME,
+        DONOR_EMPLOYER_NAME, and DONOR_EMPLOYER_ADDRESS. In this case
+        the donor would be replaced by an ID and a table with NAME and
+        EMPLOYER columns would be created. THen employer would be replaced
+        by ID and a table with NAME and ADDRESS columns would be created.
+
+
+
         Args:
             paths: list of paths where relevant files that are of this form type are.
 
@@ -92,6 +155,7 @@ class Form(abc.ABC):
             dictionary mapping table names to their transformed tables
         """
         self.read_table(paths)
+        self.first_normal_form()
         self.standardize_columns()
         self.normalize_table()
         self.divide_entities()
@@ -108,7 +172,7 @@ class Form(abc.ABC):
         self.uuid_lookup_table = pd.DataFrame()
 
     @abc.abstractmethod
-    def read_table(self, paths: list[str]) -> pd.DataFrame:
+    def read_table(self, paths: list[str]) -> dd.DataFrame:
         """Read raw tabular data from state provided files into a DataFrame
 
         This method should maintain the data as closely as possible. The only
@@ -135,7 +199,7 @@ class Form(abc.ABC):
         self.table = self.table.rename(columns=self.column_mapper)
 
     @abc.abstractmethod
-    def rename_entity_type(self, row: pd.Series) -> str:
+    def rename_entity_type(self, row: dd.Series) -> str:
         pass
 
     def _drop_unused_columns(self) -> None:
@@ -156,14 +220,14 @@ class Form(abc.ABC):
         """
         pass
 
-    def get_table(self) -> pd.DataFrame:
+    def get_table(self) -> dd.DataFrame:
         return self.table
 
     def divide_entities(self) -> None:
         """Split entities into individuals and transactions tables"""
         if (
             "all_entities" in self.transformed_data
-            and not self.transformed_data["all_entities"].empty
+            and len(self.transformed_data["all_entities"].index) > 0
         ):
             self.transformed_data["individuals"] = self.transformed_data[
                 "all_entities"
@@ -182,56 +246,38 @@ class Form(abc.ABC):
 
     def replace_id_with_uuid(
         self,
-        table_with_id_column: pd.DataFrame,
+        table_with_id_column: dd.DataFrame,
         id_column: str,
-    ) -> pd.DataFrame:
+    ) -> dd.DataFrame:
         """Adds UUIDs, saving a mapping where IDs were previously given by state"""
-        # Handle NA IDs by generating UUIDs directly in the DataFrame
-        na_id_mask = table_with_id_column[id_column].isna()
-        table_with_id_column.loc[na_id_mask, id_column] = [
-            uuid.uuid4() for _ in range(na_id_mask.sum())
-        ]
-        rows_with_existing_ids = table_with_id_column.loc[~na_id_mask]
+        unique_ids = (
+            table_with_id_column[id_column].dropna().unique()
+        )  # .compute() DASK
+        uuid_mapping = {id: str(uuid.uuid4()) for id in unique_ids}
 
-        # Create unique identifier combinations based on 'stable_id_across_years' and 'year_column'
-        if self.stable_id_across_years:
-            unique_ids = rows_with_existing_ids.loc[:, id_column].drop_duplicates()
-            uuid_lookup_table = pd.DataFrame(unique_ids)
-            uuid_lookup_table = uuid_lookup_table.rename(
-                columns={id_column: "ORIGINAL_ID"}
-            )
-        else:
-            unique_ids = rows_with_existing_ids.loc[
-                :, [id_column, "YEAR"]
-            ].drop_duplicates()
-            uuid_lookup_table = pd.DataFrame(unique_ids)
-
-        if not uuid_lookup_table.empty:
-            uuid_lookup_table["UUID"] = [
-                uuid.uuid4() for _ in range(len(uuid_lookup_table))
-            ]
-
-            self.uuid_lookup_table = pd.concat(
-                [uuid_lookup_table, self.uuid_lookup_table]
-            )
-
-            # replace ids with uuids, for rows that we didn't just add uuids to
-            rows_with_existing_ids = rows_with_existing_ids.merge(
-                uuid_lookup_table,
-                left_on=[id_column],
-                right_on=["ORIGINAL_ID"]
-                + (["YEAR"] if "YEAR" and not self.stable_id_across_years else []),
-                how="left",
-            )
-
-            # Replace original IDs with UUIDs
-            rows_with_existing_ids[id_column] = rows_with_existing_ids["UUID"]
-            rows_with_existing_ids = rows_with_existing_ids.drop(columns=["UUID"])
-
-        uuid_table = pd.concat(
-            [table_with_id_column.loc[na_id_mask], rows_with_existing_ids]
+        id_mask = table_with_id_column[id_column].isna()
+        # Replace null IDs with new UUIDs
+        # this apply is slow, but extremely similar to computing n new UUIDs
+        # so without a faster way of generating UUIDs, this probably won't get
+        # meaningfully faster.
+        table_with_id_column.loc[id_mask, id_column] = table_with_id_column[id_mask][
+            id_column
+        ].apply(
+            lambda _: str(uuid.uuid4()),
+            # meta=(id_column, "str"), DASK
         )
-        return uuid_table
+        table_with_id_column.loc[~id_mask, id_column] = table_with_id_column[~id_mask][
+            id_column
+        ].map(uuid_mapping)
+
+        # Convert the mapping to a DataFrame
+        mapping_df = pd.DataFrame(
+            list(uuid_mapping.items()), columns=["ORIGINAL_ID", "UUID"]
+        )
+        # mapping_ddf = dd.from_pandas(mapping_df, npartitions=1) # DASK
+        self.uuid_lookup_table = pd.concat([self.uuid_lookup_table, mapping_df])  # DASK
+
+        return table_with_id_column
 
 
 class NormalizedForm(Form):
@@ -366,14 +412,35 @@ class TexasTransactionForm(SemiNormalizedForm):
 
     def __init__(self):
         super().__init__()
+        self.dtype_dict = defaultdict(lambda: str)
+        self.dtype_dict.update(
+            {
+                "reportInfoIdent": "Int32",
+                "receivedDt": "Int32",
+                f"{self.transaction_type}InfoId": "Int32",
+                f"{self.transaction_type}Dt": "Int32",
+                f"{self.transaction_type}Amount": "Float32",
+            }
+        )
 
     def _get_additional_columns(self) -> None:
         """Enhance and prepare the dataset for final output."""
-        self.table[f"{self.expanded_party_internal_name}_ENTITY_TYPE"] = (
-            self.table.apply(self.rename_entity_type, axis=1)
+        # TODO: apply is bad, can this be replaced?
+        self.table[f"{self.expanded_party_internal_name}_ENTITY_TYPE"] = self.table[
+            f"{self.expanded_party_internal_name}_ENTITY_TYPE"
+        ].map(
+            self.entity_type_mapper,
+            # axis=1,
+            # meta=(f"{self.expanded_party_internal_name}_ENTITY_TYPE", str), DASK
         )
         self.table[f"{self.expanded_party_internal_name}_ID"] = pd.NA
-        self.table["YEAR"] = pd.to_datetime(self.table["DATE"], format="%Y%m%d").dt.year
+
+        na_mask = self.table["DATE"].isna()
+        self.table.loc[~na_mask, "YEAR"] = pd.to_datetime(
+            self.table.loc[~na_mask, "DATE"], format="%Y%m%d"
+        ).dt.year.astype("Int16")
+        self.table.loc[na_mask, "YEAR"] = pd.NA
+        # self.table["YEAR"] = self.table["YEAR"].astype("Int8")
 
     def rename_entity_type(self, row: pd.Series) -> str:
         row_type = self.entity_type_mapper.get(
@@ -383,19 +450,17 @@ class TexasTransactionForm(SemiNormalizedForm):
 
     def read_table(self, paths: list[str]) -> pd.DataFrame:
         # Read and concatenate multiple tables (e.g., expense_01.csv, expense_02.csv)
-        paths = paths[:2]
-        tables = [pd.read_csv(path) for path in paths]
-        self.table = pd.concat(tables)
+        self.table = pd.read_csv(paths[0], dtype=self.dtype_dict)
         return self.table
 
-    def map_columns(self) -> None:
-        """Refine the mapping and selection of columns specific to Texas contributions."""
-        # Call the parent implementation of map_columns which automatically handles the mapping and filtering based on 'column_mapper' and 'required_columns'
-        super().map_columns()
-        self.table[f"{self.normalized_party_internal_name}_ID"] = self.table[
-            f"{self.normalized_party_internal_name}_ID"
-        ].astype("str")
-        return
+    # def map_columns(self) -> None:
+    #     """Refine the mapping and selection of columns specific to Texas contributions."""
+    #     # Call the parent implementation of map_columns which automatically handles the mapping and filtering based on 'column_mapper' and 'required_columns'
+    #     super().map_columns()
+    #     self.table[f"{self.normalized_party_internal_name}_ID"] = self.table[
+    #         f"{self.normalized_party_internal_name}_ID"
+    #     ].astype("str")
+    #     return
 
 
 class TexasFilerForm(NormalizedForm):
@@ -463,6 +528,18 @@ class TexasFilerForm(NormalizedForm):
 
     stable_id_across_years = True
 
+    def __init__(self):
+        super().__init__()
+        self.dtype_dict = defaultdict(lambda: str)
+        self.dtype_dict.update(
+            {
+                "filerEffStartDt": "Int32",
+                "filerEffStopDt": "Int32",
+                "treasEffStartDt": "Int32",
+                "treasEffStopDt": "Int32",
+            }
+        )
+
     def rename_entity_type(self, row: pd.Series) -> str:
         sepcific_row_type = self.entity_type_mapper.get(
             row["ENTITY_TYPE_SPECIFIC"], None
@@ -482,15 +559,28 @@ class TexasFilerForm(NormalizedForm):
             return sepcific_row_type
 
     def _get_additional_columns(self) -> None:
-        self.table["ENTITY_TYPE"] = self.table.apply(self.rename_entity_type, axis=1)
+        entity_types_specific = self.table["ENTITY_TYPE_SPECIFIC"].map(
+            self.entity_type_mapper
+            # axis=1,  # meta=("ENTITY_TYPE", str) DASK
+        )
+        entity_types_general = self.table["ENTITY_TYPE_GENERAL"].map(
+            self.general_entity_type_mapper
+            # axis=1,  # meta=("ENTITY_TYPE", str) DASK
+        )
+        specicic_row_type_predicted_general = np.where(
+            entity_types_specific.isin(self.individual_entity_types),
+            "Individual",
+            "Organization",
+        )
+        self.table["ENTITY_TYPE"] = np.where(
+            specicic_row_type_predicted_general == entity_types_general,
+            entity_types_specific,
+            entity_types_general,
+        )
 
     def read_table(self, paths: list[str]) -> pd.DataFrame:
         # Read and concatenate multiple tables (e.g., filer_01.csv, filer_02.csv)
-        try:
-            tables = [pd.read_csv(path) for path in paths]
-            self.table = pd.concat(tables)
-        except Exception as e:
-            print(f"Error reading table: {e}")
+        self.table = pd.read_csv(paths[0], dtype=self.dtype_dict)  # DASK
         return self.table
 
 
@@ -501,6 +591,14 @@ class TexasContributionForm(TexasTransactionForm):
     transaction_type = "contribution"
     table_type = "transactions_filer_received"
 
+    def __init__(self):
+        super().__init__()
+        self.dtype_dict.update(
+            {
+                "repaymentDt": "Int32",
+            }
+        )
+
 
 class TexasExpenseForm(TexasTransactionForm):
     expanded_party_external_name = "payee"
@@ -508,3 +606,227 @@ class TexasExpenseForm(TexasTransactionForm):
     normalized_party_internal_name = "DONOR"
     transaction_type = "expend"
     table_type = "transactions_filer_paid"
+
+
+class PennsylvaniaTransactionForm(SemiNormalizedForm):
+    """Outlines general structure of Texas transaction tables (expenses + contributions)"""
+
+    stable_id_across_years = True
+
+    entity_type_mapper = {
+        "INDIVIDUAL": "Individual",
+        "ENTITY": "Organization",
+    }
+
+    @property
+    def expanded_party_external_name(self) -> str:
+        """Name used in raw data to refer to transaction party described in full
+
+        In some states, only certain parties must file payments made and received.
+        The filers will have a table with their details and separate tables will
+        exist describing payments made to the filers and payments made by the filers.
+        In these tables, the filers will be referred to as foreign keys, while the
+        other party's information will be listed in full in a non-normalized manner
+        """
+        return self._expanded_party_name
+
+    @property
+    def expanded_party_internal_name(self) -> str:
+        """Name used in internal schema to refer to transaction party described in full"""
+        return self._expanded_party_internal_name
+
+    @property
+    def normalized_party_internal_name(self) -> str:
+        """Name used in internal schema to refer to filer."""
+        return self._normalized_party_internal_name
+
+    @property
+    def transaction_type(self) -> str:
+        """Type of transaction made to the filer"""
+        return self._transaction_type
+
+    @property
+    def allowed_columns(self) -> list[str]:
+        return [
+            f"{self.normalized_party_internal_name}_ID",
+            f"{self.expanded_party_internal_name}_ID",
+            "AMOUNT",
+            "DATE",
+            "YEAR",
+            "PURPOSE",
+            f"{self.expanded_party_internal_name}_FULL_NAME",
+            f"{self.expanded_party_internal_name}_FIRST_NAME",
+            f"{self.expanded_party_internal_name}_LAST_NAME",
+            f"{self.expanded_party_internal_name}_ADDRESS_LINE_1",
+            f"{self.expanded_party_internal_name}_ADDRESS_LINE_2",
+            f"{self.expanded_party_internal_name}_CITY",
+            f"{self.expanded_party_internal_name}_STATE",
+            f"{self.expanded_party_internal_name}_ZIP_CODE",
+            f"{self.expanded_party_internal_name}_EMPLOYER",
+            f"{self.expanded_party_internal_name}_OCCUPATION",
+            f"{self.expanded_party_internal_name}_ENTITY_TYPE",
+        ]
+
+    def __init__(self):
+        super().__init__()
+        self.dtype_dict = defaultdict(lambda: str)
+        self.dtype_dict.update(
+            {
+                "reportInfoIdent": "Int32",
+                "receivedDt": "Int32",
+                f"{self.transaction_type}InfoId": "Int32",
+                f"{self.transaction_type}Dt": "Int32",
+                f"{self.transaction_type}Amount": "Float32",
+            }
+        )
+        self.columns_names = []
+
+    def rename_entity_type(self, row: dd.Series) -> str:
+        return row
+
+    def read_table(self, paths: list[str]) -> pd.DataFrame:
+        # Read and concatenate multiple tables (e.g., expense_01.csv, expense_02.csv)
+        self.table = pd.read_csv(
+            paths[0],
+            names=self.columns_names,
+            dtype=self.dtype_dict,
+            encoding="latin-1",
+            on_bad_lines="warn",
+        )
+        return self.table
+
+
+class PennsylvaniaContributionForm(PennsylvaniaTransactionForm):
+    expanded_party_external_name = ""
+    expanded_party_internal_name = "DONOR"
+    normalized_party_internal_name = "RECIPIENT"
+    transaction_type = "contribution"
+    table_type = "transactions_filer_received"
+
+    def __init__(self):
+        super().__init__()
+        self.dtype_dict = defaultdict(lambda: str)
+        self.dtype_dict.update(
+            {
+                "EYEAR": "Int32",
+                "CYCLE": "Int32",
+                "AMOUNT_1": "Float32",
+                "AMOUNT_2": "Float32",
+                "AMOUNT_3": "Float32",
+                "DATE_1": "Int32",
+                "DATE_2": "Int32",
+                "DATE_3": "Int32",
+            }
+        )
+        # "name we read as", # name from documentation
+        # https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/readme2022.txt
+        self.columns_names = [
+            "RECIPIENT_ID",  # FILERID
+            "REPORTID",  # REPORTID
+            "EYEAR",  # TIMESTAMP  NOTE!! EYEAR and TIMESTAMP are swapped
+            "TIMESTAMP",  # EYEAR
+            "CYCLE",  # CYCLE
+            "SECTION",  # SECTION
+            "DONOR_FULL_NAME",  # CONTRIBUTOR
+            "DONOR_ADDRESS_LINE_1",  # ADDRESS1
+            "DONOR_ADDRESS_LINE_2",  # ADDRESS2
+            "DONOR_CITY",  # CITY
+            "DONOR_STATE",  # STATE
+            "DONOR_ZIP_CODE",  # ZIPCODE
+            "DONOR_OCCUPATION",  # OCCUPATION
+            "DONOR_EMPLOYER_FULL_NAME",  # ENAME
+            "DONOR_EMPLOYER_ADDRESS_LINE_1",  # EADDRESS1
+            "DONOR_EMPLOYER_ADDRESS_LINE_2",  # EADDRESS2
+            "DONOR_EMPLOYER_CITY",  # ECITY
+            "DONOR_EMPLOYER_STATE",  # ESTATE
+            "DONOR_EMPLOYER_ZIP_CODE",  # EZIPCODE
+            "DATE_1",  # CONTDATE1
+            "AMOUNT_1",  # CONTAMT1
+            "DATE_2",  # CONTDATE2
+            "AMOUNT_2",  # CONTAMT2
+            "DATE_3",  # CONTDATE3
+            "AMOUNT_3",  # CONTAMT3
+            "PURPOSE",  # CONTDESC
+        ]
+
+    @property
+    def column_mapper(self) -> dict:
+        """No columns to map, since they are named on read"""
+        return {}
+
+    def first_normal_form(self) -> None:
+        """Transform table into first normal form, eliminating repeating groups"""
+        # first separate all columns with no additional amount values
+        blank_repeated_columns_mask = (self.table["AMOUNT_2"] == 0) & (
+            self.table["AMOUNT_3"] == 0
+        )
+        rows_with_blank_repeated_columns = self.table[blank_repeated_columns_mask]
+        rows_with_repeating_columns = self.table[~blank_repeated_columns_mask]
+        rows_with_blank_repeated_columns = rows_with_blank_repeated_columns.drop(
+            columns=["AMOUNT_2", "AMOUNT_3", "DATE_2", "DATE_3"]
+        )
+        rows_with_blank_repeated_columns = rows_with_blank_repeated_columns.rename(
+            columns={"AMOUNT_1": "AMOUNT", "DATE_1": "DATE"}
+        )
+
+        # Separate data and amount specific columns to melt so there is one row
+        # per amount and date column
+        rows_with_repeating_columns["index"] = rows_with_repeating_columns.index
+        date_prefix = "DATE_"
+        amount_prefix = "AMOUNT_"
+        date_cols = [
+            col for col in rows_with_repeating_columns.columns if date_prefix in col
+        ]
+        amount_cols = [
+            col for col in rows_with_repeating_columns.columns if amount_prefix in col
+        ]
+        id_cols = [
+            col
+            for col in rows_with_repeating_columns.columns
+            if date_prefix not in col and amount_prefix not in col
+        ]
+        dates_expanded = pd.melt(
+            rows_with_repeating_columns,
+            id_vars=id_cols,
+            value_vars=date_cols,
+            var_name="date_type",
+            value_name="DATE",
+        )
+        amounts_expanded = pd.melt(
+            rows_with_repeating_columns,
+            id_vars=id_cols,
+            value_vars=amount_cols,
+            var_name="amount_type",
+            value_name="AMOUNT",
+        )
+        dates_expanded["num"] = dates_expanded["date_type"].str.extract("(\d+)")
+        amounts_expanded["num"] = amounts_expanded["amount_type"].str.extract("(\d+)")
+
+        # Merge the two DataFrames on id_vars, num, and index
+        df_long = dates_expanded.merge(amounts_expanded, on=id_cols + ["num", "index"])
+        # Drop the helper columns
+        df_long = df_long.drop(columns=["date_type", "amount_type", "num", "index"])
+        self.table = pd.concat([df_long, rows_with_blank_repeated_columns])
+
+
+class PennsylvaniaContributionFormPost2022(PennsylvaniaContributionForm):
+    pass
+
+
+class PennsylvaniaContributionFormPre2022(PennsylvaniaContributionForm):
+    def __init__(self):
+        super().__init__()
+        self.dtype_dict = defaultdict(lambda: str)
+        self.dtype_dict.update(
+            {
+                "reportInfoIdent": "Int32",
+                "receivedDt": "Int32",
+                f"{self.transaction_type}InfoId": "Int32",
+                f"{self.transaction_type}Dt": "Int32",
+                f"{self.transaction_type}Amount": "Float32",
+            }
+        )
+
+        # https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/readmepriorto2022.txt
+        self.columns_names.remove("REPORTID")
+        self.columns_names.remove("TIMESTAMP")

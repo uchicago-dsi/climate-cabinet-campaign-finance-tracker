@@ -2,53 +2,44 @@
 
 import pandas as pd
 
-from utils.transform.clean import StateTransformer
-from utils.transform.texas import TexasTransformer
+from utils.constants import BASE_FILEPATH
+from utils.finance.source import DataSource
+from utils.finance.states.texas import (
+    TexasContributionForm,
+    TexasExpenseForm,
+    TexasFilerForm,
+)
+from utils.yamltable import DataSchema, normalize_database
 
-ALL_STATE_CLEANERS = [
-    # ArizonaTransformer(),
-    # MichiganTransformer(),
-    # MinnesotaTransformer(),
-    # PennsylvaniaTransformer(),
-    TexasTransformer()
-]
+ALL_STATE_SOURCES = {
+    "TX": [TexasContributionForm(), TexasFilerForm(), TexasExpenseForm()]
+}
+ALL_STATE_SOURCES: dict[str, list[DataSource]]
 
 
 def transform_and_merge(
-    state_cleaners: list[StateTransformer] = None,
-) -> list[pd.DataFrame]:
+    states: list[str] = None,
+) -> dict[str, pd.DataFrame]:
     """From raw datafiles, clean, merge, and reformat data from specified states.
 
     Args:
-        state_cleaners: List of state cleaners to merge data from. If None,
-            will default to all state_cleaners
+        states: List of states to merge data from. If None,
+            will default to all states that have been implemented
 
     Returns:
-        list of individuals, organizations, and transactions tables
+        dictionary mapping table type to table
     """
-    if state_cleaners is None:
-        state_cleaners = ALL_STATE_CLEANERS
-    single_state_individuals_tables = []
-    single_state_organizations_tables = []
-    single_state_transactions_tables = []
-    single_state_id_tables = []
-    for state_cleaner in state_cleaners:
-        print("Cleaning...")
-        (individuals_table, organizations_table, transactions_table, ids_table) = (
-            state_cleaner.clean_state()
-        )
-        single_state_individuals_tables.append(individuals_table)
-        single_state_organizations_tables.append(organizations_table)
-        single_state_transactions_tables.append(transactions_table)
-        single_state_id_tables.append(ids_table)
+    if states is None:
+        states = ALL_STATE_SOURCES.keys()
 
-    complete_individuals_table = pd.concat(single_state_individuals_tables)
-    complete_organizations_table = pd.concat(single_state_organizations_tables)
-    complete_transactions_table = pd.concat(single_state_transactions_tables)
-    complete_id_table = pd.concat(single_state_id_tables)
-    return (
-        complete_individuals_table,
-        complete_organizations_table,
-        complete_transactions_table,
-        complete_id_table,
-    )
+    schema = DataSchema(BASE_FILEPATH / "src" / "utils" / "table.yaml")
+
+    database = schema.empty_database()
+    for state in states:
+        for source in ALL_STATE_SOURCES[state]:
+            standardized_database = source.read_and_standardize_table()
+            for table_type in standardized_database:
+                database[table_type].extend(standardized_database[table_type])
+    normalized_database = normalize_database(database, schema)
+
+    return normalized_database

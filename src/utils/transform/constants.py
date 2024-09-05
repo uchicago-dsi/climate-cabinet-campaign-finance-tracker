@@ -2,31 +2,33 @@
 
 from utils.constants import BASE_FILEPATH
 
-INIDIVIDUAL_COLUMNS = [
-    "FIRST_NAME",
-    "LAST_NAME",
-    "FULL_NAME",
-    "INDIVIDUAL_TYPE",
-    "ADDRESS_LINE_1",
-    "ADDRESS_LINE_2",
-    "CITY",
-    "ZIP_CODE",
-    "STATE",
-    "EMPLOYER",
-    "OCCUPATION",
-    "OFFICE_SOUGHT",
-    "DISTRICT",
+TABLE_TYPES = [
+    "transactions",
+    "transactions_filer_paid",
+    "transactions_filer_received",
+    "transactions_fully_unnormalized",
+    "organizations",
+    "individuals",
+    "all_entities",
 ]
 
-ORGANIZATION_COLUMNS = [
-    "FULL_NAME",
-    "ORGANIZATION_TYPE",
-    "ADDRESS_LINE_1",
-    "ADDRESS_LINE_2",
-    "CITY",
-    "ZIP_CODE",
-    "STATE",
+ORGANIZATION_TYPES = [
+    "CORPORATION",
+    "PAC",
+    "POLITICAL_PARTY",
+    "NON-PROFIT",
+    "GOVERNMENTAL_ENTITY",
 ]
+
+INDIVIDUAL_TYPES = [
+    "INDIVIDUAL",
+    "LOBBYIST",
+    "CANDIDATE",
+]
+
+MEMBERSHIP_TYPES = ["EMPLOYEE", "OWNER", "MEMBER"]
+
+TRANSACTION_TYPES = []
 
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
