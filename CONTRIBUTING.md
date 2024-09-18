@@ -79,3 +79,14 @@ By default we have a few nice features:
 - VS Code extensions are installed by default. This will allow us to use the Python Debugger, and lint and format documents with ruff automatically.
 
 To run a pipeline using the debugger, we will want to run the relevant file in the `scripts` directory. Open the desired file and click the python debugger icon in the left sidebar (a play button with a bug). Click the play button. Select current python file. 
+
+
+## Adding a new state
+
+### Scraper
+
+Write a scraper in the scraper package, if it makes sense. If the data is available as only a bulk download, it is not worth it to write a scraper. Document the process for finding the bulk download (TODO: where) and save the bulk download somewhere publicly accessible. 
+
+### Standardization
+
+To standardize state data, the finance.source.DataSource class is used. Each unique information source the state provides should be placed in a subclass of DataSource. A unique source of information is any file information is retrieved from with a consistent format. For example, Pennsylvannia provides campaign finance data in 
