@@ -167,5 +167,3 @@ IdMap:
     - original_id
     - uuid
     - table
-  forward_relations:
-    original_id: Transactor
