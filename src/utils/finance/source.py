@@ -119,8 +119,14 @@ class DataSource:
         self,
         id_column: str = "id",
         matching_id_columns: list = None,
+        dependent_columns: list = None,
     ) -> None:
         """Adds UUIDs, saving a mapping where IDs were previously given by state
+
+        For all columns that represent primary keys of a table that would exist
+        in 4NF, ensures that the column for the key exists, that the key has
+        a UUID, and, if there existed a source-supplied id, the mapping of
+        source-supplied id to UUID is stored.
 
         Args:
             table_with_id_column: pandas dataframe that contains a column
@@ -128,6 +134,9 @@ class DataSource:
             id_column: name of expected id column. Default: id
             matching_id_columns: Names of columns that should have the
                 same id as that row's id_column. Default None.
+            dependent_columns: Names of columns that are dependent on the
+                given id_column. If a row is null in all of these columns
+                and in the id_column, no id is needed.
 
         Returns:
             input table with added ids, table mapping old to new ids
@@ -137,25 +146,36 @@ class DataSource:
             return
         if matching_id_columns is None:
             matching_id_columns = []
+        if dependent_columns is None:
+            dependent_columns = []
+
+        # columns that don't have an id and all dependent columns are na are irrelevant
+        # all other columns need a UUID
+        relevant_rows_mask = (
+            table_with_id_column[dependent_columns + [id_column]].notna().any(axis=1)
+        )
+
         unique_ids = (
             table_with_id_column[id_column].dropna().unique()
         )  # .compute() DASK
         uuid_mapping = {id: str(uuid.uuid4()) for id in unique_ids}
 
-        id_mask = table_with_id_column[id_column].isna()
-        # Replace null IDs with new UUIDs
+        na_id_mask = table_with_id_column[id_column].isna()
+        # Replace null IDs in relevant rows with new UUIDs
         # this apply is slow, but extremely similar to computing n new UUIDs
         # so without a faster way of generating UUIDs, this probably won't get
         # meaningfully faster.
-        table_with_id_column.loc[id_mask, id_column] = table_with_id_column[id_mask][
-            id_column
-        ].apply(
+        generate_ids_mask = na_id_mask & relevant_rows_mask
+        table_with_id_column.loc[generate_ids_mask, id_column] = table_with_id_column[
+            generate_ids_mask
+        ][id_column].apply(
             lambda _: str(uuid.uuid4()),
             # meta=(id_column, "str"), DASK
         )
-        table_with_id_column.loc[~id_mask, id_column] = table_with_id_column[~id_mask][
-            id_column
-        ].map(uuid_mapping)
+        map_ids_mask = ~na_id_mask & relevant_rows_mask
+        table_with_id_column.loc[map_ids_mask, id_column] = table_with_id_column[
+            map_ids_mask
+        ][id_column].map(uuid_mapping)
 
         # Convert the mapping to a DataFrame
         mapping_df = pd.DataFrame(
@@ -272,7 +292,16 @@ class DataSource:
     def _standardize_ids(self) -> None:
         """Replace IDs/Nulls with UUIDs and store a mapping in self.id_map"""
         for id_column, matching_columns in self.id_columns_to_standardize.items():
-            self.replace_id_with_uuid(id_column, matching_columns)
+            # all dependent columns should start with the trailing token in the column
+            # name
+            if id_column.endswith("--id"):  # TODO: save split
+                id_column_base = id_column[:-4]
+                dependent_columns = [
+                    col for col in self.table.columns if col.startswith(id_column_base)
+                ]
+            else:
+                dependent_columns = None
+            self.replace_id_with_uuid(id_column, matching_columns, dependent_columns)
 
     def __init__(self) -> None:
         self.id_map = []

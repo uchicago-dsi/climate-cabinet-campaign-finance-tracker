@@ -16,10 +16,10 @@ itemizeFlag,str,,,,,1 Y indicates that the contribution is itemized
 travelFlag,str,,,,,1 Y indicates that the contribution has associated travel
 contributorPersentTypeCd,str,,donor--transactor_type,transactor_type,,30 Type of contributor name data - INDIVIDUAL or ENTITY
 contributorNameOrganization,str,,donor--full_name,,,"100 For ENTITY, the contributor organization name"
-contributorNameLast,str,,donor--name_suffix,,,"100 For INDIVIDUAL, the contributor last name"
-contributorNameSuffixCd,str,,donor--last_name,,,"30 For INDIVIDUAL, the contributor name suffix (e.g. JR, MD, II)"
-contributorNameFirst,str,,donor--name_title,,,"45 For INDIVIDUAL, the contributor first name"
-contributorNamePrefixCd,str,,donor--first_name,,,"30 For INDIVIDUAL, the contributor name prefix (e.g. MR, MRS, MS)"
+contributorNameLast,str,,donor--last_name,,,"100 For INDIVIDUAL, the contributor last name"
+contributorNameSuffixCd,str,,donor--name_suffix,,,"30 For INDIVIDUAL, the contributor name suffix (e.g. JR, MD, II)"
+contributorNameFirst,str,,donor--first_name,,,"45 For INDIVIDUAL, the contributor first name"
+contributorNamePrefixCd,str,,donor--name_title,,,"30 For INDIVIDUAL, the contributor name prefix (e.g. MR, MRS, MS)"
 contributorNameShort,str,,donor--name_preferred,,,"25 For INDIVIDUAL, the contributor short name (nickname)"
 contributorStreetCity,str,,donor--address--city,,,30 Contributor street address - city
 contributorStreetStateCd,str,,donor--address--state,,,"2 Contributor street address - state code (e.g. TX, CA) - for"

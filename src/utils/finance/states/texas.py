@@ -56,6 +56,7 @@ class TexasFilerForm(DataSource):
                 "address--transactor_id",
                 "employer--member_id",
             ],
+            "election_result--election--id": [],
         }
 
     enum_mapper = {
@@ -124,8 +125,9 @@ class TexasFilerForm(DataSource):
         election_columns = [
             col for col in self.table.columns if col.startswith("election_result--")
         ]
-        election_info_mask = self.table[election_columns].notna().any()
-        self.table.loc[election_info_mask]["election_result--election--state"] = "TX"
+        election_info_mask = self.table[election_columns].notna().any(axis=1)
+        self.table.loc[election_info_mask, "election_result--election--state"] = "TX"
+        self.table.loc[:, "election_result--election--id"] = None
         # self.table["election_result--election--state"] = "TX"
 
     # @property
@@ -184,6 +186,17 @@ class TexasContributionForm(TexasTransactionForm):
         )
         return column_details_df
 
+    @property
+    def id_columns_to_standardize(self) -> dict:  # noqa D102
+        return {
+            "recipient_id": [],
+            # "donor--employer--organization--id": [],
+        }
+
+    # def _get_additional_columns(self) -> None:
+    #     super()._get_additional_columns()
+    #     self.table.loc[:, "donor--employer--organization--id"] = None
+
 
 class TexasExpenseForm(TexasTransactionForm):
     """Methods for reading in contributions made by filers"""
@@ -200,3 +213,10 @@ class TexasExpenseForm(TexasTransactionForm):
             source_metadata_directory / "TX" / "ExpendData.csv"
         )
         return column_details_df
+
+    @property
+    def id_columns_to_standardize(self) -> dict:  # noqa D102
+        return {
+            "donor_id": [],
+            # "recipient--employer--organization--id": [],
+        }
