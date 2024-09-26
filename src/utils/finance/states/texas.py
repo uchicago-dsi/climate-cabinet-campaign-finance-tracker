@@ -42,6 +42,7 @@ class TexasFilerForm(DataSource):
 
     table_type = "Transactor"
 
+    # TODO: this runs on import and fails if not data/raw/TX dir exists.
     default_raw_data_paths = [
         f
         for f in (BASE_FILEPATH / "data" / "raw" / "TX").iterdir()
