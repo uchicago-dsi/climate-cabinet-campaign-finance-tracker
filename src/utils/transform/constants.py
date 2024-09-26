@@ -2,6 +2,34 @@
 
 from utils.constants import BASE_FILEPATH
 
+TABLE_TYPES = [
+    "transactions",
+    "transactions_filer_paid",
+    "transactions_filer_received",
+    "transactions_fully_unnormalized",
+    "organizations",
+    "individuals",
+    "all_entities",
+]
+
+ORGANIZATION_TYPES = [
+    "CORPORATION",
+    "PAC",
+    "POLITICAL_PARTY",
+    "NON-PROFIT",
+    "GOVERNMENTAL_ENTITY",
+]
+
+INDIVIDUAL_TYPES = [
+    "INDIVIDUAL",
+    "LOBBYIST",
+    "CANDIDATE",
+]
+
+MEMBERSHIP_TYPES = ["EMPLOYEE", "OWNER", "MEMBER"]
+
+TRANSACTION_TYPES = []
+
 MI_EXP_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Expenditure"
 
 MI_CON_FILEPATH = BASE_FILEPATH / "data" / "raw" / "MI" / "Contribution"
@@ -15,6 +43,7 @@ AZ_INDIVIDUALS_FILEPATH = (
 )
 
 AZ_ORGANIZATIONS_FILEPATH = BASE_FILEPATH / "data" / "raw" / "AZ" / "az_orgs_demo.csv"
+
 
 MI_CONTRIBUTION_COLUMNS = [
     "doc_seq_no",
@@ -550,3 +579,71 @@ state_abbreviations = [
     " WV ",
     " WY ",
 ]
+PA_CONTRIBUTION_COLS: list = ["RECIPIENT_ID", "DONOR", "AMOUNT", "YEAR", "PURPOSE"]
+
+PA_FILER_COLS: list = [
+    "RECIPIENT_ID",
+    "RECIPIENT_TYPE",
+    "RECIPIENT",
+    "RECIPIENT_OFFICE",
+    "RECIPIENT_PARTY",
+]
+
+PA_EXPENSE_COLS: list = [
+    "DONOR_ID",
+    "RECIPIENT",
+    "PURPOSE",
+    "AMOUNT",
+    "YEAR",
+]
+
+TX_CONTRIBUTION_COLS: list = [
+    "filerIdent",
+    "filerName",
+    "contributionDt",
+    "contributionAmount",
+    "contributorPersentTypeCd",
+    "contributorNameOrganization",
+    "contributorNameLast",
+    "contributorNameFirst",
+]
+# TO CLARIFY: (1) does filer refer to recipient (2)no office for texas
+TX_FILER_COLS: list = [
+    "filerIdent",
+    "filerTypeCd",
+    "filerName",
+    "filerNameOrganization",
+]
+
+TX_FILER_MAPPING: dict = {
+    "filerIdent": "RECIPIENT_ID",
+    "filerTypeCd": "RECIPIENT_TYPE",
+    "filerName": "RECIPIENT",
+}
+
+
+# TO CLARIFY: no purpose in texas expend
+TX_EXPENSE_COLS: list = [
+    "filerIdent",
+    "payeePersentTypeCd",
+    "payeeNameOrganization",
+    "payeeNameLast",
+    "payeeNameFirst",
+    "expendAmount",
+    "expendDt",
+]
+
+TX_CONTRIBUTION_MAPPING: dict = {
+    "filerIdent": "RECIPIENT_ID",
+    "contributionAmount": "AMOUNT",
+}
+
+TX_FILER_MAPPING: dict = {
+    "filerIdent": "RECIPIENT_ID",
+    "filerTypeCd": "RECIPIENT_TYPE",
+    "filerName": "RECIPIENT",
+}
+
+TX_EXPENSE_MAPPING: dict = {
+    "filerIdent": "DONOR_ID",
+}

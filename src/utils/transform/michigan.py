@@ -1,12 +1,13 @@
-"""State cleaner implementation for Michigan"""
+"""State transformer implementation for Michigan"""
 
 import uuid
 
 import numpy as np
 import pandas as pd
 
-from utils.clean.clean import StateCleaner
-from utils.clean.constants import (
+from utils.constants import BASE_FILEPATH
+from utils.transform.clean import StateTransformer
+from utils.transform.constants import (
     MI_CON_FILEPATH,
     MI_CONT_DROP_COLS,
     MI_CONTRIBUTION_COLUMNS,
@@ -16,7 +17,6 @@ from utils.clean.constants import (
     MICHIGAN_CONTRIBUTION_COLS_RENAME,
     MICHIGAN_CONTRIBUTION_COLS_REORDER,
 )
-from utils.constants import BASE_FILEPATH
 
 
 def read_expenditure_data(filepath: str, columns: list[str]) -> pd.DataFrame:
@@ -77,8 +77,8 @@ def read_contribution_data(filepath: str, columns: list[str]) -> pd.DataFrame:
     return contribution_df
 
 
-class MichiganCleaner(StateCleaner):
-    """State cleaner implementation for Michigan"""
+class MichiganTransformer(StateTransformer):
+    """State transformer implementation for Michigan"""
 
     name = "Michigan"
     stable_id_across_years = False
@@ -103,7 +103,7 @@ class MichiganCleaner(StateCleaner):
     # map to entity types listed in the schema
 
     def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Runs the StateCleaner pipeline returning a tuple of cleaned dataframes
+        """Runs the StateTransformer pipeline returning a tuple of cleaned dataframes
 
         Returns: use preprocess, clean, standardize, and create_tables methods
         to output (individuals_table, organizations_table, transactions_table)

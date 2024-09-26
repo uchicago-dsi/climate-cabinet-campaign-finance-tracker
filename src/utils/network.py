@@ -66,6 +66,8 @@ def combine_datasets_for_network_graph(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     orgs_trans_df = orgs_trans_df.dropna(subset=["amount"])
     orgs_trans_df = orgs_trans_df.rename(columns={"name": "full_name"})
 
+    inds_trans_df = inds_trans_df.loc[:, ~inds_trans_df.columns.duplicated()].copy()
+    orgs_trans_df = orgs_trans_df.loc[:, ~orgs_trans_df.columns.duplicated()].copy()
     # concatenated the merged dfs
     merged_df = pd.concat([orgs_trans_df, inds_trans_df])
 

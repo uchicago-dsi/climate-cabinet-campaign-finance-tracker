@@ -1,20 +1,20 @@
 """Code for cleaning and standardizing raw data retrieved from Arizona.
 
-Inherits from StateCleaner.
+Inherits from StateTransformer.
 """
 
 import uuid
 
 import pandas as pd
 
-from utils.clean.clean import StateCleaner
-from utils.clean.constants import (
+from utils.transform.clean import StateTransformer
+from utils.transform.constants import (
     AZ_INDIVIDUALS_FILEPATH,
     AZ_ORGANIZATIONS_FILEPATH,
     AZ_TRANSACTIONS_FILEPATH,
     state_abbreviations,
 )
-from utils.clean.utils import convert_date
+from utils.transform.utils import convert_date
 
 
 def az_name_clean(df: pd.DataFrame) -> pd.DataFrame:
@@ -314,8 +314,8 @@ def az_id_table(
     return id_map_df
 
 
-class ArizonaCleaner(StateCleaner):
-    """Based on the StateCleaner abstract class and cleans Arizona data"""
+class ArizonaTransformer(StateTransformer):
+    """Based on the StateTransformer abstract class and cleans Arizona data"""
 
     def clean_state(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Calls the other methods in order

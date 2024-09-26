@@ -1,0 +1,170 @@
+Transactor:
+# whether to make Transactor a 'parent' table that Individual and Organization
+# inherit from was a difficult design decision.
+# sources: https://stackoverflow.com/a/695860
+  child_types:
+    - Individual
+    - Organization
+  required_attributes:
+    - transactor_type # Indivudual or Organization
+
+  attributes:
+    - id
+    - full_name
+    - transactor_type_specific
+    - transactor_type # Indivudual or Organization
+    - phone_number
+  enum_columns:
+    transactor_type:
+      - Individual
+      - Organization
+    transactor_type_specific:
+      - Lobbyist
+      - Candidate
+      - Vendor
+      - Corporation
+      - Non-profit
+      - Committee
+      - Party
+  multivalued_columns:
+    address: Address
+
+Individual:
+  parent_type: Transactor
+  attributes:
+    - first_name
+    - middle_name
+    - last_name
+    - name_suffix
+    - name_title
+    - name_preferred
+    - occupation
+    - party
+  multivalued_columns:
+    employer: Membership
+    election_result: ElectionResult
+
+Organization:
+  parent_type: Transactor
+  attributes:
+    - naics
+    - sic
+    - stock_symbol
+  # forward_relations:
+  #   parent_org: Organization
+
+Transaction:
+  required_attributes:
+    - amount
+    - donor_id
+    - recipient_id
+  attributes:
+    - id
+    - amount
+    - date
+    - year
+    - month
+    - day
+    - transaction_type
+    - description
+    - reported_election_id
+    - donor_id
+    - recipient_id
+  forward_relations:
+    donor: Transactor
+    recipient: Transactor
+    reported_election: Election
+  repeating_columns:
+    - date
+    - amount
+    - transaction_type
+    - year
+    - month
+    - day
+    - description
+  enum_columns:
+    transaction_type:
+      - contribution
+  # TODO: what other types are there
+
+Election:
+  required_attributes:
+    - year
+    - district
+    - office_sought
+    - state
+  attributes:
+    - id
+    - year
+    - district
+    - office_sought
+    - state
+
+ElectionResult:
+  required_attributes:
+    - candidate_id
+    - election_id
+  attributes:
+    - votes_recieved
+    - win
+    - candidate_id
+    - election_id
+  forward_relations:
+    candidate: Individual
+    election: Election
+    
+Address:
+  required_attributes:
+    - transactor_id
+  attributes:
+    - full_address 
+    - line_1
+    - building_number
+    - building_name
+    - street_predirectional
+    - street_name
+    - street_suffix # i.e Ave., St., Rd., ...
+    - street_postdirectional
+    - po_box
+    - line_2
+    - secondary_address_identifier # i.e. Apt, Room, ...
+    - secondary_address_number # i.e. 257G in Room 257G
+    - city
+    - state
+    - zipcode
+    - county
+    - country
+    - earliest_known_date
+    - latest_known_date
+    - known_later_address
+    - transactor_id
+  forward_relations:
+    transactor: Transactor
+
+Membership:
+  required_attribute:
+    - member_id
+    - organization_id
+  attributes:
+    - membership_type
+    - role
+    - description
+    - earliest_known_date
+    - latest_known_date
+    - known_later_employer # for memberhship type employee
+    - member_id
+    - organization_id
+  forward_relations:
+    member: Individual
+    organization: Organization
+
+IdMap:
+  required_attribute:
+    - original_id
+    - uuid
+  attributes:
+    - year
+    - state
+    - original_id
+    - uuid
+    - table

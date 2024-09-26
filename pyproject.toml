@@ -49,3 +49,6 @@ convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
+
+[tool.ruff]
+extend-include = ["*.ipynb"]

@@ -28,7 +28,7 @@ def download_PA_data(
 
     else:
         output_directory = Path(output_directory).resolve()
-    pa_url = "https://www.dos.pa.gov/VotingElections/CandidatesCommittees/CampaignFinance/Resources/Documents/"  # noqa
+    pa_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/dos/resources/voting-and-elections/campaign-finance/campaign-finance-data/"  # noqa
 
     for year in range(start_year, end_year + 1):
         link = f"{pa_url}{year}.zip"
@@ -50,4 +50,4 @@ def download_PA_data(
 
 
 if __name__ == "__main__":
-    download_PA_data(2010, 2023)
+    download_PA_data(2024, 2024)

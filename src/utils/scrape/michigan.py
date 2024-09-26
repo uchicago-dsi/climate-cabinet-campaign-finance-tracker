@@ -10,8 +10,8 @@ from zipfile import ZipFile
 import requests
 from bs4 import BeautifulSoup
 
-from utils.clean.constants import MI_CON_FILEPATH, MI_EXP_FILEPATH
 from utils.scrape.constants import HEADERS, MAX_TIMEOUT
+from utils.transform.constants import MI_CON_FILEPATH, MI_EXP_FILEPATH
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
