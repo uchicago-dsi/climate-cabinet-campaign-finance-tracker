@@ -39,6 +39,7 @@ Individual:
     - name_title
     - name_preferred
     - occupation
+    - party
   multivalued_columns:
     employer: Membership
     election_result: ElectionResult
