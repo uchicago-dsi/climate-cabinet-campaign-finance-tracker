@@ -41,11 +41,13 @@ class DataSource:
     to 3NF, columns that are not dependent on the candidate key will be
     prefixed with the name of the column they are dependent on. For
     example, a transactions table with columns for a donor's name,
-    employer, and employer's address would be given DONOR--FULL_NAME,
-    DONOR--EMPLOYER--FULL_NAME, and DONOR-EMPLOYER--ADDRESS. In this case
-    the donor would be replaced by an ID and a table with NAME and
-    EMPLOYER columns would be created. Then employer would be replaced
-    by ID and a table with NAME and ADDRESS columns would be created.
+    employer, and employer's address would be given donor--full_name,
+    donor--employer--full_name, and donor-employer--address. In this case
+    the donor would be replaced by a donor_id column and a table with name,
+    employer--address, and employer--full_name columns would be created.
+    Then employer would be replaced with employer_id and a table with name
+    and address columns would be created with matching rows linking back to
+    the employer_id columns.
     """
 
     @property
@@ -271,6 +273,7 @@ class DataSource:
             self.table.loc[~na_mask, temp_column] = pd.to_datetime(
                 self.table.loc[~na_mask, date_column],
                 format=column_to_date_format[date_column],
+                errors="coerce",
             ).dt.date
             self.table = self.table.drop(columns=date_column)
             self.table = self.table.rename(columns={temp_column: date_column})
