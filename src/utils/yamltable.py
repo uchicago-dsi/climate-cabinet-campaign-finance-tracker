@@ -43,6 +43,8 @@ NORMALIZATION_LEVELS = [
     FOURTH_NORMAL_FORM_FLAG,
 ]
 
+SPLIT = "--"
+
 
 class TableSchema:
     """class representation of a single table schema"""
@@ -240,45 +242,6 @@ class DataSchema:
             self.raw_data_schema = yaml.safe_load(f)
 
 
-def replace_id_with_uuid(
-    table_with_id_column: pd.DataFrame,
-    id_column: str = "id",
-) -> pd.DataFrame:
-    """Adds UUIDs, saving a mapping where IDs were previously given by state
-
-    Args:
-        table_with_id_column: pandas dataframe that contains a column
-            representing an id
-        id_column: name of expected id column. Default: id
-    Returns:
-        input table with added ids, table mapping old to new ids
-    """
-    unique_ids = table_with_id_column[id_column].dropna().unique()  # .compute() DASK
-    uuid_mapping = {id: str(uuid.uuid4()) for id in unique_ids}
-
-    id_mask = table_with_id_column[id_column].isna()
-    # Replace null IDs with new UUIDs
-    # this apply is slow, but extremely similar to computing n new UUIDs
-    # so without a faster way of generating UUIDs, this probably won't get
-    # meaningfully faster.
-    table_with_id_column.loc[id_mask, id_column] = table_with_id_column[id_mask][
-        id_column
-    ].apply(
-        lambda _: str(uuid.uuid4()),
-        # meta=(id_column, "str"), DASK
-    )
-    table_with_id_column.loc[~id_mask, id_column] = table_with_id_column[~id_mask][
-        id_column
-    ].map(uuid_mapping)
-
-    # Convert the mapping to a DataFrame
-    mapping_df = pd.DataFrame(
-        list(uuid_mapping.items()), columns=["original_id", "uuid"]
-    )
-    # mapping_ddf = dd.from_pandas(mapping_df, npartitions=1) # DASK
-    return table_with_id_column, mapping_df
-
-
 def calculate_normalization_status(
     table: pd.DataFrame, table_type: str, data_schema: DataSchema
 ) -> tuple[dict[int, dict[str, str]], int]:
@@ -306,14 +269,14 @@ def calculate_normalization_status(
     }
     for column in table.columns:
         token_table_schema = data_schema.schema[table_type]
-        column_tokens = column.split("--")  # TODO: make separator --
+        column_tokens = column.split(SPLIT)
         running_tokens = ()
         for column_token in column_tokens:
             running_tokens += (column_token,)
 
             if token_table_schema.repeating_columns_regex.match(column_token):
                 columns_by_normalization_level[UNNORMALIZED_FLAG].add(
-                    {"--".join(running_tokens): None}
+                    {SPLIT.join(running_tokens): None}
                 )
                 normalization_level = min(UNNORMALIZED_FLAG, normalization_level)
             elif token_table_schema.forward_relations_regex.match(column_token):
@@ -323,7 +286,7 @@ def calculate_normalization_status(
                 ) in token_table_schema.forward_relations.items():
                     if forward_relation == column_token:
                         columns_by_normalization_level[FIRST_NORMAL_FORM_FLAG].update(
-                            {"--".join(running_tokens): forward_relation_type}
+                            {SPLIT.join(running_tokens): forward_relation_type}
                         )
                         token_table_schema = data_schema.schema[forward_relation_type]
                         break
@@ -335,14 +298,14 @@ def calculate_normalization_status(
                 ) in token_table_schema.multivalued_columns.items():
                     if multivalued_column == column_token:
                         columns_by_normalization_level[THIRD_NORMAL_FORM_FLAG].update(
-                            {"--".join(running_tokens): multivalued_column_type}
+                            {SPLIT.join(running_tokens): multivalued_column_type}
                         )
                         token_table_schema = data_schema.schema[multivalued_column_type]
                         break
                 normalization_level = min(THIRD_NORMAL_FORM_FLAG, normalization_level)
             elif token_table_schema.attributes_regex.match(column_token):
                 columns_by_normalization_level[FOURTH_NORMAL_FORM_FLAG].update(
-                    {"--".join(running_tokens): None}
+                    {SPLIT.join(running_tokens): None}
                 )
             else:
                 raise ValueError("Invalid Table")
@@ -369,6 +332,7 @@ def convert_to_1NF_from_unnormalized(
     ]
     if repeated_columns == []:
         return unnormalized_table
+    unnormalized_table.loc[:, "temp_id"] = range(0, len(unnormalized_table))
     static_columns = [
         column
         for column in unnormalized_table.columns
@@ -378,15 +342,117 @@ def convert_to_1NF_from_unnormalized(
         unnormalized_table, id_vars=static_columns, value_vars=repeated_columns
     )
     melted_table[["variable", "instance"]] = melted_table["variable"].str.rsplit(
-        "-", n=1, expand=True
+        "-",
+        n=1,
+        expand=True,  # TODO: split variable
     )
-    first_normal_form_table = melted_table.pivot_table(
+    first_normal_form_table = melted_table.pivot(  # noqa: PD010
         index=static_columns + ["instance"],
         columns="variable",
         values="value",
-        aggfunc="first",
     ).reset_index()
+    first_normal_form_table = first_normal_form_table.drop(
+        columns=["temp_id", "instance"]
+    )
+    first_normal_form_table = first_normal_form_table[
+        first_normal_form_table["amount"].notna() & first_normal_form_table["amount"]
+        > 0
+    ]
     return first_normal_form_table
+
+
+def _add_foreign_key(table: pd.DataFrame, foreign_key_prefix: str):
+    """Add a foreign key column to the table that will remain when foreign columns split
+
+    When a foreign table is split form a base table, all columns starting
+    with the foreign prefix are removed. In some cases, we want to keep
+    a reference in the base table. A reference that we wish to keep should
+    be in the format {foreign_prefix}_id instead of {foregin_prefix}--id
+
+    Args:
+        table
+        foreign_key_prefix
+    """
+    foriegn_key_column = f"{foreign_key_prefix}_id"
+    new_id_column = f"{foreign_key_prefix}{SPLIT}id"
+    foreign_columns_in_base_table = [
+        column
+        for column in table.columns
+        if column.startswith(f"{foreign_key_prefix}{SPLIT}")
+    ]
+    foreign_columns_in_foreign_table = [
+        column[len(foreign_key_prefix) + len(SPLIT) :]
+        for column in foreign_columns_in_base_table
+    ]
+    if foriegn_key_column not in table.columns and new_id_column not in table.columns:
+        # we want an id for the given table but none exists TODO: the below code should be a function somewhere (repeat in DataSource)
+        relevant_rows_mask = table[foreign_columns_in_base_table].notna().any(axis=1)
+        table.loc[relevant_rows_mask, f"{foreign_key_prefix}{SPLIT}id"] = table[
+            relevant_rows_mask
+        ].apply(lambda _: str(uuid.uuid4()), axis=1)
+        foreign_columns_in_foreign_table.append("id")
+        foreign_columns_in_base_table.append(f"{foreign_key_prefix}{SPLIT}id")
+    if foriegn_key_column not in table.columns:
+        table[foriegn_key_column] = table.loc[
+            :, foreign_key_prefix + f"{SPLIT}id"
+        ]  # TODO split
+    if new_id_column not in table.columns:
+        table[new_id_column] = table.loc[:, foriegn_key_column]
+        foreign_columns_in_foreign_table.append("id")
+        foreign_columns_in_base_table.append(f"{foreign_key_prefix}{SPLIT}id")
+    return table, foreign_columns_in_base_table, foreign_columns_in_foreign_table
+
+
+def _add_forward_relation_to_foreign_table(
+    table: pd.DataFrame, table_type: str, schema: DataSchema, foreign_key_prefix: str
+) -> pd.DataFrame:
+    """Checks if a column linking back to the base table is required in a foreign table"""
+    foreign_columns_in_base_table = [
+        column
+        for column in table.columns
+        if column.startswith(f"{foreign_key_prefix}{SPLIT}")
+    ]
+    foreign_columns_in_foreign_table = [
+        column[len(foreign_key_prefix) + len(SPLIT) :]
+        for column in foreign_columns_in_base_table
+    ]
+    derivative_table_type = schema.schema[table_type].multivalued_columns[
+        foreign_key_prefix
+    ]
+    derivative_table_schema = schema.schema[derivative_table_type]
+    # go through all of the required attributes in the derivative table.
+    # If one of them is a forward relation to the base table and that
+    # column does not already exist, create it
+    for required_attribute in derivative_table_schema.required_attributes:
+        length_of_id_suffix = len("_id")
+        for (
+            forward_relation,
+            forward_relation_type,
+        ) in derivative_table_schema.forward_relations.items():
+            # forward relations are stored as only the prefix (no '_id') so we trim
+            # required attribute name
+            if required_attribute[
+                :-length_of_id_suffix
+            ] == forward_relation and table_type in [
+                forward_relation_type,
+                schema.schema[forward_relation_type].parent_type,
+            ]:
+                # this means the derivative table requires a column linking back to
+                #  the current table
+                if required_attribute not in foreign_columns_in_foreign_table:
+                    # this means the required column doesn't exist so we should
+                    # create it
+                    backlink_column = f"{foreign_key_prefix}{SPLIT}{required_attribute}"
+                    relevant_rows_mask = (
+                        table[foreign_columns_in_base_table].notna().any(axis=1)
+                    )
+                    table.loc[
+                        relevant_rows_mask,
+                        backlink_column,
+                    ] = table.loc[relevant_rows_mask].index
+                    foreign_columns_in_base_table.append(backlink_column)
+                    foreign_columns_in_foreign_table.append(required_attribute)
+    return table, foreign_columns_in_base_table, foreign_columns_in_foreign_table
 
 
 def _split_prefixed_columns(
@@ -407,73 +473,29 @@ def _split_prefixed_columns(
         normalization_flag: the desired normalization level
     Returns: original table with columns removed, new foreign table
     """
-    prefixed_columns = [
-        column for column in table.columns if column.startswith(foreign_key_prefix)
-    ]
-    len_separator = len("--")  # TODO:
-    new_foreign_columns = [
-        column[len(foreign_key_prefix) + len_separator :] for column in prefixed_columns
-    ]
+    if normalization_flag == THIRD_NORMAL_FORM_FLAG:
+        table, foreign_columns_in_base_table, foreign_columns_in_foreign_table = (
+            _add_foreign_key(table, foreign_key_prefix)
+        )
+    elif normalization_flag == FOURTH_NORMAL_FORM_FLAG:
+        table, foreign_columns_in_base_table, foreign_columns_in_foreign_table = (
+            _add_forward_relation_to_foreign_table(
+                table, table_type, schema, foreign_key_prefix
+            )
+        )
+    else:
+        raise ValueError(f"Invalid normalization flag: {normalization_flag}")
 
-    if normalization_flag == FOURTH_NORMAL_FORM_FLAG:
-        keep_reference = False
-    elif normalization_flag == THIRD_NORMAL_FORM_FLAG:
-        keep_reference = True
-    if keep_reference:
-        foriegn_key_column = f"{foreign_key_prefix}_id"
-        if foriegn_key_column not in table.columns and "id" not in new_foreign_columns:
-            # we want an id for the given table but none exists TODO: the below code should be a function somewhere (repeat in DataSource)
-            relevant_rows_mask = table[prefixed_columns].notna().any(axis=1)
-            table.loc[relevant_rows_mask, f"{foreign_key_prefix}--id"] = table[
-                relevant_rows_mask
-            ].apply(lambda _: str(uuid.uuid4()), axis=1)
-            new_foreign_columns.append("id")
-            prefixed_columns.append(f"{foreign_key_prefix}--id")
-        if foriegn_key_column not in table.columns:
-            table[foriegn_key_column] = table.loc[
-                :, foreign_key_prefix + "--id"
-            ]  # TODO split
-    if normalization_flag == FOURTH_NORMAL_FORM_FLAG:
-        derivative_table_type = schema.schema[table_type].multivalued_columns[
-            foreign_key_prefix
-        ]
-        derivative_table_schema = schema.schema[derivative_table_type]
-        for required_attribute in derivative_table_schema.required_attributes:
-            length_of_id_suffix = len("_id")
-            for (
-                forward_relation,
-                forward_relation_type,
-            ) in derivative_table_schema.forward_relations.items():
-                if required_attribute[
-                    :-length_of_id_suffix
-                ] == forward_relation and table_type in [
-                    forward_relation_type,
-                    schema.schema[forward_relation_type].parent_type,
-                ]:
-                    # this means the derivative table requires a column linking back to
-                    #  the current table
-                    if required_attribute not in new_foreign_columns:
-                        # this means the required column doesn't exist so we should
-                        # create it
-                        backlink_column = f"{foreign_key_prefix}--{required_attribute}"
-                        relevant_rows_mask = table[prefixed_columns].notna().any(axis=1)
-                        table.loc[
-                            relevant_rows_mask,
-                            backlink_column,
-                        ] = table.loc[relevant_rows_mask].index
-                        prefixed_columns.append(backlink_column)
-                        new_foreign_columns.append(required_attribute)
-
-    columns_to_drop = list(prefixed_columns)
+    columns_to_drop = list(foreign_columns_in_base_table)
 
     # only deal with rows that have some value for foreign columns
-    foreign_table_na_mask = table[prefixed_columns].isna().all(axis=1)
+    foreign_table_na_mask = table[foreign_columns_in_base_table].isna().all(axis=1)
     relevant_table = table[~foreign_table_na_mask]
     irrelevant_table = table[foreign_table_na_mask]
 
     # clean up foreign table
-    foreign_key_table = relevant_table[prefixed_columns]
-    foreign_key_table.columns = new_foreign_columns
+    foreign_key_table = relevant_table[foreign_columns_in_base_table]
+    foreign_key_table.columns = foreign_columns_in_foreign_table
 
     table = pd.concat([relevant_table, irrelevant_table])
     table = table.drop(columns=columns_to_drop)
