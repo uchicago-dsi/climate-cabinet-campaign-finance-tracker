@@ -59,6 +59,7 @@ class TableSchema:
         self.table_type = table_type
         self.data_schema = data_schema
         self._child_types_are_separate = None
+        self._child_types = None
         self._parent_type = None
         self._attributes = None
         self._repeating_columns = None
@@ -206,6 +207,8 @@ class TableSchema:
     @property
     def child_types(self) -> list:
         """Types that inherit attributes from the current type"""
+        if self._child_types is None:
+            self._child_types = self.data_schema[self.table_type].get("child_types", [])
         return self._child_types
 
     @property
@@ -436,6 +439,7 @@ def _add_forward_relation_to_foreign_table(
             ] == forward_relation and table_type in [
                 forward_relation_type,
                 schema.schema[forward_relation_type].parent_type,
+                *schema.schema[forward_relation_type].child_types,
             ]:
                 # this means the derivative table requires a column linking back to
                 #  the current table
@@ -449,7 +453,7 @@ def _add_forward_relation_to_foreign_table(
                     table.loc[
                         relevant_rows_mask,
                         backlink_column,
-                    ] = table.loc[relevant_rows_mask].index
+                    ] = table.loc[relevant_rows_mask]["id"]
                     foreign_columns_in_base_table.append(backlink_column)
                     foreign_columns_in_foreign_table.append(required_attribute)
     return table, foreign_columns_in_base_table, foreign_columns_in_foreign_table
@@ -553,6 +557,8 @@ def _normalize_table_completely(
             ].items()
             if not column.startswith(forward_relation_column)
         }
+        # this is where the heavy lifting is done and a new foreign table
+        # is created derived from the columns that did not belong in base table
         active_table, foreign_table = _split_prefixed_columns(
             active_table,
             table_type,
