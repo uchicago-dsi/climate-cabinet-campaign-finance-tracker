@@ -120,9 +120,11 @@ class PennsylvaniaFilerPre2022Form(PennsylvaniaForm):
 
     def _get_additional_columns(self) -> None:
         super()._get_additional_columns()
-        # add PA as election state to rows that have election info
+        # add PA as election state to rows that have election info other than year
         election_columns = [
-            col for col in self.table.columns if col.startswith("election_result--")
+            col
+            for col in self.table.columns
+            if col.startswith("election_result--") and not col.endswith("year")
         ]
         election_info_mask = self.table[election_columns].notna().any(axis=1)
         self.table.loc[election_info_mask, "election_result--election--state"] = "PA"
@@ -203,7 +205,7 @@ class PennsylvaniaContributionPre2022Form(PennsylvaniaForm):
         return {
             "donor_id": [],
             "recipient_id": ["recipient--election_result--candidate_id"],
-            "reported_election_id": ["recipient--election_result--election--id"],
+            "reported_election--id": ["recipient--election_result--election--id"],
         }
 
     @property
@@ -219,9 +221,10 @@ class PennsylvaniaContributionPre2022Form(PennsylvaniaForm):
     def _get_additional_columns(self) -> None:
         super()._get_additional_columns()
 
-        self.table.loc[:, "reported_election--year"] = self.table.loc[
-            :, "recipient--election_result--election--year"
-        ]
+        self.table.loc[:, "recipient--election_result--election--year"] = (
+            self.table.loc[:, "reported_election--year"]
+        )
+        self.table.loc[:, "reported_election--id"] = None
         self.table.loc[:, "recipient--election_result--candidate_id"] = None
         self.table.loc[:, "recipient--election_result--election--id"] = None
 
@@ -308,8 +311,8 @@ class PennsylvaniaExpensePre2022Form(PennsylvaniaForm):
     def _get_additional_columns(self) -> None:
         super()._get_additional_columns()
 
-        self.table.loc[:, "reported_election--year"] = self.table.loc[
-            :, "donor--election_result--election--year"
+        self.table.loc[:, "donor--election_result--election--year"] = self.table.loc[
+            :, "reported_election--year"
         ]
         self.table.loc[:, "donor--election_result--candidate_id"] = None
         self.table.loc[:, "donor--election_result--election_id"] = None
