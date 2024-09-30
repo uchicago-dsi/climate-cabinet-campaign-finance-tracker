@@ -142,7 +142,7 @@ Address:
     transactor: Transactor
 
 Membership:
-  required_attribute:
+  required_attributes:
     - member_id
     - organization_id
   attributes:
