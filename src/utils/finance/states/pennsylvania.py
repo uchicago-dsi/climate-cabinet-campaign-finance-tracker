@@ -303,9 +303,13 @@ class PennsylvaniaExpensePre2022Form(PennsylvaniaForm):
     @property
     def id_columns_to_standardize(self) -> dict:  # noqa D102
         return {
-            "donor_id": ["donor--election_result--candidate_id"],
+            "donor_id": [
+                "donor--election_result--candidate_id"
+            ],  # TODO: should be fine without this
             "recipient_id": [],
-            "reported_election--id": ["donor--election_result--election_id"],
+            "reported_election--id": [
+                "donor--election_result--election_id"
+            ],  # TODO: how do we deal with this
         }
 
     def _get_additional_columns(self) -> None:
