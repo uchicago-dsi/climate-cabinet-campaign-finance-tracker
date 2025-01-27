@@ -314,6 +314,21 @@ def calculate_normalization_status(
                 raise ValueError("Invalid Table")
     return columns_by_normalization_level, normalization_level
 
+def get_foreign_table_type(base_type: str, column_name: str, schema: DataSchema) -> str:
+    """Retrieve the type of a multivalued/foreign table"""
+    column_tokens = column_name.split(SPLIT)
+    current_table_type = base_type
+    for column_token in column_tokens:
+        current_table_schema = schema.schema[current_table_type]
+        if column_token in current_table_schema.forward_relations:
+            current_table_type = current_table_schema.forward_relations[column_token]
+            continue
+        elif column_token in current_table_schema.multivalued_columns:
+            current_table_type = current_table_schema.multivalued_columns[column_token]
+            continue
+        elif current_table_schema.attributes_regex.match(column_token):
+            return current_table_type
+    return current_table_type
 
 def convert_to_1NF_from_unnormalized(
     unnormalized_table: pd.DataFrame, repeating_columns_regex: re.Pattern
@@ -364,13 +379,16 @@ def convert_to_1NF_from_unnormalized(
     return first_normal_form_table
 
 
-def _add_foreign_key(table: pd.DataFrame, foreign_key_prefix: str):
+def _add_foreign_key(table: pd.DataFrame, foreign_key_prefix: str, schema: DataSchema):
     """Add a foreign key column to the table that will remain when foreign columns split
 
     When a foreign table is split form a base table, all columns starting
     with the foreign prefix are removed. In some cases, we want to keep
     a reference in the base table. A reference that we wish to keep should
     be in the format {foreign_prefix}_id instead of {foregin_prefix}--id
+
+    Steps:
+        1. 
 
     Args:
         table
@@ -410,15 +428,6 @@ def _add_forward_relation_to_foreign_table(
     table: pd.DataFrame, table_type: str, schema: DataSchema, foreign_key_prefix: str
 ) -> pd.DataFrame:
     """Checks if a column linking back to the base table is required in a foreign table"""
-    foreign_columns_in_base_table = [
-        column
-        for column in table.columns
-        if column.startswith(f"{foreign_key_prefix}{SPLIT}")
-    ]
-    foreign_columns_in_foreign_table = [
-        column[len(foreign_key_prefix) + len(SPLIT) :]
-        for column in foreign_columns_in_base_table
-    ]
     derivative_table_type = schema.schema[table_type].multivalued_columns[
         foreign_key_prefix
     ]
@@ -443,20 +452,15 @@ def _add_forward_relation_to_foreign_table(
             ]:
                 # this means the derivative table requires a column linking back to
                 #  the current table
-                if required_attribute not in foreign_columns_in_foreign_table:
+                if f"{foreign_key_prefix}{SPLIT}{required_attribute}" not in table.columns:
                     # this means the required column doesn't exist so we should
                     # create it
                     backlink_column = f"{foreign_key_prefix}{SPLIT}{required_attribute}"
-                    relevant_rows_mask = (
-                        table[foreign_columns_in_base_table].notna().any(axis=1)
-                    )
                     table.loc[
-                        relevant_rows_mask,
                         backlink_column,
-                    ] = table.loc[relevant_rows_mask]["id"]
-                    foreign_columns_in_base_table.append(backlink_column)
-                    foreign_columns_in_foreign_table.append(required_attribute)
-    return table, foreign_columns_in_base_table, foreign_columns_in_foreign_table
+                    ] = table["id"]
+
+    return table
 
 
 def _split_prefixed_columns(
@@ -468,6 +472,15 @@ def _split_prefixed_columns(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Remove columns starting with prefix from table, optionally keeping foreign key
 
+    Steps:
+        0. If 4nf flag, add any required forward relations from derivative to base table
+        1. identify columns that are part of foreign table
+        2. create new table with all columns of foreign table
+        3. drop all rows that are missing required attributes for their data type
+        4. drop all rows that are complete duplicates
+        5. assign id to foreign table
+        6. if 3nf flag, map id to base table
+
     Args:
         table: any pandas dataframe
         table_type: table type present in schema
@@ -477,31 +490,58 @@ def _split_prefixed_columns(
         normalization_flag: the desired normalization level
     Returns: original table with columns removed, new foreign table
     """
-    if normalization_flag == THIRD_NORMAL_FORM_FLAG:
-        table, foreign_columns_in_base_table, foreign_columns_in_foreign_table = (
-            _add_foreign_key(table, foreign_key_prefix)
-        )
-    elif normalization_flag == FOURTH_NORMAL_FORM_FLAG:
-        table, foreign_columns_in_base_table, foreign_columns_in_foreign_table = (
+    # step 0 - handle reverse relations
+    if normalization_flag == FOURTH_NORMAL_FORM_FLAG:
+        table = (
             _add_forward_relation_to_foreign_table(
                 table, table_type, schema, foreign_key_prefix
             )
         )
+    # step 1
+    foreign_columns_in_base_table = [
+        column
+        for column in table.columns
+        if column.startswith(f"{foreign_key_prefix}{SPLIT}")
+    ]
+    foreign_columns_in_foreign_table = [
+        column[len(foreign_key_prefix) + len(SPLIT) :]
+        for column in foreign_columns_in_base_table
+    ]
+    # step 2 - split foreign table off of old base table
+    foreign_key_table = table[foreign_columns_in_base_table]
+    foreign_key_table.columns = foreign_columns_in_foreign_table
+    # step 3 - drop incomplete rows
+    foreign_key_table = foreign_key_table.dropna(how="all")
+    derivative_table_type = get_foreign_table_type(table_type, foreign_key_prefix, schema)
+    derivative_table_schema = schema.schema[derivative_table_type]
+    required_columns = derivative_table_schema.required_attributes
+    present_required_columns = [col for col in foreign_key_table.columns if col in required_columns]
+    foreign_key_table = foreign_key_table.dropna(subset=present_required_columns)
+    # step 4 - drop duplicates
+    foreign_key_table = foreign_key_table.drop_duplicates()
+    # step 5 - generate ids
+    if "id" not in foreign_key_table.columns:
+        # we want an id for the given table but none exists TODO: the below code should be a function somewhere (repeat in DataSource)
+        foreign_key_table.loc["id"] = foreign_key_table.apply(lambda _: str(uuid.uuid4()), axis=1)
+        foreign_columns_in_foreign_table.append("id")
+    else:
+        print("id found")
+        # TODO: map existing ids to new ids
+        # TODO: replace NaNs with real ids
+        foreign_columns_in_foreign_table.remove("id")
+    # step 6 - add relation 
+    if normalization_flag == THIRD_NORMAL_FORM_FLAG:
+        mapping_dict = foreign_key_table.set_index(foreign_columns_in_foreign_table)['id'].to_dict()
+
+        # Map the combinations in `table` to the ids from `foreign_key_table`
+        table[f"{foreign_key_prefix}_id"] = table[foreign_columns_in_base_table].apply(
+            lambda row: mapping_dict.get(tuple(row), None),
+            axis=1
+)
     else:
         raise ValueError(f"Invalid normalization flag: {normalization_flag}")
 
     columns_to_drop = list(foreign_columns_in_base_table)
-
-    # only deal with rows that have some value for foreign columns
-    foreign_table_na_mask = table[foreign_columns_in_base_table].isna().all(axis=1)
-    relevant_table = table[~foreign_table_na_mask]
-    irrelevant_table = table[foreign_table_na_mask]
-
-    # clean up foreign table
-    foreign_key_table = relevant_table[foreign_columns_in_base_table]
-    foreign_key_table.columns = foreign_columns_in_foreign_table
-
-    table = pd.concat([relevant_table, irrelevant_table])
     table = table.drop(columns=columns_to_drop)
     return table, foreign_key_table
 
@@ -666,15 +706,40 @@ def _consolidate_database(
     return consolidated_database
 
 
+def _safe_deduplication(
+    database: dict[str, list[pd.DataFrame]],
+) -> dict[str, pd.DataFrame]:
+    """Performs 'safe' deduplication on obvious duplicates in 3NF"""
+    new_transactor_tables = []
+    for transactor_table in database["Transactor"]:
+        new_transactor_table = transactor_table.drop_duplicates(
+            subset=[col for col in transactor_table.columns if not col.endswith("id")]
+        )
+        # TODO: add logging of how many rows are dropped
+    new_transactor_tables.append(new_transactor_table)
+    database["Transactor"] = new_transactor_tables
+    return database
+
+
 def normalize_database(
     database: dict[str, list[pd.DataFrame]],
     schema: DataSchema,
+    deduplicate: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """Bring a database to 4NF given the provided schema
 
     Args:
         database: TODO probably a good place to spec database
         schema: TODO
+        deduplicate: This normalization method naturally generates
+            lots of obvious duplicates. For example, if the same
+            person makes 1000 transactions with an exact match
+            for name, address, and job, but no provided id, it
+            will generate 1000 rows in the transactor, address,
+            and membership table. At scale, this becomes very
+            inefficient. When set to True, this eliminates these
+            obvious duplicates.
+
     Returns:
         dictionary mapping table types to respective tables
     """
@@ -693,6 +758,8 @@ def normalize_database(
         database_1NF,
         schema,
     )
+    if deduplicate:
+        database_3NF = _safe_deduplication(database_3NF)
     database_4NF = convert_to_4NF_from_3NF(
         database_3NF,
         schema,
