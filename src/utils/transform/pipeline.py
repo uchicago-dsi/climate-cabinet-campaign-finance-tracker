@@ -4,6 +4,11 @@ import pandas as pd
 
 from utils.constants import BASE_FILEPATH
 from utils.finance.source import DataSource
+from utils.finance.states.pennsylvania import (
+    PennsylvaniaContributionForm,
+    PennsylvaniaExpenseForm,
+    PennsylvaniaFilerForm,
+)
 from utils.finance.states.texas import (
     TexasContributionForm,
     TexasExpenseForm,
@@ -12,7 +17,12 @@ from utils.finance.states.texas import (
 from utils.yamltable import DataSchema, normalize_database
 
 ALL_STATE_SOURCES = {
-    "TX": [TexasContributionForm(), TexasFilerForm(), TexasExpenseForm()]
+    "TX": [TexasContributionForm(), TexasFilerForm(), TexasExpenseForm()],
+    "PA": [
+        PennsylvaniaFilerForm(),
+        PennsylvaniaExpenseForm(),
+        PennsylvaniaContributionForm(),
+    ],
 }
 ALL_STATE_SOURCES: dict[str, list[DataSource]]
 

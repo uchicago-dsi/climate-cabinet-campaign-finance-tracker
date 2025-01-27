@@ -258,7 +258,7 @@ class DataSource:
         """Ensure data in table is of correct format"""
         self._standardize_date_formats()
         self._standardize_enums()
-        self._standardize_ids()
+        # self._standardize_ids()
 
     def _standardize_date_formats(self) -> None:
         column_to_date_format = (

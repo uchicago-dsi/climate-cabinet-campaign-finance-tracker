@@ -85,8 +85,69 @@ To run a pipeline using the debugger, we will want to run the relevant file in t
 
 ### Scraper
 
-Write a scraper in the scraper package, if it makes sense. If the data is available as only a bulk download, it is not worth it to write a scraper. Document the process for finding the bulk download (TODO: where) and save the bulk download somewhere publicly accessible. 
+Write a scraper in the scraper package, if it makes sense. If the data is available as only a bulk download, it is not worth it to write a scraper. Document the process for finding the bulk download (TODO: where) and save the bulk download somewhere publicly accessible (like a public google drive) and link it (TODO: where). It often makes sense to email the state organization responsible for placing campaign finance information on their website.
 
 ### Standardization
 
 To standardize state data, the finance.source.DataSource class is used. Each unique information source the state provides should be placed in a subclass of DataSource. A unique source of information is any file information is retrieved from with a consistent format. For example, Pennsylvannia provides campaign finance data in 
+
+
+
+### Walkthrough: Pennsylvania
+
+Here we go through an example of adding a new state to the campaign finance pipeline.
+
+#### Locating Data
+
+I start with a simple google search "Pennsylvania campaign finance" and find the [PA Department of State's campaign finance page](https://www.pa.gov/en/agencies/dos/programs/voting-and-elections/campaign-finance.html). It's mostly information about filing so I click around the page following links for with titles like "resources" and "data".  I finally find a [campaign finance exports](https://www.pa.gov/en/agencies/dos/resources/voting-and-elections-resources/campaign-finance-data.html) with links to download full exports for each year going back to 2000. 
+
+#### Scraper
+
+Each report is a zip file located at a link that only differs by year, so writing a scraper should be quite simple. At the end of the scraper file it is called as a single function with start and end year as a paramter under an `if __name__ == "__main__":` block for easy usage and testing.
+
+#### Standardization - Understanding the data files
+
+Inspecting the files in each year's zip, there are always 5 files. The naming convention varies but they are always some variation of "contributor", "debt", "expense", "filer", and "reciept" and are always .txt files despite being formatting as csvs. None other than 2023 have any column headers and the headers there are confusing. In order to understand the contents, I send an email to the contact on the website and search for some sort of read me or guide. 
+
+A search of 'readme' in the website search bar returns readmes for campaign finance data from [1987](https://www.pa.gov/content/dam/copapwp-pagov/en/dos/resources/voting-and-elections/campaign-finance/campaign-finance-data/1987_3/readme.txt) to [2022](https://www.pa.gov/content/dam/copapwp-pagov/en/dos/old-website-documents/readme2022.txt). They look unchanged outside of two new fields noted at the header in 2022. The fields are still not well specified.
+
+The data is very similar from year to year so a subclass of DataSource for each of the 5 files seems like the correct way to start, with a potential need for subclasses of the filetypes to handle minor changes between years (i.e. 2023 having column headers). 
+
+I write a conversion table for the column names in each table, taking guesses where confident and waiting to gather more information. (Ex: EADDRESS1 is very likely representing address line 1 of the donor's employer given context and values present.)
+
+For each row in the conversion table (which represents a column in raw table retrieved from the state), I fill in the raw name of the column, the type (defaulting to 'str'), the standard name based on table.yaml, the [date format according to python's datetime module](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior) if  the column is a date or time, the standard name again in the enum column if there is a set of allowable values, and finally any notes about the column (such as a description if the state provided one). 
+
+
+#### Standarization - Writing DataSource subclasses
+
+I create a general DataSource subclass `PennsylvaniaForm` that all Pennsylvania form classes will inherit from. This is because there are some similarities with all forms in the state. I write the code for `read_table`. This requires code to generate the default raw data paths (in a nested file structure `data/raw/PA/<year>/filename`), and code to get the column names since the raw files have not column headers. Once this is done, I do some EDA to make sure the right columns have the right data. I explore potential enum columns like office sought and write a mapping of state provided codes to our standard names. 
+
+#### Standardization - Dealing with multiple paths
+
+In the later steps of the pipeline, we normalize the database, splitting information from provided tables to derivative tables when necessary. For example, a transaction table may contain information about a donor, a donor's address, a donor's employer, a recipient's election.
+
+In a fully normalized database, the transaction table would link to a transactor table that contains information about the donor. An address table would link to the donor table with the donor's id as well with information about where the donor lived. A memberhsip table would link to both the employer and employee's ids in transactor tables. As you can see the donor_id column in the transaction table will end up in the transaction, transactor, membership, address, and election result table. To ensure these all end up linking to the same place, we map `donor_id` to the relevant other columns in `id_columns_to_standardize` and set them to `None` if they didn't exist in `_get_additional_columns`. 
+
+
+#### Rambling about IDs / multiple path (?) fields
+
+One place that requires extra care is IDs.
+
+
+In PA, for example, several entities appear in the raw dataset that will be replaced with references (IDs) to their details in another table. Sometimes
+
+
+EYEAR is the election year in the contribution form. This is a dependency of the election which will be linked to the transaction by a foreign key. Additionally, the election will be linked by the donor. 
+
+transaction -> election  <- election_result
+     |                          \/
+     |------------------->  individual
+
+
+
+
+For something like this, it makes most sense to dictate in the DataSource which fields have multiple paths
+
+
+reported_election--year
+donor--election_result--election--year

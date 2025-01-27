@@ -36,7 +36,7 @@ individuals_output_path = output_directory / "individuals_table-*.csv"
 organizations_output_path = output_directory / "organizations_table-*.csv"
 transactions_output_path = output_directory / "transactions_table-*.csv"
 id_table_output_path = output_directory / "id_map-*.csv"
-database = transform_and_merge()
+database = transform_and_merge(["PA"])
 for table_type in database:
     database[table_type].to_csv(output_directory / f"{table_type}.csv")
 print("pipeline finished and save data to csv.")
