@@ -1,10 +1,11 @@
 """Configuration hanlder class for state campaign finance data"""
 
+import re
 from pathlib import Path
 
 from yaml import safe_load
 
-from utils.constants import BASE_FILEPATH
+from utils.constants import BASE_FILEPATH, RAW_DATA_DIRECTORY
 
 
 class ConfigHandler:
@@ -13,7 +14,37 @@ class ConfigHandler:
     @property
     def default_config_folder(self) -> Path:
         """Default path to state campaign finance configuration files"""
-        return BASE_FILEPATH / "config" / "finance" / "states"
+        return BASE_FILEPATH / "src" / "utils" / "config" / "finance" / "states"
+
+    @property
+    def state_code(self) -> str:
+        """Two letter state abbreviation"""
+        return self._state_code
+
+    @property
+    def table_type(self) -> str:
+        """Type of table: 'Transaction', 'Transactor', etc."""
+        return self._table_type
+
+    @property
+    def raw_data_path_pattern(self) -> str:
+        """Regex matching names of raw files in data/raw folder"""
+        return re.compile(self._raw_data_path_pattern)
+
+    @property
+    def raw_data_file_paths(self) -> list[Path]:
+        """All files matching raw data pattern at compile time"""
+        state_data_directory = RAW_DATA_DIRECTORY / self.state_code
+        print(state_data_directory)
+        matching_files = [
+            path
+            for path in state_data_directory.rglob("*")
+            if path.is_file()
+            and self.raw_data_path_pattern.fullmatch(
+                str(path.relative_to(state_data_directory)).replace("\\", "/")
+            )
+        ]
+        return matching_files
 
     @property
     def dtype_dict(self) -> dict[str, str]:
@@ -107,3 +138,6 @@ class ConfigHandler:
         self._read_csv_params = form_config.get("read_csv_params", {})
         self._duplicate_columns = form_config.get("duplicate_columns", {})
         self._new_empty_columns = form_config.get("new_empty_columns", [])
+        self._state_code = form_config.get("state_code", state_code)
+        self._table_type = form_config.get("table_type")
+        self._raw_data_path_pattern = form_config.get("path_pattern")
