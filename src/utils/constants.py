@@ -6,6 +6,7 @@ import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
 
 BASE_FILEPATH = Path(__file__).resolve().parent.parent.parent
+RAW_DATA_DIRECTORY = BASE_FILEPATH / "data" / "raw"
 # returns the base_path to the directory
 
 source_metadata_directory = BASE_FILEPATH / "src" / "utils" / "static"
