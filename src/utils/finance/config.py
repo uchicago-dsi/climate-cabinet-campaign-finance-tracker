@@ -162,7 +162,14 @@ class ConfigHandler:
 
         form_config = resolve_inheritance(config, form_code)
 
-        self._columns = form_config.get("columns", [])
+        column_details = form_config.get("column_details", [])
+        column_order = form_config.get("column_order")
+        if column_order:
+            column_details = [
+                col for col in column_details if col["raw_name"] in column_order
+            ]
+
+        self._columns = column_details
         self._enum_mapper = form_config.get("enum_mapper", {})
         self._read_csv_params = form_config.get("read_csv_params", {})
         self._duplicate_columns = form_config.get("duplicate_columns", {})

@@ -12,7 +12,7 @@ from yaml import safe_dump
 def sample_config(tmp_path):
     config_data = {
         "contributions": {
-            "columns": [
+            "column_details": [
                 {"raw_name": "FILERID", "type": "str", "standard_name": "recipient_id"},
                 {"raw_name": "CYCLE", "type": "str"},
                 {
@@ -136,13 +136,19 @@ def test_raw_data_file_paths(sample_config, mock_raw_data_directory):
 def inheritance_config(tmp_path):
     config_data = {
         "base_form": {
-            "columns": [
+            "column_details": [
                 {
                     "raw_name": "PARENT_COLUMN",
                     "type": "str",
                     "standard_name": "base_col",
-                }
+                },
+                {
+                    "raw_name": "EXTRA_COLUMN",
+                    "type": "float",
+                    "standard_name": "extra_col",
+                },
             ],
+            "column_order": ["EXTRA_COLUMN", "PARENT_COLUMN"],
             "enum_mapper": {"category": {"A": "Alpha", "B": "Beta"}},
             "read_csv_params": {"sep": "|"},
             "state_code": "CA",
@@ -151,14 +157,21 @@ def inheritance_config(tmp_path):
         },
         "derived_form": {
             "inherits": "base_form",
-            "columns": [
+            "column_details": [
                 {
                     "raw_name": "CHILD_COLUMN",
                     "type": "int",
                     "standard_name": "derived_col",
-                }
+                },
+                {
+                    "raw_name": "EXTRA_COLUMN",
+                    "type": "float",
+                    "standard_name": "extra_col",
+                },
             ],
+            "column_order": ["CHILD_COLUMN", "EXTRA_COLUMN"],
         },
+        "column_subset": {"inherits": "base_form", "column_order": ["PARENT_COLUMN"]},
     }
     config_path = tmp_path / "config.yaml"
     with config_path.open("w") as f:
@@ -168,9 +181,9 @@ def inheritance_config(tmp_path):
 
 def test_inherits(inheritance_config):
     handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
-    assert "PARENT_COLUMN" not in [
-        col["raw_name"] for col in handler._columns
-    ], "PARENT_COLUMN should not be present as the provided config has a 'columns' key"
+    assert (
+        "PARENT_COLUMN" not in [col["raw_name"] for col in handler._columns]
+    ), "PARENT_COLUMN should not be present as the provided config has a 'column_details' key"
     assert "CHILD_COLUMN" in [
         col["raw_name"] for col in handler._columns
     ], "CHILD_COLUMN should be present as it takes precedence over inherited column"
@@ -184,3 +197,22 @@ def test_inherits(inheritance_config):
     assert handler.raw_data_path_pattern.fullmatch(
         "base/data.txt"
     ), "Inherited path pattern should match"
+
+
+def test_column_details_and_order(inheritance_config):
+    handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
+    raw_names = [col["raw_name"] for col in handler._columns]
+    assert raw_names == [
+        "CHILD_COLUMN",
+        "EXTRA_COLUMN",
+    ], "Columns should follow the column_order in derived_form"
+
+    handler_base = ConfigHandler("base_form", config_file_path=inheritance_config)
+    raw_names_base = [col["raw_name"] for col in handler_base._columns]
+    assert raw_names_base == [
+        "PARENT_COLUMN",
+        "EXTRA_COLUMN",
+    ], "Base form should filter columns according to column_order"
+    handler_subset = ConfigHandler("column_subset", inheritance_config)
+    raw_names_subset = [col["raw_name"] for col in handler_subset._columns]
+    assert raw_names_subset == ["PARENT_COLUMN"]
