@@ -1,12 +1,11 @@
 from pathlib import Path
 
 import pytest
-from yaml import safe_dump
-
 import utils.constants
 import utils.finance
 import utils.finance.config
 from utils.finance.config import ConfigHandler
+from yaml import safe_dump
 
 
 @pytest.fixture
@@ -131,3 +130,57 @@ def test_raw_data_file_paths(sample_config, mock_raw_data_directory):
     matching_files = handler.raw_data_file_paths
     assert valid_file in matching_files
     assert invalid_file not in matching_files
+
+
+@pytest.fixture
+def inheritance_config(tmp_path):
+    config_data = {
+        "base_form": {
+            "columns": [
+                {
+                    "raw_name": "PARENT_COLUMN",
+                    "type": "str",
+                    "standard_name": "base_col",
+                }
+            ],
+            "enum_mapper": {"category": {"A": "Alpha", "B": "Beta"}},
+            "read_csv_params": {"sep": "|"},
+            "state_code": "CA",
+            "table_type": "BaseTable",
+            "path_pattern": "(?i)^base/.*\\.txt$",
+        },
+        "derived_form": {
+            "inherits": "base_form",
+            "columns": [
+                {
+                    "raw_name": "CHILD_COLUMN",
+                    "type": "int",
+                    "standard_name": "derived_col",
+                }
+            ],
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    with config_path.open("w") as f:
+        safe_dump(config_data, f)
+    return config_path
+
+
+def test_inherits(inheritance_config):
+    handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
+    assert "PARENT_COLUMN" not in [
+        col["raw_name"] for col in handler._columns
+    ], "PARENT_COLUMN should not be present as the provided config has a 'columns' key"
+    assert "CHILD_COLUMN" in [
+        col["raw_name"] for col in handler._columns
+    ], "CHILD_COLUMN should be present as it takes precedence over inherited column"
+    assert (
+        handler.table_type == "BaseTable"
+    ), "Table type should be inherited from base_form"
+    assert handler.read_csv_params["sep"] == "|", "Read CSV params should be inherited"
+    assert handler.enum_mapper == {
+        "category": {"A": "Alpha", "B": "Beta"}
+    }, "Enum mapper should be inherited"
+    assert handler.raw_data_path_pattern.fullmatch(
+        "base/data.txt"
+    ), "Inherited path pattern should match"

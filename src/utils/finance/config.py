@@ -8,6 +8,35 @@ from yaml import safe_load
 from utils.constants import BASE_FILEPATH, RAW_DATA_DIRECTORY
 
 
+def resolve_inheritance(config: dict, form_code: str) -> dict:
+    """Recursively resolves inheritance from parent form_configs
+
+    Args:
+        config: dictionary contents of a state config
+        form_code: key in config
+    Raises:
+        KeyError: if the value of config[form_code]['inherits'] is
+            not a key in config
+        RecursionError: if a form in config inherits from itself.
+            Note that more complex cases of recusrion are not caught by
+            this.
+    """
+    base_config = config.get(form_code, {}).copy()
+    parent_form_code = base_config.get("inherits")
+    if parent_form_code:
+        if parent_form_code not in config:
+            raise KeyError(
+                "{inherits} not in config file. Avaialbe options are:"
+                f" {', '.join(base_config.keys())}"
+            )
+        if parent_form_code == form_code:
+            raise RecursionError(f"Configuration {form_code} inherits from itself")
+        parent_config = resolve_inheritance(config, parent_form_code)
+        parent_config.update({k: v for k, v in base_config.items() if v is not None})
+        return parent_config
+    return base_config
+
+
 class ConfigHandler:
     """Handles and validates metadata"""
 
@@ -131,7 +160,7 @@ class ConfigHandler:
         if form_code not in config:
             raise KeyError(f"Form code '{form_code}' not found in configuration file.")
 
-        form_config = config[form_code]
+        form_config = resolve_inheritance(config, form_code)
 
         self._columns = form_config.get("columns", [])
         self._enum_mapper = form_config.get("enum_mapper", {})
