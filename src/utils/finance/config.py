@@ -64,7 +64,6 @@ class ConfigHandler:
     def raw_data_file_paths(self) -> list[Path]:
         """All files matching raw data pattern at compile time"""
         state_data_directory = RAW_DATA_DIRECTORY / self.state_code
-        print(state_data_directory)
         matching_files = [
             path
             for path in state_data_directory.rglob("*")
