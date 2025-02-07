@@ -38,6 +38,54 @@ def sample_config(tmp_path):
 
 
 @pytest.fixture
+def exclude_column_order_config(tmp_path):
+    config_data = {
+        "contributions": {
+            "column_details": [
+                {"raw_name": "FILERID", "type": "str", "standard_name": "recipient_id"},
+                {"raw_name": "CYCLE", "type": "str"},
+                {
+                    "raw_name": "CONTDATE1",
+                    "type": "Int32",
+                    "date_format": "%Y%m%d",
+                    "standard_name": "date-1",
+                },
+            ],
+            "read_csv_params": {"sep": ",", "encoding": "latin-1"},
+            "include_column_order": False,
+        }
+    }
+    config_path = tmp_path / "modified_config.yaml"
+    with config_path.open("w") as f:
+        safe_dump(config_data, f)
+    return config_path
+
+
+@pytest.fixture
+def explicit_header_config(tmp_path):
+    config_data = {
+        "contributions": {
+            "column_details": [
+                {"raw_name": "FILERID", "type": "str", "standard_name": "recipient_id"},
+                {"raw_name": "CYCLE", "type": "str"},
+                {
+                    "raw_name": "CONTDATE1",
+                    "type": "Int32",
+                    "date_format": "%Y%m%d",
+                    "standard_name": "date-1",
+                },
+            ],
+            "include_column_order": False,
+            "read_csv_params": {"sep": ",", "encoding": "latin-1", "header": 1},
+        }
+    }
+    config_path = tmp_path / "explicit_header_config.yaml"
+    with config_path.open("w") as f:
+        safe_dump(config_data, f)
+    return config_path
+
+
+@pytest.fixture
 def mock_raw_data_directory(tmp_path, monkeypatch):
     """Override RAW_DATA_DIRECTORY with a temporary path."""
     monkeypatch.setattr(utils.finance.config, "RAW_DATA_DIRECTORY", tmp_path)
@@ -46,7 +94,7 @@ def mock_raw_data_directory(tmp_path, monkeypatch):
 
 def test_config_handler_init(sample_config):
     handler = ConfigHandler("contributions", config_file_path=sample_config)
-    assert handler._columns, "Columns should be loaded from config"
+    assert handler._column_details, "Columns should be loaded from config"
     assert handler._enum_mapper, "Enum mapper should be loaded from config"
     assert handler._read_csv_params, "Read CSV parameters should be loaded from config"
     assert handler._table_type, "Table type must be loaded from config"
@@ -79,14 +127,42 @@ def test_enum_mapper(sample_config):
     }
 
 
-def test_read_csv_params(sample_config):
+def test_read_csv_params_include_column_order(sample_config):
+    """Test read_csv_params when include_column_order is True"""
     handler = ConfigHandler("contributions", config_file_path=sample_config)
-    assert handler.read_csv_params == {"sep": ",", "encoding": "latin-1"}
+    expected_params = {
+        "sep": ",",
+        "encoding": "latin-1",
+        "names": ["FILERID", "CYCLE", "CONTDATE1"],
+    }
+    assert (
+        handler.read_csv_params == expected_params
+    ), "read_csv_params should include column names"
+
+
+def test_read_csv_params_no_include_column_order(exclude_column_order_config):
+    """Test read_csv_params when include_column_order is False"""
+    handler = ConfigHandler(
+        "contributions", config_file_path=exclude_column_order_config
+    )
+    expected_params = {"sep": ",", "encoding": "latin-1", "header": 0}
+    assert (
+        handler.read_csv_params == expected_params
+    ), "read_csv_params should not include column names when include_column_order is False"
+
+
+def test_read_csv_params_explicit_header(explicit_header_config):
+    """Test read_csv_params when an explicit header value is provided in the config"""
+    handler = ConfigHandler("contributions", config_file_path=explicit_header_config)
+    expected_params = {"sep": ",", "encoding": "latin-1", "header": 1}
+    assert (
+        handler.read_csv_params == expected_params
+    ), "read_csv_params should preserve explicitly set header values"
 
 
 def test_column_to_date_format(sample_config):
     handler = ConfigHandler("contributions", config_file_path=sample_config)
-    assert handler.column_to_date_format == {"CONTDATE1": "%Y%m%d"}
+    assert handler.column_to_date_format == {"date-1": "%Y%m%d"}
 
 
 def test_duplicate_columns(sample_config):
@@ -182,10 +258,10 @@ def inheritance_config(tmp_path):
 def test_inherits(inheritance_config):
     handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
     assert (
-        "PARENT_COLUMN" not in [col["raw_name"] for col in handler._columns]
+        "PARENT_COLUMN" not in [col["raw_name"] for col in handler._column_details]
     ), "PARENT_COLUMN should not be present as the provided config has a 'column_details' key"
     assert "CHILD_COLUMN" in [
-        col["raw_name"] for col in handler._columns
+        col["raw_name"] for col in handler._column_details
     ], "CHILD_COLUMN should be present as it takes precedence over inherited column"
     assert (
         handler.table_type == "BaseTable"
@@ -201,18 +277,18 @@ def test_inherits(inheritance_config):
 
 def test_column_details_and_order(inheritance_config):
     handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
-    raw_names = [col["raw_name"] for col in handler._columns]
+    raw_names = [col["raw_name"] for col in handler._column_details]
     assert raw_names == [
         "CHILD_COLUMN",
         "EXTRA_COLUMN",
     ], "Columns should follow the column_order in derived_form"
 
     handler_base = ConfigHandler("base_form", config_file_path=inheritance_config)
-    raw_names_base = [col["raw_name"] for col in handler_base._columns]
+    raw_names_base = [col["raw_name"] for col in handler_base._column_details]
     assert raw_names_base == [
         "PARENT_COLUMN",
         "EXTRA_COLUMN",
     ], "Base form should filter columns according to column_order"
     handler_subset = ConfigHandler("column_subset", inheritance_config)
-    raw_names_subset = [col["raw_name"] for col in handler_subset._columns]
+    raw_names_subset = [col["raw_name"] for col in handler_subset._column_details]
     assert raw_names_subset == ["PARENT_COLUMN"]

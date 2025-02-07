@@ -77,11 +77,15 @@ class ConfigHandler:
     @property
     def dtype_dict(self) -> dict[str, str]:
         """Maps raw column names to pandas dtypes"""
-        return {col["raw_name"]: col["type"] for col in self._columns}
+        return {col["raw_name"]: col["type"] for col in self._column_details}
 
     @property
     def read_csv_params(self) -> dict:
         """Keyword arguments used in pandas read_csv for reading in tabular file"""
+        if self._include_column_order:
+            self._read_csv_params["names"] = self.raw_column_order
+        elif "header" not in self._read_csv_params:
+            self._read_csv_params["header"] = 0
         return self._read_csv_params
 
     @property
@@ -89,7 +93,7 @@ class ConfigHandler:
         """Maps raw column names to standardized column names"""
         return {
             col["raw_name"]: col["standard_name"]
-            for col in self._columns
+            for col in self._column_details
             if "standard_name" in col
         }
 
@@ -117,10 +121,15 @@ class ConfigHandler:
     def column_to_date_format(self) -> dict[str, str]:
         """Maps date columns to default raw date format"""
         return {
-            col["raw_name"]: col["date_format"]
-            for col in self._columns
+            col["standard_name"]: col["date_format"]
+            for col in self._column_details
             if "date_format" in col
         }
+
+    @property
+    def raw_column_order(self) -> list[str]:
+        """List of columns in order in raw file"""
+        return self._raw_colum_order
 
     def __init__(
         self,
@@ -162,13 +171,17 @@ class ConfigHandler:
         form_config = resolve_inheritance(config, form_code)
 
         column_details = form_config.get("column_details", [])
-        column_order = form_config.get("column_order")
-        if column_order:
-            column_details = [
-                col for col in column_details if col["raw_name"] in column_order
-            ]
+        # default column order is the order in column_details
+        column_order = form_config.get(
+            "column_order", [col["raw_name"] for col in column_details]
+        )
+        column_details = [
+            col for col in column_details if col["raw_name"] in column_order
+        ]
 
-        self._columns = column_details
+        self._raw_colum_order = column_order
+        self._column_details = column_details
+        self._include_column_order = form_config.get("include_column_order", True)
         self._enum_mapper = form_config.get("enum_mapper", {})
         self._read_csv_params = form_config.get("read_csv_params", {})
         self._duplicate_columns = form_config.get("duplicate_columns", {})

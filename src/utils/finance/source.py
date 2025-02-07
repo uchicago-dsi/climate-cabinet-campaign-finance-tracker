@@ -33,6 +33,7 @@ class DataReader:
         self._dtype_dict = config_handler.dtype_dict
         self.read_csv_params = config_handler.read_csv_params
         self._default_paths = config_handler.raw_data_file_paths
+        self.columns = config_handler.raw_column_order
 
     def read_tabular_data(
         self, path: str = None, dtype_dict: dict = None
@@ -48,7 +49,11 @@ class DataReader:
             path = self.default_raw_data_paths[0]
         if dtype_dict is None:
             dtype_dict = self.dtype_dict
-        table = pd.read_csv(str(path), dtype=self.dtype_dict, **self.read_csv_params)
+        table = pd.read_csv(
+            str(path),
+            dtype=self.dtype_dict,
+            **self.read_csv_params,
+        )
         return table
 
 
@@ -178,13 +183,18 @@ class DataStandardizer:
             self.column_to_date_format = column_to_date_format
         standard_schema_table = self._standardize_enums(standard_schema_table)
         standard_data_table = self._standardize_column_to_date_format(
-            self.column_to_date_format
+            standard_schema_table
         )
         return standard_data_table
 
 
 class DataSourceStandardizationPipeline:
     """Run pipeline for a single data source from file to standardized dataframe"""
+
+    @property
+    def table_type(self) -> str:
+        """Table type that pipeline standardizes"""
+        return self.config_handler.table_type
 
     def __init__(
         self,
@@ -209,7 +219,7 @@ class DataSourceStandardizationPipeline:
             data_standardizer: logic for standardizing data of the raw file. If
                 none provided, will use default logic with provided config.
         """
-        self.state_code = state_code
+        self.state_code = state_code.lower()
         self.form_code = form_code
         if config_file is not None:
             self.config_handler = ConfigHandler(form_code, config_file_path=config_file)
@@ -228,9 +238,11 @@ class DataSourceStandardizationPipeline:
         else:
             self.data_standardizer = data_standardizer
 
-    def standardize_data_source(self) -> dict[str, pd.DataFrame]:
+    def standardize_data_source(self) -> pd.DataFrame:
         """Process all data for a data_source"""
         standardized_tables = []
+        if self.data_reader.default_raw_data_paths == []:
+            return pd.DataFrame()
         for data_path in self.data_reader.default_raw_data_paths:
             raw_data_table = self.data_reader.read_tabular_data(data_path)
             standard_schema_table = self.schema_transformer.standardize_schema(
