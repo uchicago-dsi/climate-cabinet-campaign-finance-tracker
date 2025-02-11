@@ -26,11 +26,10 @@ includes:
 
 import re
 import uuid
-from pathlib import Path
-from typing import Self
 
 import pandas as pd
-import yaml
+
+from utils.schema import DataSchema
 
 UNNORMALIZED_FLAG = 0
 FIRST_NORMAL_FORM_FLAG = 1
@@ -44,205 +43,6 @@ NORMALIZATION_LEVELS = [
 ]
 
 SPLIT = "--"
-
-
-class TableSchema:
-    """class representation of a single table schema"""
-
-    def __init__(self, data_schema: dict, table_type: str):  # noqa ANN204
-        """Creates a tableschema instance used to validate tables
-
-        Args:
-            data_schema: dict
-            table_type: string must be a key in data_schema
-        """
-        self.table_type = table_type
-        self.data_schema = data_schema
-        self._child_types_are_separate = None
-        self._child_types = None
-        self._parent_type = None
-        self._attributes = None
-        self._repeating_columns = None
-        self._multivalued_columns = None
-        self._forward_relations = None
-        self._attributes_regex = None
-        self._repeating_columns_regex = None
-        self._forward_relations_regex = None
-        self._multivalued_columns_regex = None
-        self._enum_columns = None
-        self._required_attributes = None
-
-    def _fill_properties(self, property_name: str, property_type: str) -> list | dict:
-        """Calculate properties from given data schema"""
-        parent_type_name = self.data_schema[self.table_type].get("parent_type", None)
-        if property_type == "list":
-            property_value = self.data_schema[self.table_type].get(property_name, [])
-            if not self.child_types_are_separate:
-                for child in self.data_schema[self.table_type].get("child_types", []):
-                    property_value.extend(
-                        self.data_schema[child].get(property_name, [])
-                    )
-                if parent_type_name:
-                    parent_type = self.data_schema[parent_type_name]
-                    property_value.extend(parent_type.get(property_name, []))
-        elif property_type == "dict":
-            property_value = self.data_schema[self.table_type].get(property_name, {})
-            if not self.child_types_are_separate:
-                for child in self.data_schema[self.table_type].get("child_types", []):
-                    property_value.update(
-                        self.data_schema[child].get(property_name, {})
-                    )
-                if parent_type_name:
-                    parent_type = self.data_schema[parent_type_name]
-                    property_value.update(parent_type.get(property_name, {}))
-        else:
-            raise ValueError(
-                "Property type for _fill_properties should be list or dict"
-            )
-        return property_value
-
-    @property
-    def attributes(self) -> list:
-        """List of attributes allowed for this entity"""
-        if self._attributes is None:
-            self._attributes = self._fill_properties("attributes", "list")
-        return self._attributes
-
-    @property
-    def attributes_regex(self) -> re.Pattern:
-        """Full regex to match attributes"""
-        if self._attributes_regex is None:
-            self._attributes_regex = re.compile("|".join(self.attributes))
-        return self._attributes_regex
-
-    @property
-    def repeating_columns(self) -> list:
-        """List of columns that may be repeated in unnormalized form"""
-        if self._repeating_columns is None:
-            self._repeating_columns = self._fill_properties("repeating_columns", "list")
-        return self._repeating_columns
-
-    @property
-    def repeating_columns_regex(self) -> re.Pattern:
-        """Full regex to match any repeating columns"""
-        if self._repeating_columns_regex is None:
-            repeating_columns_regex_list = [
-                repeated_column + "-\d+$" for repeated_column in self.repeating_columns
-            ]
-            self._repeating_columns_regex = self._get_regex(
-                repeating_columns_regex_list
-            )
-        return self._repeating_columns_regex
-
-    @property
-    def multivalued_columns(self) -> dict[str, Self]:
-        """Columns that may have multiple values for an instance of the entity type
-
-        For example, an individual may have multiple addresses or employers
-        """
-        if self._multivalued_columns is None:
-            self._multivalued_columns = self._fill_properties(
-                "multivalued_columns", "dict"
-            )
-            # self._instantiate_related_entities(self._multivalued_columns)
-        return self._multivalued_columns
-
-    @property
-    def multivalued_columns_regex(self) -> re.Pattern:
-        """Full regex to match any multivalued columns"""
-        if self._multivalued_columns_regex is None:
-            self._multivalued_columns_regex = self._get_regex(
-                list(self.multivalued_columns.keys())
-            )
-        return self._multivalued_columns_regex
-
-    def _get_regex(self, attribute_list: list[str]) -> re.Pattern:
-        # add unmatchable regex so that empty list don't compile to '' which matches
-        # everything
-        unmatchable = "a^"
-        possible_attributes = [f"^{attribute}$" for attribute in attribute_list]
-        possible_attributes += [unmatchable]
-        return re.compile("|".join(possible_attributes))
-
-    @property
-    def forward_relations(self) -> dict[str, Self]:
-        """Many-to-one relationships that are an attribute of the entity type"""
-        if self._forward_relations is None:
-            self._forward_relations = self._fill_properties("forward_relations", "dict")
-            # self._instantiate_related_entities(self._forward_relations)
-        return self._forward_relations
-
-    @property
-    def forward_relations_regex(self) -> re.Pattern:
-        """Full regex to match any forward relation columns"""
-        if self._forward_relations_regex is None:
-            self._forward_relations_regex = self._get_regex(
-                list(self.forward_relations.keys())
-            )
-        return self._forward_relations_regex
-
-    @property
-    def enum_columns(self) -> dict[str, list]:
-        """Map enum column names to their list of allowed values"""
-        if self._enum_columns is None:
-            self._enum_columns = self._fill_properties("enum_columns", "dict")
-        return self._enum_columns
-
-    @property
-    def required_attributes(self) -> dict[str, list]:
-        """Attributes required for a given record of the entity type to be relevant"""
-        if self._required_attributes is None:
-            self._required_attributes = self.data_schema[self.table_type].get(
-                "required_attributes", []
-            )
-        return self._required_attributes
-
-    @property
-    def child_types_are_separate(self) -> bool:
-        """True if child types are separated from paret types"""
-        if self._child_types_are_separate is None:
-            self._child_types_are_separate = False
-        return self._child_types_are_separate
-
-    @property
-    def child_types(self) -> list:
-        """Types that inherit attributes from the current type"""
-        if self._child_types is None:
-            self._child_types = self.data_schema[self.table_type].get("child_types", [])
-        return self._child_types
-
-    @property
-    def parent_type(self) -> dict[str, list]:
-        """Parent type of given entity type"""
-        if self._parent_type is None:
-            self._parent_type = self.data_schema[self.table_type].get(
-                "parent_type", None
-            )
-        return self._parent_type
-
-
-class DataSchema:
-    """Class representation of a dataschema defined in a data schema yaml TODO better name"""
-
-    # TODO add validation back
-    @property
-    def schema(self) -> dict[str, TableSchema]:
-        """Maps table types to their TableSchemas"""
-        if self._schema is None:
-            self._schema = {}
-            for table_type in self.raw_data_schema:
-                self._schema[table_type] = TableSchema(self.raw_data_schema, table_type)
-        return self._schema
-
-    def empty_database(self) -> dict[str, list]:
-        """Returns an empty database of the given schema"""
-        return {table_type: [] for table_type in self.schema.keys()}
-
-    def __init__(self, path_to_data_schema: Path | str) -> None:
-        """Representation of a singe table"""
-        self._schema = None
-        with Path(path_to_data_schema).open("r") as f:
-            self.raw_data_schema = yaml.safe_load(f)
 
 
 def calculate_normalization_status(
@@ -314,6 +114,7 @@ def calculate_normalization_status(
                 raise ValueError("Invalid Table")
     return columns_by_normalization_level, normalization_level
 
+
 def get_foreign_table_type(base_type: str, column_name: str, schema: DataSchema) -> str:
     """Retrieve the type of a multivalued/foreign table"""
     column_tokens = column_name.split(SPLIT)
@@ -329,6 +130,7 @@ def get_foreign_table_type(base_type: str, column_name: str, schema: DataSchema)
         elif current_table_schema.attributes_regex.match(column_token):
             return current_table_type
     return current_table_type
+
 
 def convert_to_1NF_from_unnormalized(
     unnormalized_table: pd.DataFrame, repeating_columns_regex: re.Pattern
@@ -379,7 +181,9 @@ def convert_to_1NF_from_unnormalized(
     return first_normal_form_table
 
 
-def _add_foreign_key(table: pd.DataFrame, foreign_key_prefix: str, schema: DataSchema):
+def _add_foreign_key(
+    table: pd.DataFrame, foreign_key_prefix: str, schema: DataSchema
+) -> tuple[pd.DataFrame, list[str], list[str]]:
     """Add a foreign key column to the table that will remain when foreign columns split
 
     When a foreign table is split form a base table, all columns starting
@@ -388,11 +192,12 @@ def _add_foreign_key(table: pd.DataFrame, foreign_key_prefix: str, schema: DataS
     be in the format {foreign_prefix}_id instead of {foregin_prefix}--id
 
     Steps:
-        1. 
+        1.
 
     Args:
-        table
-        foreign_key_prefix
+        table: TODO
+        foreign_key_prefix: TODO
+        schema: TODO
     """
     foriegn_key_column = f"{foreign_key_prefix}_id"
     new_id_column = f"{foreign_key_prefix}{SPLIT}id"
@@ -452,13 +257,14 @@ def _add_forward_relation_to_foreign_table(
             ]:
                 # this means the derivative table requires a column linking back to
                 #  the current table
-                if f"{foreign_key_prefix}{SPLIT}{required_attribute}" not in table.columns:
+                if (
+                    f"{foreign_key_prefix}{SPLIT}{required_attribute}"
+                    not in table.columns
+                ):
                     # this means the required column doesn't exist so we should
                     # create it
                     backlink_column = f"{foreign_key_prefix}{SPLIT}{required_attribute}"
-                    table.loc[
-                        backlink_column,
-                    ] = table["id"]
+                    table.loc[backlink_column,] = table["id"]
 
     return table
 
@@ -492,10 +298,8 @@ def _split_prefixed_columns(
     """
     # step 0 - handle reverse relations
     if normalization_flag == FOURTH_NORMAL_FORM_FLAG:
-        table = (
-            _add_forward_relation_to_foreign_table(
-                table, table_type, schema, foreign_key_prefix
-            )
+        table = _add_forward_relation_to_foreign_table(
+            table, table_type, schema, foreign_key_prefix
         )
     # step 1
     foreign_columns_in_base_table = [
@@ -512,32 +316,39 @@ def _split_prefixed_columns(
     foreign_key_table.columns = foreign_columns_in_foreign_table
     # step 3 - drop incomplete rows
     foreign_key_table = foreign_key_table.dropna(how="all")
-    derivative_table_type = get_foreign_table_type(table_type, foreign_key_prefix, schema)
+    derivative_table_type = get_foreign_table_type(
+        table_type, foreign_key_prefix, schema
+    )
     derivative_table_schema = schema.schema[derivative_table_type]
     required_columns = derivative_table_schema.required_attributes
-    present_required_columns = [col for col in foreign_key_table.columns if col in required_columns]
+    present_required_columns = [
+        col for col in foreign_key_table.columns if col in required_columns
+    ]
     foreign_key_table = foreign_key_table.dropna(subset=present_required_columns)
     # step 4 - drop duplicates
     foreign_key_table = foreign_key_table.drop_duplicates()
     # step 5 - generate ids
     if "id" not in foreign_key_table.columns:
         # we want an id for the given table but none exists TODO: the below code should be a function somewhere (repeat in DataSource)
-        foreign_key_table.loc["id"] = foreign_key_table.apply(lambda _: str(uuid.uuid4()), axis=1)
+        foreign_key_table.loc["id"] = foreign_key_table.apply(
+            lambda _: str(uuid.uuid4()), axis=1
+        )
         foreign_columns_in_foreign_table.append("id")
     else:
         print("id found")
         # TODO: map existing ids to new ids
         # TODO: replace NaNs with real ids
         foreign_columns_in_foreign_table.remove("id")
-    # step 6 - add relation 
+    # step 6 - add relation
     if normalization_flag == THIRD_NORMAL_FORM_FLAG:
-        mapping_dict = foreign_key_table.set_index(foreign_columns_in_foreign_table)['id'].to_dict()
+        mapping_dict = foreign_key_table.set_index(foreign_columns_in_foreign_table)[
+            "id"
+        ].to_dict()
 
         # Map the combinations in `table` to the ids from `foreign_key_table`
         table[f"{foreign_key_prefix}_id"] = table[foreign_columns_in_base_table].apply(
-            lambda row: mapping_dict.get(tuple(row), None),
-            axis=1
-)
+            lambda row: mapping_dict.get(tuple(row), None), axis=1
+        )
     else:
         raise ValueError(f"Invalid normalization flag: {normalization_flag}")
 
