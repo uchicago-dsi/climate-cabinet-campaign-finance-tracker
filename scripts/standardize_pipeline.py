@@ -17,12 +17,12 @@ parser.add_argument(
     "-o",
     "--output-directory",
     default=None,
-    help="Path to directory to save output. Default is 'output/transformed'",
+    help="Path to directory to save output. Default is 'output/standardized'",
 )
 args = parser.parse_args()
 
 if args.output_directory is None:
-    output_directory = BASE_FILEPATH / "output" / "transformed"
+    output_directory = BASE_FILEPATH / "output" / "standardized"
 else:
     output_directory = args.output_directory
 if args.states is None:
