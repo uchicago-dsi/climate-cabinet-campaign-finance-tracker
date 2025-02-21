@@ -1,0 +1,275 @@
+import pytest
+import yaml
+from utils.schema import (
+    DataSchema,
+    TableSchema,
+)
+
+
+@pytest.fixture
+def sample_schemas():
+    """Returns a dictionary of different sample schemas for testing."""
+    return {
+        "complete": yaml.safe_load("""
+            Person:
+              attributes: ["id", "name", "age", "gender", "phone"]
+              repeating_columns: ["phone"]
+              multivalued_columns:
+                address: "Address"
+              enum_columns:
+                gender: ["Male", "Female", "Other"]
+              required_attributes: ["id", "name"]
+              child_types: ["Teacher", "Student"]
+
+            Teacher:
+              attributes: ["position", "department"]
+              parent_type: "Person"
+
+            Student:
+              attributes: ["grade", "homeroom_id"]
+              parent_type: "Person"
+              enum_columns:
+                grade: ["Freshman", "Sophomore", "Junior", "Senior"]
+              forward_relations:
+                homeroom_id: Class
+
+            Address:
+              attributes: ["line_1", "line_2", "city", "state", "zipcode", "person_id"]
+              required_attributes: ["person_id"]
+              forward_relations:
+                person_id: "Person"
+
+            Class:
+              required_attributes: ["id"]
+              attributes: ["id", "subject", "teacher_id"]
+              forward_relations:
+                teacher_id: Teacher
+        """),
+        "missing_attribute_key": yaml.safe_load("""
+            Person:
+              attributes: ["id", "name", "dob"]
+              repeating_columns: ["phone"]
+              enum_columns:
+                gender: ["Male", "Female", "Other"]
+        """),
+        "missing_parent": yaml.safe_load("""
+            Person:
+              attributes: ["id", "name"]
+              child_types: ["Teacher"]
+
+            Teacher:
+              attributes: ["position"]
+        """),
+        "missing_forward_relation": yaml.safe_load("""
+            Person:
+              attributes: ["id", "homeroom_id", "name"]
+              forward_relations:
+                homeroom_id: Class
+        """),
+    }
+
+
+@pytest.fixture
+def schema_instance(request, sample_schemas):
+    """Returns a TableSchema instance based on test parameters."""
+    schema_type, table_type = request.param
+    return TableSchema(sample_schemas[schema_type], table_type)
+
+
+@pytest.fixture
+def complete_data_schema_data(sample_schemas):
+    """Returns a DataSchema instance based on test parameters"""
+    schema_data = sample_schemas["complete"]
+    return schema_data
+
+
+@pytest.mark.parametrize(
+    "schema_instance,expected_attributes",
+    [
+        (
+            ("complete", "Person"),
+            {
+                "id",
+                "name",
+                "age",
+                "gender",
+                "phone",
+                "position",
+                "department",
+                "grade",
+                "homeroom_id",
+            },
+        ),
+        (
+            ("complete", "Teacher"),
+            {"id", "name", "age", "gender", "phone", "position", "department"},
+        ),
+        (
+            ("complete", "Student"),
+            {"id", "name", "age", "gender", "phone", "grade", "homeroom_id"},
+        ),
+    ],
+    indirect=["schema_instance"],
+)
+def test_direct_attributes_single_table(schema_instance, expected_attributes):
+    assert set(schema_instance.attributes) == expected_attributes
+
+
+@pytest.mark.parametrize(
+    "schema_instance,expected_attributes",
+    [
+        (("complete", "Person"), {"id", "name", "age", "gender", "phone"}),
+        (
+            ("complete", "Teacher"),
+            {"position", "department"},
+        ),
+        (
+            ("complete", "Student"),
+            {"grade", "homeroom_id"},
+        ),
+    ],
+    indirect=["schema_instance"],
+)
+def test_direct_attributes_class_table(schema_instance, expected_attributes):
+    schema_instance.inheritance_strategy = "class table inheritance"
+    assert set(schema_instance.attributes) == expected_attributes
+
+
+@pytest.mark.parametrize(
+    "schema_instance,expected_enum",
+    [
+        (
+            ("complete", "Person"),
+            {
+                "gender": ["Male", "Female", "Other"],
+                "grade": ["Freshman", "Sophomore", "Junior", "Senior"],
+            },
+        ),
+        (
+            ("complete", "Student"),
+            {
+                "gender": ["Male", "Female", "Other"],
+                "grade": ["Freshman", "Sophomore", "Junior", "Senior"],
+            },
+        ),
+        (("complete", "Teacher"), {"gender": ["Male", "Female", "Other"]}),
+    ],
+    indirect=["schema_instance"],
+)
+def test_enum_columns(schema_instance, expected_enum):
+    assert schema_instance.enum_columns == expected_enum
+
+
+@pytest.mark.parametrize(
+    "schema_instance,expected_relations",
+    [
+        (("complete", "Student"), {"homeroom_id": "Class"}),
+        (("complete", "Person"), {"homeroom_id": "Class"}),
+        (("complete", "Address"), {"person_id": "Person"}),
+        (("complete", "Class"), {"teacher_id": "Teacher"}),
+    ],
+    indirect=["schema_instance"],
+)
+def test_forward_relations(schema_instance, expected_relations):
+    assert schema_instance.forward_relations == expected_relations
+
+
+@pytest.mark.parametrize(
+    "schema_instance,expected_parent",
+    [
+        (("complete", "Teacher"), "Person"),
+        (("complete", "Student"), "Person"),
+        (("complete", "Person"), None),
+    ],
+    indirect=["schema_instance"],
+)
+def test_parent_type(schema_instance, expected_parent):
+    assert schema_instance.parent_type == expected_parent
+
+
+@pytest.mark.parametrize(
+    "schema_key, should_raise_error",
+    [
+        ("complete", False),  # Complete schema should pass validation
+        ("missing_attribute_key", True),  # Schema missing attributes should fail
+        ("missing_parent", True),  # Schema with missing parent should fail
+    ],
+)
+def test_schema_validation(sample_schemas, schema_key, should_raise_error, tmp_path):
+    """Tests schema validation for different sample schemas."""
+    schema_data = sample_schemas[schema_key]
+
+    # Save the YAML schema to a temporary file
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text(yaml.dump(schema_data))
+
+    if should_raise_error:
+        with pytest.raises(ValueError):
+            DataSchema(schema_file)  # This should raise an error
+    else:
+        try:
+            DataSchema(schema_file)  # Should pass without errors
+        except ValueError as e:
+            pytest.fail(f"Unexpected validation error: {e}")
+
+
+@pytest.mark.parametrize(
+    "schema_key, expected_error",
+    [
+        (
+            "missing_parent",
+            "Teacher lists Person as a child, but Person does not list Teacher as a parent.",
+        ),
+        (
+            "missing_attribute_key",
+            "Error in Person: enum_columns 'gender' must be listed in attributes.",
+        ),
+    ],
+)
+def test_missing_parent(sample_schemas, schema_key, expected_error, tmp_path):
+    """Ensures schemas with missing parent references fail validation."""
+    schema_data = sample_schemas[schema_key]
+
+    # Save YAML schema to temp file
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text(yaml.dump(schema_data))
+
+    with pytest.raises(ValueError) as excinfo:
+        DataSchema(schema_file)
+
+    assert expected_error in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "schema_key, expected_error",
+    [
+        (
+            "missing_forward_relation",
+            "Error in Person: forward_relation value 'Class' must be a valid table.",
+        ),
+    ],
+)
+def test_invalid_forward_relations(
+    sample_schemas, schema_key, expected_error, tmp_path
+):
+    """Ensures forward relations keys exist in attributes and values point to valid tables."""
+    schema_data = sample_schemas[schema_key]
+
+    # Save YAML schema to temp file
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text(yaml.dump(schema_data))
+
+    with pytest.raises(ValueError) as excinfo:
+        DataSchema(schema_file)
+
+    assert expected_error in str(excinfo.value)
+
+
+def test_invalid_table_type(complete_data_schema_data, tmp_path):
+    """Tests behavior when an invalid table type is given."""
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text(yaml.dump(complete_data_schema_data))
+
+    sample_data_schema = DataSchema(schema_file)
+    with pytest.raises(KeyError):
+        TableSchema(sample_data_schema.raw_data_schema, "InvalidType")
