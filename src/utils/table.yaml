@@ -6,6 +6,7 @@ Transactor:
     - Individual
     - Organization
   required_attributes:
+    - id
     - transactor_type # Indivudual or Organization
 
   attributes:
@@ -71,9 +72,9 @@ Transaction:
     - donor_id
     - recipient_id
   forward_relations:
-    donor: Transactor
-    recipient: Transactor
-    reported_election: Election
+    donor_id: Transactor
+    recipient_id: Transactor
+    reported_election_id: Election
   repeating_columns:
     - date
     - amount
@@ -110,8 +111,8 @@ ElectionResult:
     - candidate_id
     - election_id
   forward_relations:
-    candidate: Individual
-    election: Election
+    candidate_id: Individual
+    election_id: Election
     
 Address:
   required_attributes:
@@ -139,7 +140,7 @@ Address:
     - known_later_address
     - transactor_id
   forward_relations:
-    transactor: Transactor
+    transactor_id: Transactor
 
 Membership:
   required_attributes:
@@ -155,8 +156,8 @@ Membership:
     - member_id
     - organization_id
   forward_relations:
-    member: Individual
-    organization: Organization
+    member_id: Individual
+    organization_id: Organization
 
 IdMap:
   required_attribute:
