@@ -127,6 +127,6 @@ Tables may have the following keys:
 - enum_columns (mapping where keys are attributes and values are lists of strings): has keys that are names of table attributes that maps to a list of valid values for that attribute
 - repeating_columns (list of attributes): columns that may have repeated columns in a raw dataset
 - forward_relations (mapping where keys are attributes and values are table names): has keys that are names of table attribut that map to TODO. These should end with '_id'
-- multivalued_columns (mapping where keys are strings and values are table names): has keys that are names of table attributes that map to TODO. These columns do not have  
+- reverse_relations (mapping where keys are strings and values are table names): has keys that are names of table attributes that map to TODO. These columns do not have  
 
 *Note on inheritence: A given table may have its own attributes, any attributes of any parent types (and parents of parent types, etc), or attributes of children (and children of children, etc.).

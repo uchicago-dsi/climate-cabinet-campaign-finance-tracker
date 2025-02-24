@@ -65,19 +65,17 @@ class TableSchema:
         return self.property_cache[self.inheritance_strategy]["repeating_columns_regex"]
 
     @property
-    def multivalued_columns(self) -> dict[str, Self]:
+    def reverse_relations(self) -> dict[str, Self]:
         """Columns that may have multiple values for an instance of the entity type
 
         For example, an individual may have multiple addresses or employers
         """
-        return self.property_cache[self.inheritance_strategy]["multivalued_columns"]
+        return self.property_cache[self.inheritance_strategy]["reverse_relations"]
 
     @property
-    def multivalued_columns_regex(self) -> re.Pattern:
+    def reverse_relations_regex(self) -> re.Pattern:
         """Full regex to match any multivalued columns"""
-        return self.property_cache[self.inheritance_strategy][
-            "multivalued_columns_regex"
-        ]
+        return self.property_cache[self.inheritance_strategy]["reverse_relations_regex"]
 
     def _get_regex(self, attribute_list: list[str]) -> re.Pattern:
         # add unmatchable regex so that empty list don't compile to '' which matches
@@ -141,7 +139,7 @@ class TableSchema:
             ("enum_columns", "dict"),
             ("repeating_columns", "list"),
             ("forward_relations", "dict"),
-            ("multivalued_columns", "dict"),
+            ("reverse_relations", "dict"),
         ]
         for inheritance_strategy in self.property_cache.keys():
             for property_type, property_value_type in class_properties:
@@ -150,7 +148,7 @@ class TableSchema:
                         property_type, property_value_type, inheritance_strategy
                     )
                 )
-                if property_type in ["forward_relations", "multivalued_columns"]:
+                if property_type in ["forward_relations", "reverse_relations"]:
                     self.property_cache[inheritance_strategy][
                         f"{property_type}_regex"
                     ] = self._get_regex(
@@ -273,7 +271,7 @@ class DataSchema:
                 )
             )
             errors.extend(
-                self._validate_multivalued_columns(table_name, table_def, table_names)
+                self._validate_reverse_relations(table_name, table_def, table_names)
             )
             errors.extend(
                 self._validate_attribute_consistency(table_name, table_def, attributes)
@@ -327,14 +325,14 @@ class DataSchema:
 
         return errors
 
-    def _validate_multivalued_columns(
+    def _validate_reverse_relations(
         self, table_name: str, table_def: dict, table_names: set
     ) -> list[str]:
-        """Ensures all multivalued_columns values point to existing tables"""
+        """Ensures all reverse_relations values point to existing tables"""
         errors = []
-        multivalued_columns = table_def.get("multivalued_columns", {})
+        reverse_relations = table_def.get("reverse_relations", {})
 
-        for column, related_table in multivalued_columns.items():
+        for column, related_table in reverse_relations.items():
             if related_table not in table_names:
                 errors.append(
                     f"Error in {table_name}: multivalued column '{column}' points to '{related_table}', which does not exist."

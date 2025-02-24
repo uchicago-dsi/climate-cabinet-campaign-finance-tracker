@@ -14,7 +14,7 @@ def sample_schemas():
             Person:
               attributes: ["id", "name", "age", "gender", "phone"]
               repeating_columns: ["phone"]
-              multivalued_columns:
+              reverse_relations:
                 address: "Address"
               enum_columns:
                 gender: ["Male", "Female", "Other"]
