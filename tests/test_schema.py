@@ -161,16 +161,18 @@ def test_enum_columns(schema_instance, expected_enum):
 
 
 @pytest.mark.parametrize(
-    "schema_instance,expected_relations",
+    "schema_instance,inheritance_strategy,expected_relations",
     [
-        (("complete", "Student"), {"homeroom_id": "Class"}),
-        (("complete", "Person"), {"homeroom_id": "Class"}),
-        (("complete", "Address"), {"person_id": "Person"}),
-        (("complete", "Class"), {"teacher_id": "Teacher"}),
+        (("complete", "Student"), "single table inheritance", {"homeroom_id": "Class"}),
+        (("complete", "Person"), "single table inheritance", {"homeroom_id": "Class"}),
+        (("complete", "Address"), "single table inheritance", {"person_id": "Person"}),
+        (("complete", "Class"), "single table inheritance", {"teacher_id": "Person"}),
+        (("complete", "Class"), "class table inheritance", {"teacher_id": "Teacher"}),
     ],
     indirect=["schema_instance"],
 )
-def test_forward_relations(schema_instance, expected_relations):
+def test_forward_relations(schema_instance, inheritance_strategy, expected_relations):
+    schema_instance.inheritance_strategy = inheritance_strategy
     assert schema_instance.forward_relations == expected_relations
 
 

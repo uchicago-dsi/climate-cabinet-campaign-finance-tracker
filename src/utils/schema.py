@@ -73,6 +73,14 @@ class TableSchema:
         return self.property_cache[self.inheritance_strategy]["reverse_relations"]
 
     @property
+    def relations(self) -> dict[str, Self]:
+        """List of columns that are either forward or reverse relations"""
+        return {
+            **self.property_cache[self.inheritance_strategy]["forward_relations"],
+            **self.property_cache[self.inheritance_strategy]["reverse_relations"],
+        }
+
+    @property
     def reverse_relations_regex(self) -> re.Pattern:
         """Full regex to match any multivalued columns"""
         return self.property_cache[self.inheritance_strategy]["reverse_relations_regex"]
@@ -145,7 +153,10 @@ class TableSchema:
             for property_type, property_value_type in class_properties:
                 self.property_cache[inheritance_strategy][property_type] = (
                     self._fill_properties(
-                        property_type, property_value_type, inheritance_strategy
+                        property_type,
+                        property_value_type,
+                        inheritance_strategy,
+                        data_schema,
                     )
                 )
                 if property_type in ["forward_relations", "reverse_relations"]:
@@ -172,7 +183,11 @@ class TableSchema:
         self._parent_type = self.data_schema[table_type].get("parent_type", None)
 
     def _fill_properties(
-        self, property_name: str, property_type: str, inheritance_strategy: str
+        self,
+        property_name: str,
+        property_type: str,
+        inheritance_strategy: str,
+        data_schema: dict,
     ) -> list | dict:
         """Calculate properties from given data schema"""
         if property_type not in {"list", "dict"}:
@@ -188,7 +203,7 @@ class TableSchema:
         )
 
         if inheritance_strategy == "class table inheritance":
-            return property_value  # No modifications needed
+            return property_value
 
         # Ensure we're working with a separate copy
         accumulated_values = (
@@ -221,6 +236,15 @@ class TableSchema:
                 accumulated_values.update(parent_value)
             else:
                 accumulated_values.update(parent_value)
+
+        if isinstance(accumulated_values, dict) and property_name != "enum_columns":
+            updated_values = {}
+            for key, related_table_type in accumulated_values.items():
+                if data_schema[related_table_type].get("parent_type", None):
+                    updated_values[key] = data_schema[related_table_type]["parent_type"]
+                else:
+                    updated_values[key] = related_table_type
+            accumulated_values = updated_values
 
         return (
             list(accumulated_values) if property_type == "list" else accumulated_values
