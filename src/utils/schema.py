@@ -313,7 +313,7 @@ class DataSchema:
         forward_relations = table_def.get("forward_relations", {})
 
         for relation_key, relation_value in forward_relations.items():
-            if relation_key not in attributes:
+            if f"{relation_key}_id" not in attributes:
                 errors.append(
                     f"Error in {table_name}: forward_relation key '{relation_key}' must be an attribute."
                 )

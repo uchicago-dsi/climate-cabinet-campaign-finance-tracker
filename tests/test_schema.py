@@ -31,19 +31,19 @@ def sample_schemas():
               enum_columns:
                 grade: ["Freshman", "Sophomore", "Junior", "Senior"]
               forward_relations:
-                homeroom_id: Class
+                homeroom: Class
 
             Address:
               attributes: ["line_1", "line_2", "city", "state", "zipcode", "person_id"]
               required_attributes: ["person_id"]
               forward_relations:
-                person_id: "Person"
+                person: "Person"
 
             Class:
               required_attributes: ["id"]
               attributes: ["id", "subject", "teacher_id"]
               forward_relations:
-                teacher_id: Teacher
+                teacher: Teacher
         """),
         "missing_attribute_key": yaml.safe_load("""
             Person:
@@ -163,11 +163,11 @@ def test_enum_columns(schema_instance, expected_enum):
 @pytest.mark.parametrize(
     "schema_instance,inheritance_strategy,expected_relations",
     [
-        (("complete", "Student"), "single table inheritance", {"homeroom_id": "Class"}),
-        (("complete", "Person"), "single table inheritance", {"homeroom_id": "Class"}),
-        (("complete", "Address"), "single table inheritance", {"person_id": "Person"}),
-        (("complete", "Class"), "single table inheritance", {"teacher_id": "Person"}),
-        (("complete", "Class"), "class table inheritance", {"teacher_id": "Teacher"}),
+        (("complete", "Student"), "single table inheritance", {"homeroom": "Class"}),
+        (("complete", "Person"), "single table inheritance", {"homeroom": "Class"}),
+        (("complete", "Address"), "single table inheritance", {"person": "Person"}),
+        (("complete", "Class"), "single table inheritance", {"teacher": "Person"}),
+        (("complete", "Class"), "class table inheritance", {"teacher": "Teacher"}),
     ],
     indirect=["schema_instance"],
 )
