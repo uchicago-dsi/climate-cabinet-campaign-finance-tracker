@@ -73,6 +73,11 @@ class TableSchema:
         return self.property_cache[self.inheritance_strategy]["reverse_relations"]
 
     @property
+    def reverse_relation_names(self) -> dict[str, Self]:
+        """For each reverse relation, the name of the backlink to this table"""
+        return self.property_cache[self.inheritance_strategy]["reverse_relation_names"]
+
+    @property
     def relations(self) -> dict[str, Self]:
         """List of columns that are either forward or reverse relations"""
         return {
@@ -101,7 +106,7 @@ class TableSchema:
     @property
     def forward_relations_regex(self) -> re.Pattern:
         """Full regex to match any forward relation columns"""
-        return self._forward_relations_regex
+        return self.property_cache[self.inheritance_strategy]["forward_relations_regex"]
 
     @property
     def enum_columns(self) -> dict[str, list]:
@@ -148,6 +153,7 @@ class TableSchema:
             ("repeating_columns", "list"),
             ("forward_relations", "dict"),
             ("reverse_relations", "dict"),
+            ("reverse_relation_names", "dict"),
         ]
         for inheritance_strategy in self.property_cache.keys():
             for property_type, property_value_type in class_properties:
@@ -237,7 +243,10 @@ class TableSchema:
             else:
                 accumulated_values.update(parent_value)
 
-        if isinstance(accumulated_values, dict) and property_name != "enum_columns":
+        if isinstance(accumulated_values, dict) and property_name in [
+            "reverse_relations",
+            "forward_relations",
+        ]:
             updated_values = {}
             for key, related_table_type in accumulated_values.items():
                 if data_schema[related_table_type].get("parent_type", None):
@@ -359,7 +368,13 @@ class DataSchema:
         for column, related_table in reverse_relations.items():
             if related_table not in table_names:
                 errors.append(
-                    f"Error in {table_name}: multivalued column '{column}' points to '{related_table}', which does not exist."
+                    f"Error in {table_name}: reverse relation column '{column}' points to '{related_table}', which does not exist."
+                )
+            if column not in table_def.get("reverse_relation_names", {}):
+                errors.append(
+                    f"Error in {table_name}: reverse relation column '{column}' does "
+                    "not have an entry in 'reverse_relation_names'. This is needed to "
+                    "detect which column refers back to this table when normalizing"
                 )
 
         return errors

@@ -29,6 +29,8 @@ Transactor:
       - Party
   reverse_relations:
     address: Address
+  reverse_relation_names:
+    address: transactor_id
 
 Individual:
   parent_type: Transactor
@@ -44,6 +46,9 @@ Individual:
   reverse_relations:
     employer: Membership
     election_result: ElectionResult
+  reverse_relation_names:
+    employer: member_id
+    election_result: candidate_id
 
 Organization:
   parent_type: Transactor

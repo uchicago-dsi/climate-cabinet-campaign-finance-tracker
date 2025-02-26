@@ -128,5 +128,6 @@ Tables may have the following keys:
 - repeating_columns (list of attributes): columns that may have repeated columns in a raw dataset
 - forward_relations (mapping where keys are attributes and values are table names): has keys that are names of table attributes with '_id' suffix removed that map to TODO. 
 - reverse_relations (mapping where keys are strings and values are table names): has keys that are names of table attributes that map to TODO. These columns do not have  
+- reverse_relation_names (mapping where keys are strings in reverse_relations and values are strings in the forward_relations of the table this column refers to): every entry in reverse_relations must have an entry here. This is to disambiguate which columns refer to which reverse relations
 
 *Note on inheritence: A given table may have its own attributes, any attributes of any parent types (and parents of parent types, etc), or attributes of children (and children of children, etc.).

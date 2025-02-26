@@ -16,6 +16,8 @@ def sample_schemas():
               repeating_columns: ["phone"]
               reverse_relations:
                 address: "Address"
+              reverse_relation_names:
+                address: "person_id"
               enum_columns:
                 gender: ["Male", "Female", "Other"]
               required_attributes: ["id", "name"]
@@ -65,6 +67,16 @@ def sample_schemas():
               attributes: ["id", "homeroom_id", "name"]
               forward_relations:
                 homeroom_id: Class
+        """),
+        "missing_reverse_relation_name": yaml.safe_load("""
+            Person:
+              attributes: ["id", "name"]
+              reverse_relations:
+                address: "Address"
+            Address:
+              attributes: ["city", "state", "person_id"]
+              forward_relations:
+                person_id: "Person"
         """),
     }
 
@@ -177,6 +189,33 @@ def test_forward_relations(schema_instance, inheritance_strategy, expected_relat
 
 
 @pytest.mark.parametrize(
+    "schema_instance,inheritance_strategy,expected_relations,expected_relation_names",
+    [
+        (
+            ("complete", "Student"),
+            "single table inheritance",
+            {"address": "Address"},
+            {"address": "person_id"},
+        ),
+        (
+            ("complete", "Person"),
+            "single table inheritance",
+            {"address": "Address"},
+            {"address": "person_id"},
+        ),
+        (("complete", "Student"), "class table inheritance", {}, {}),
+    ],
+    indirect=["schema_instance"],
+)
+def test_reverse_relations(
+    schema_instance, inheritance_strategy, expected_relations, expected_relation_names
+):
+    schema_instance.inheritance_strategy = inheritance_strategy
+    assert schema_instance.reverse_relations == expected_relations
+    assert schema_instance.reverse_relation_names == expected_relation_names
+
+
+@pytest.mark.parametrize(
     "schema_instance,expected_parent",
     [
         (("complete", "Teacher"), "Person"),
@@ -275,3 +314,14 @@ def test_invalid_table_type(complete_data_schema_data, tmp_path):
     sample_data_schema = DataSchema(schema_file)
     with pytest.raises(KeyError):
         TableSchema(sample_data_schema.raw_data_schema, "InvalidType")
+
+
+def test_missing_reverse_relation_name(sample_schemas, tmp_path):
+    """Test if reverse relation name is missing"""
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text(yaml.dump(sample_schemas["missing_reverse_relation_name"]))
+
+    with pytest.raises(ValueError) as excinfo:
+        DataSchema(schema_file)
+
+    assert "reverse relation column 'address' does not have an entry in 'reverse_relation_names'", excinfo
