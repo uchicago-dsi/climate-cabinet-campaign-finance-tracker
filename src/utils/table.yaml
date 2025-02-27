@@ -96,8 +96,6 @@ Transaction:
 Election:
   required_attributes:
     - year
-    - district
-    - office_sought
     - state
   attributes:
     - id
