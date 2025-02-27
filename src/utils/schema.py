@@ -272,6 +272,19 @@ class DataSchema:
                 self._schema[table_type] = TableSchema(self.raw_data_schema, table_type)
         return self._schema
 
+    @property
+    def inheritance_strategy(self) -> str:
+        """How to handle inherited connections between tables"""
+        return self._inheritance_strategy
+
+    @inheritance_strategy.setter
+    def inheritance_strategy(self, strategy: str) -> None:
+        if strategy not in {"single table inheritance", "class table inheritance"}:
+            raise ValueError("Invalid inheritance strategy")
+        self._inheritance_strategy = strategy
+        for table in self.schema:
+            self.schema[table].inheritance_strategy = strategy
+
     def empty_database(self) -> dict[str, list]:
         """Returns an empty database of the given schema"""
         return {table_type: [] for table_type in self.schema.keys()}
@@ -279,6 +292,7 @@ class DataSchema:
     def __init__(self, path_to_data_schema: Path | str) -> None:
         """Representation of a single table"""
         self._schema = None
+        self._inheritance_strategy = "single table inheritance"
         with Path(path_to_data_schema).open("r") as f:
             self.raw_data_schema = yaml.safe_load(f)
 
