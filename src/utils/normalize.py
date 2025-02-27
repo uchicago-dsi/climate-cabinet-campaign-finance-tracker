@@ -43,69 +43,6 @@ SPLIT = "--"
 ID_SUFFIX = "_id"
 
 
-def calculate_nested_normalization_status(
-    table: pd.DataFrame, table_type: str, data_schema: DataSchema
-) -> tuple[dict[int, dict[str, str]], int]:
-    """Return normalization level of each column of table, and table as a whole
-
-    Args:
-        table: a table that should fit the given data_schema for its table_type
-        table_type: TODO
-        data_schema: TODO
-
-    Returns:
-        dict mapping normalization level flag to a list of tuples representing
-            columns in this table that are of that normalization level.
-            Columns for derivative tables of this table may be present in deep
-            nesting structures so this mapping includes all column fragments
-            (strings of column tokens, where column tokens are pieces of text
-            separated by a separator '--').
-    """
-    normalization_level = THIRD_NORMAL_FORM_FLAG
-    columns_by_normalization_level = {
-        THIRD_NORMAL_FORM_FLAG: {},
-        FIRST_NORMAL_FORM_FLAG: {},
-        UNNORMALIZED_FLAG: {},  # any repeating columns must be leafs
-    }
-    for column in table.columns:
-        token_table_schema = data_schema.schema[table_type]
-        column_tokens = column.split(SPLIT)
-        running_tokens = ()
-        for column_token in column_tokens:
-            running_tokens += (column_token,)
-
-            if token_table_schema.repeating_columns_regex.match(column_token):
-                columns_by_normalization_level[UNNORMALIZED_FLAG].update(
-                    {SPLIT.join(running_tokens): None}
-                )
-                normalization_level = min(UNNORMALIZED_FLAG, normalization_level)
-            elif token_table_schema.forward_relations_regex.match(
-                column_token
-            ) or token_table_schema.reverse_relations_regex.match(column_token):
-                # find the relation type
-                for (
-                    relation,
-                    relation_type,
-                ) in token_table_schema.relations.items():
-                    if relation == column_token:
-                        columns_by_normalization_level[FIRST_NORMAL_FORM_FLAG].update(
-                            {SPLIT.join(running_tokens): relation_type}
-                        )
-                        token_table_schema = data_schema.schema[relation_type]
-                        break  # relation type found, continue
-                normalization_level = min(FIRST_NORMAL_FORM_FLAG, normalization_level)
-            elif token_table_schema.attributes_regex.match(column_token):
-                columns_by_normalization_level[THIRD_NORMAL_FORM_FLAG].update(
-                    {SPLIT.join(running_tokens): None}
-                )
-            else:
-                raise ValueError(
-                    f"Invalid Table: {column_token} in {column} not expected"
-                    f" in {token_table_schema.table_type}"
-                )
-    return columns_by_normalization_level, normalization_level
-
-
 def get_normalization_form_by_column(
     table: pd.DataFrame, table_schema: TableSchema
 ) -> dict[int, set]:
