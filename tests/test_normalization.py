@@ -3,10 +3,10 @@ from uuid import UUID
 import pandas as pd
 import pytest
 from utils.normalize import (
-    calculate_nested_normalization_status,
     convert_to_1NF_from_unnormalized,
     convert_to_3NF_from_1NF,
     convert_to_class_table_from_single_table,
+    get_normalization_form_by_column,
 )
 from utils.schema import DataSchema
 
@@ -387,55 +387,41 @@ def make_df_standard_for_testing(df: pd.DataFrame, columns: pd.Index) -> pd.Data
 
 def test_normalization_status_unnormalized(database_1_unnormalized, sample_schema):
     """Test normalization status of unnormalized database"""
-    transaction_result = calculate_nested_normalization_status(
-        database_1_unnormalized["Transaction"], "Transaction", sample_schema
+    transaction_result = get_normalization_form_by_column(
+        database_1_unnormalized["Transaction"], sample_schema.schema["Transaction"]
     )
-    transactor_result = calculate_nested_normalization_status(
-        database_1_unnormalized["Transactor"], "Transactor", sample_schema
+    transactor_result = get_normalization_form_by_column(
+        database_1_unnormalized["Transactor"].reset_index(),
+        sample_schema.schema["Transactor"],
     )
 
     expected_value = {
-        "Transaction": (
-            {
-                0: {
-                    "amount-1": None,
-                    "amount-2": None,
-                    "transaction_type-1": None,
-                    "transaction_type-2": None,
-                    "date-1": None,
-                    "date-2": None,
-                },
-                1: {
-                    "donor": "Transactor",
-                    "donor--address": "Address",
-                    "donor--employer": "Membership",
-                    "donor--employer--organization": "Transactor",
-                    "donor--employer--organization--address": "Address",
-                },
-                3: {
-                    "donor--full_name": None,
-                    "donor--address--city": None,
-                    "donor--address--state": None,
-                    "donor--employer--organization--full_name": None,
-                    "donor--employer--organization--address--city": None,
-                    "recipient_id": None,
-                },
+        "Transaction": {
+            0: {
+                "amount-1",
+                "amount-2",
+                "transaction_type-1",
+                "transaction_type-2",
+                "date-1",
+                "date-2",
             },
-            0,
-        ),
-        "Transactor": (
-            {
-                3: {
-                    "id": None,
-                    "first_name": None,
-                    "last_name": None,
-                    "full_name": None,
-                },
-                0: {},
-                1: {},
+            1: {
+                "donor",
             },
-            3,
-        ),
+            3: {
+                "recipient_id",
+            },
+        },
+        "Transactor": {
+            3: {
+                "id",
+                "first_name",
+                "last_name",
+                "full_name",
+            },
+            0: set(),
+            1: set(),
+        },
     }
     assert transaction_result == expected_value["Transaction"]
     assert transactor_result == expected_value["Transactor"]
@@ -443,51 +429,36 @@ def test_normalization_status_unnormalized(database_1_unnormalized, sample_schem
 
 def test_normalization_status_1NF(database_1_1NF, sample_schema):
     """Test normalization status of 1NF database"""
-    transaction_result = calculate_nested_normalization_status(
-        database_1_1NF["Transaction"], "Transaction", sample_schema
+    transaction_result = get_normalization_form_by_column(
+        database_1_1NF["Transaction"], sample_schema.schema["Transaction"]
     )
-    transactor_result = calculate_nested_normalization_status(
-        database_1_1NF["Transactor"], "Transactor", sample_schema
+    transactor_result = get_normalization_form_by_column(
+        database_1_1NF["Transactor"].reset_index(), sample_schema.schema["Transactor"]
     )
 
     expected_value = {
-        "Transaction": (
-            {
-                0: {},
-                1: {
-                    "donor": "Transactor",
-                    "donor--address": "Address",
-                    "donor--employer": "Membership",
-                    "donor--employer--organization": "Transactor",
-                    "donor--employer--organization--address": "Address",
-                },
-                3: {
-                    "donor--full_name": None,
-                    "donor--address--city": None,
-                    "donor--address--state": None,
-                    "donor--employer--organization--full_name": None,
-                    "donor--employer--organization--address--city": None,
-                    "recipient_id": None,
-                    "amount": None,
-                    "transaction_type": None,
-                    "date": None,
-                },
+        "Transaction": {
+            0: set(),
+            1: {
+                "donor",
             },
-            1,
-        ),
-        "Transactor": (
-            {
-                3: {
-                    "id": None,
-                    "first_name": None,
-                    "last_name": None,
-                    "full_name": None,
-                },
-                0: {},
-                1: {},
+            3: {
+                "recipient_id",
+                "amount",
+                "transaction_type",
+                "date",
             },
-            3,
-        ),
+        },
+        "Transactor": {
+            3: {
+                "id",
+                "first_name",
+                "last_name",
+                "full_name",
+            },
+            0: set(),
+            1: set(),
+        },
     }
     assert transaction_result == expected_value["Transaction"]
     assert transactor_result == expected_value["Transactor"]
