@@ -115,6 +115,20 @@ def convert_to_1NF_from_unnormalized(
     ]
     if repeated_columns == []:
         return unnormalized_table
+    for column in repeated_columns:
+        base_column_name = column.split("-")[0]
+        if base_column_name in unnormalized_table.columns:
+            # base table has col and col-1. Replace col with col-{n+1}
+            max_repeat = max(
+                [
+                    int(col.split("-")[-1])
+                    for col in repeated_columns
+                    if col.startswith(base_column_name)
+                ]
+            )
+            unnormalized_table = unnormalized_table.rename(
+                columns={base_column_name: f"{base_column_name}-{max_repeat + 1}"}
+            )
     unnormalized_table.loc[:, "temp_id"] = range(0, len(unnormalized_table))
     static_columns = [
         column
@@ -353,7 +367,7 @@ def _consolidate_database(
 
 
 def normalize_database(
-    database: dict[str, list[pd.DataFrame]],
+    database: dict[str, pd.DataFrame],
     schema: DataSchema,
 ) -> dict[str, pd.DataFrame]:
     """Bring a database to 4NF given the provided schema
@@ -368,12 +382,9 @@ def normalize_database(
     # bring to 1NF
     database_1NF = {}
     for table_type in database:
-        database_1NF[table_type] = []
-        for table in database[table_type]:
-            table_1NF = convert_to_1NF_from_unnormalized(
-                table, schema.schema[table_type].repeating_columns_regex
-            )
-            database_1NF[table_type].append(table_1NF)
+        database_1NF[table_type] = convert_to_1NF_from_unnormalized(
+            database[table_type], schema.schema[table_type]
+        )
 
     # bring to 3NF
     database_3NF = convert_to_3NF_from_1NF(

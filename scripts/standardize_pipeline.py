@@ -4,6 +4,7 @@ import argparse
 
 from utils.constants import BASE_FILEPATH
 from utils.finance.pipeline import standardize_states
+from utils.io import save_database_to_csv
 
 parser = argparse.ArgumentParser()
 
@@ -36,6 +37,4 @@ organizations_output_path = output_directory / "organizations_table-*.csv"
 transactions_output_path = output_directory / "transactions_table-*.csv"
 id_table_output_path = output_directory / "id_map-*.csv"
 database = standardize_states(states=states)
-for table_type in database:
-    database[table_type].to_csv(output_directory / f"{table_type}.csv")
-print("pipeline finished and save data to csv.")
+save_database_to_csv(database, output_directory)
