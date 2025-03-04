@@ -26,6 +26,7 @@ def sample_config(tmp_path):
             "read_csv_params": {"sep": ",", "encoding": "latin-1"},
             "duplicate_columns": {"CYCLE": "REPORT_CYCLE"},
             "new_empty_columns": ["additional_column"],
+            "state_code_columns": ["reported_election--state"],
             "state_code": "NY",
             "table_type": "Transaction",
             "path_pattern": "(?i)^(19[0-9][0-9]|20[0-1][0-9]|2020|2021)/contrib.*\\.txt$",
@@ -173,6 +174,11 @@ def test_duplicate_columns(sample_config):
 def test_new_empty_columns(sample_config):
     handler = ConfigHandler("contributions", config_file_path=sample_config)
     assert handler.new_empty_columns == ["additional_column"]
+
+
+def test_state_code_columns(sample_config):
+    handler = ConfigHandler("contributions", config_file_path=sample_config)
+    assert handler.state_code_columns == ["reported_election--state"]
 
 
 def test_invalid_form_code(sample_config):

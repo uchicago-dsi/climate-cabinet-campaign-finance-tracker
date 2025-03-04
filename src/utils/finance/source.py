@@ -70,6 +70,8 @@ class SchemaTransformer:
         self.relevant_columns = config_handler.relevant_columns
         self.duplicate_columns = config_handler.duplicate_columns
         self.new_empty_columns = config_handler.new_empty_columns
+        self.state_code_columns = config_handler.state_code_columns
+        self.state_code = config_handler.state_code
 
     def _rename_columns(self, standard_data_table: pd.DataFrame) -> pd.DataFrame:
         """Rename columns"""
@@ -94,6 +96,12 @@ class SchemaTransformer:
         """Add new blank columns TODO: is this ever really needed?"""
         for column in self.new_empty_columns:
             standard_data_table[column] = None
+        return standard_data_table
+
+    def _add_state_code(self, standard_data_table: pd.DataFrame) -> pd.DataFrame:
+        """Add state code to relevent columns"""
+        for column in self.state_code_columns:
+            standard_data_table[column] = self.state_code
         return standard_data_table
 
     def standardize_schema(self, raw_data_table: pd.DataFrame) -> pd.DataFrame:

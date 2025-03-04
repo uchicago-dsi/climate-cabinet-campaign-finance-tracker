@@ -113,6 +113,11 @@ class ConfigHandler:
         return self._new_empty_columns
 
     @property
+    def state_code_columns(self) -> list[str]:
+        """Names of columns that should be added with all rows containing state code"""
+        return self._state_code_columns
+
+    @property
     def enum_mapper(self) -> dict[dict[str, str]]:
         """Maps enum column names to mappings of raw values to standard values"""
         return self._enum_mapper
@@ -186,6 +191,7 @@ class ConfigHandler:
         self._read_csv_params = form_config.get("read_csv_params", {})
         self._duplicate_columns = form_config.get("duplicate_columns", {})
         self._new_empty_columns = form_config.get("new_empty_columns", [])
+        self._state_code_columns = form_config.get("state_code_columns", [])
         self._state_code = form_config.get("state_code", state_code)
         self._table_type = form_config.get("table_type")
         self._raw_data_path_pattern = form_config.get("path_pattern")

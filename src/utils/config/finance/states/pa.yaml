@@ -8,11 +8,7 @@ base:
 
 contributions:
   inherits: base
-  table_type: transaction
-  duplicate_columns:
-    reported_election--year: 
-      - recipient--election_result--election--year
-  
+  table_type: Transaction
   column_details:
     - raw_name: CampaignFinanceID
       type: str
@@ -116,6 +112,8 @@ contributions:
     - raw_name: CONTDESC
       type: str
       standard_name: description
+  state_code_columns:
+    - reported_election--state
   
 contributions_post_2023:
   inherits: contributions
@@ -132,7 +130,7 @@ contributions_2023:
 
 
 contributions_through_2022:
-  inherits: base
+  inherits: contributions 
   column_order:
     - FILERID
     - EYEAR
@@ -161,7 +159,8 @@ contributions_through_2022:
  
 
   valid_years: 2010:2022
-  path_pattern: "(?i)^(19[0-9][0-9]|20[0-1][0-9]|2020|2021)/contrib.*\\.txt$"
+  # path_pattern: "(?i)^(19[0-9][0-9]|20[0-1][0-9]|2020|2021)/contrib.*\\.txt$"
+  path_pattern: "(?i)^(2021)/contrib.*\\.txt$"
 
 
 filer:
@@ -181,6 +180,7 @@ filer:
       SPR: Judge # superior
       CCJ: Judge # commonwealth
       CPJ: Judge # common pleas
+      CPJA: Judge # unlisted
       MCJ: Judge # municipal
       TCJ: Judge # traffic
       PH1: Mayor # philly
@@ -192,9 +192,9 @@ filer:
       PH7: Misc. City # clerk of quarter sessions, philly
 
     transactor_type:
-      1: Candidate
-      2: Committee
-      3: Unknown
+      "1": Candidate
+      "2": Committee
+      "3": Unknown # lobbyist, could be pac or ind
 
     party:
       DEM: Democratic Party
@@ -334,9 +334,6 @@ filer_2023:
 expense:
   inherits: base
   table_type: Transaction
-  duplicate_columns:
-    reported_election--year:
-      - donor--election_result--election--year
   column_details:
     - raw_name: CampaignFinanceID
       type: str
@@ -391,10 +388,13 @@ expense:
     - raw_name: EXPDESC
       type: str
       standard_name: description
+  state_code_columns:
+    - reported_election--state
 
 expense_through_2022:
   inherits: expense
-  path_pattern: "(?i)^(19[0-9][0-9]|20[0-1][0-9]|2020|2021)/expense.*\\.txt$"
+  # path_pattern: "(?i)^(19[0-9][0-9]|20[0-1][0-9]|2020|2021)/expense.*\\.txt$"
+  path_pattern: "(?i)^(2021)/expense.*\\.txt$"
   column_order:
     - FILERID
     - EYEAR

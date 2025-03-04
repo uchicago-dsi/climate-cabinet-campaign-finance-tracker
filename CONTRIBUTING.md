@@ -123,6 +123,8 @@ Both first level keys have the same set of subkeys:
 - column_order: list of columns in the order they appear in the data format. If not provided, will default to the order in column_properties.
 - duplicate_columns:
     - map of standard column names to list of additional columns that should be copies of them
+- state_code_columns:
+    - list of columns to add to table with each row containing the state code. If this data is mixed with other states, we'll want to be able to know that the data pertains to this state.
 - enum_mapper:
     - keys are names of standardized column names and map to mappings of raw values to standard values for a given enum.
     - if additional keys generated that are enums, their names should be listed here as well. 
