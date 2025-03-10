@@ -374,6 +374,53 @@ def database_1_3NF_CTI() -> dict[str, pd.DataFrame]:
     }
 
 
+@pytest.fixture
+def database_2_1NF() -> dict[str, pd.DataFrame]:
+    """Database in 1NF result of merging transactions with donor and recipient info"""
+    return {
+        "Transaction": pd.DataFrame(
+            {
+                "recipient_id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                    None,
+                    None,
+                    None,
+                ],
+                "recipient--full_name": [
+                    None,
+                    None,
+                    "Fake Name",
+                    "Sample Name",
+                    "Sample Name",
+                ],
+                "recipient--address--line_1": [
+                    None,
+                    None,
+                    "123 Main St.",
+                    "345 First Ave.",
+                    "345 First Ave.",
+                ],
+                "amount": [
+                    45,
+                    32,
+                    25.34,
+                    103.40,
+                    143,
+                ],
+                "date": [
+                    "2023-01-12",
+                    "2022-03-05",
+                    "2024-07-30",
+                    "2023-01-23",
+                    "2023-01-23",
+                ],
+                "recipient--election_result--election--year": [],
+            }
+        )
+    }
+
+
 def make_df_standard_for_testing(df: pd.DataFrame, columns: pd.Index) -> pd.DataFrame:
     """Sort df by columns and reset index to facilitate testing
 
