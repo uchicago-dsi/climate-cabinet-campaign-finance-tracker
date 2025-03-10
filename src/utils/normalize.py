@@ -24,10 +24,9 @@ includes:
 #     immediately normalizing.
 """
 
-import uuid
-
 import pandas as pd
 
+from utils.ids import add_uuids_to_table
 from utils.schema import DataSchema, TableSchema
 
 UNNORMALIZED_FLAG = 0
@@ -228,10 +227,14 @@ def _split_prefixed_columns(
     extracted_table_type = get_foreign_table_type(table_type, relation_prefix, schema)
     extracted_table_schema = schema.schema[extracted_table_type]
     required_columns = extracted_table_schema.required_attributes
-    present_required_columns = [
-        col for col in extracted_table.columns if col in required_columns
-    ]
-    extracted_table = extracted_table.dropna(subset=present_required_columns)
+    if not set(required_columns).issubset(extracted_table.columns):
+        extracted_table = pd.DataFrame()
+        print(
+            f"Extracted table {extracted_table_type} from table {table_type} lacks"
+            " required columns: "
+            f"{set(required_columns).difference(set(extracted_table.columns))}"
+        )
+    extracted_table = extracted_table.dropna(subset=required_columns)
     # step 4 - drop duplicates - deduplication
     extracted_table = extracted_table.drop_duplicates()
     # step 5 - generate ids if the extracted table has an id column
@@ -239,10 +242,7 @@ def _split_prefixed_columns(
         "id" not in extracted_table.columns
         and "id" in extracted_table_schema.attributes
     ):
-        # we want an id for the given table but none exists TODO: the below code should be a function somewhere (repeat in DataSource)
-        extracted_table.loc[:, "id"] = extracted_table.apply(
-            lambda _: str(uuid.uuid4()), axis=1
-        )
+        extracted_table = add_uuids_to_table(extracted_table, "id")
     elif "id" in extracted_table.columns:
         print("id found")
         # TODO: map existing ids to new ids
