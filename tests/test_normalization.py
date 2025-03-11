@@ -20,7 +20,7 @@ def sample_schema(tmp_path):
     schema_yaml = """
     Transactor:
       child_types: ["Individual", "Organization"]
-      required_attributes: ["id", "transactor_type"]
+      required_attributes: ["id"]
       attributes: ["id", "full_name", "transactor_type_specific", "transactor_type", "phone_number"]
       enum_columns:
         transactor_type: ["Individual", "Organization"]

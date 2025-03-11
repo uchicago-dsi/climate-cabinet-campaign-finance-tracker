@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils.ids import add_uuids_to_table
+from utils.ids import handle_id_column
 from utils.schema import DataSchema, TableSchema
 
 UNNORMALIZED_FLAG = 0
@@ -198,7 +198,8 @@ class Normalizer:
         ]
         if f"{foreign_key_prefix}{SPLIT}{backlink_column}" not in table.columns:
             # this means the required column doesn't exist so we should
-            # create it
+            # create it. Since ids are handled upon table createion, we table
+            # must have a valid "id" column
             backlink_column = f"{foreign_key_prefix}{SPLIT}{backlink_column}"
             table.loc[:, backlink_column] = table["id"]
 
@@ -212,24 +213,11 @@ class Normalizer:
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Remove columns starting with prefix from table, optionally keeping foreign key
 
-        Steps:
-            0. If reverse relation, add to extracted table references back to base table
-            1. identify columns that are part of foreign table
-            2. create new table with all columns of foreign table
-            3. drop all rows that are missing required attributes for their data type
-            4. drop all rows that are complete duplicates
-            5. assign id to foreign table
-            6. if 3nf flag, map id to base table
-
         Args:
             table: any pandas dataframe
             table_type: table type present in schema
             relation_prefix: prefix of columns to be split from table. prefix should be in one of
                 self.forward_relations or self.reverse_relations
-            normalization_flag: the desired normalization level
-
-        ASSUMPTIONS:
-            table has an 'id' column
         Returns: original table with columns removed, new foreign table
         """
         # step 0 - handle reverse relations
@@ -258,7 +246,9 @@ class Normalizer:
             table_type, relation_prefix, self.schema
         )
         extracted_table_schema = self.schema.schema[extracted_table_type]
-        required_columns = extracted_table_schema.required_attributes
+        required_columns = set(extracted_table_schema.required_attributes).difference(
+            ["id"]
+        )
         if not set(required_columns).issubset(extracted_table.columns):
             extracted_table = pd.DataFrame()
             print(
@@ -270,16 +260,9 @@ class Normalizer:
         # step 4 - drop duplicates - deduplication
         extracted_table = extracted_table.drop_duplicates()
         # step 5 - generate ids if the extracted table has an id column
-        if (
-            "id" not in extracted_table.columns
-            and "id" in extracted_table_schema.attributes
-        ):
-            extracted_table = add_uuids_to_table(extracted_table, "id")
-        elif "id" in extracted_table.columns:
-            print("id found")
-            # TODO: map existing ids to new ids
-            # TODO: replace NaNs with real ids
-            foreign_columns_in_foreign_table.remove("id")
+        handle_id_column(
+            extracted_table, extracted_table_schema, self.id_mapping, id_column="id"
+        )
         # step 6 - add relation
         if relation_prefix in self.schema.schema[table_type].forward_relations:
             mapping_dict = extracted_table.set_index(foreign_columns_in_foreign_table)[
@@ -333,14 +316,13 @@ class Normalizer:
             # this is where the heavy lifting is done and a new foreign table
             # is created derived from the columns that did not belong in base table
             active_table, extracted_table = self._split_prefixed_columns(
-                active_table, table_type, self.schema, first_column_token
+                active_table, table_type, first_column_token
             )
             # Step 4 - Recursive step. Bring the foreign derivative table to the
             # desired form and all ensuing derivative tables
             extracted_table_derived_database = self._convert_table_to_3NF_from_1NF(
                 extracted_table,
                 self.schema.schema[table_type].relations[first_column_token],
-                self.schema,
             )
             for derived_table_type in extracted_table_derived_database:
                 updated_database[derived_table_type].extend(
@@ -353,9 +335,7 @@ class Normalizer:
     def convert_to_3NF_from_1NF(self) -> None:
         """Converts database in first normal form (1NF) to third normal form (3NF)
 
-        Derivative tables are created when information exists in the given table
-        that should be placed in another table to attain the desired normalization
-        level. When this is done, the derivative table must also be normalized
+        When called, each table in self.database should have appropriate ids
 
         Args:
             first_normal_form_database: TODO: spec of database somewhere
@@ -376,7 +356,7 @@ class Normalizer:
                 normalized_database[normalized_table_type].extend(
                     updated_database[normalized_table_type]
                 )
-        normalized_database = self.consolidate_database(normalized_database)
+        normalized_database = self._consolidate_database(normalized_database)
         self.database = normalized_database
 
     def _consolidate_database(
@@ -394,32 +374,23 @@ class Normalizer:
             consolidated_database[table_type] = consolidated_table
         return consolidated_database
 
-    def normalize_database(
-        self,
-        database: dict[str, pd.DataFrame],
-        schema: DataSchema,
-    ) -> dict[str, pd.DataFrame]:
+    def normalize_database(self) -> dict[str, pd.DataFrame]:
         """Bring a database to 4NF given the provided schema
-
-        Args:
-            database: TODO probably a good place to spec database
-            schema: TODO
 
         Returns:
             dictionary mapping table types to respective tables
         """
+        # to start, ensure all ids are properly handled in the database
+        for table_type, table in self.database.items():
+            handle_id_column(table, self.schema.schema[table_type], self.id_mapping)
+            # TODO: handle for _id columns??
         # bring to 1NF
         database_1NF = {}
-        for table_type in database:
-            database_1NF[table_type] = self.convert_to_1NF_from_unnormalized(
-                database[table_type], schema.schema[table_type]
-            )
+        for table_type in self.database:
+            database_1NF[table_type] = self.convert_to_1NF_from_unnormalized(table_type)
 
         # bring to 3NF
-        database_3NF = self.convert_to_3NF_from_1NF(
-            database_1NF,
-            schema,
-        )
+        database_3NF = self.convert_to_3NF_from_1NF()
         return database_3NF
 
     def convert_to_class_table_from_single_table(
