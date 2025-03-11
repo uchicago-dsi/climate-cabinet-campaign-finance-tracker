@@ -81,26 +81,23 @@ def test_handle_id_column(sample_table):
     id_mapping = {
         (1, 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
     }
-    updated_table, updated_mapping = handle_id_column(
-        sample_table, mock_schema, id_mapping, "id"
-    )
+    handle_id_column(sample_table, mock_schema, id_mapping, "id")
 
     assert (
-        updated_mapping[(1, 2023, "CA", "tableA")]
-        == "11111111-1111-4111-8111-111111111111"
+        id_mapping[(1, 2023, "CA", "tableA")] == "11111111-1111-4111-8111-111111111111"
     ), "Old mappings should remain"
-    new_mappings = 2
+    expected_id_mapping_length = 2
     assert re.match(
-        UUID4_REGEX, updated_mapping[("invalid_uuid", 2022, "NY", "tableA")]
+        UUID4_REGEX, id_mapping[("invalid_uuid", 2022, "NY", "tableA")]
     ), "New mappings should be uuids"
-    assert len(updated_mapping) == new_mappings, "No extra new mappings"
+    assert len(id_mapping) == expected_id_mapping_length, "No extra new mappings"
 
     assert (
-        updated_table.loc[2, "id"] == "550e8400-e29b-41d4-a716-446655440000"
+        sample_table.loc[2, "id"] == "550e8400-e29b-41d4-a716-446655440000"
     ), "Exising ids should be unchanged"
     assert re.match(
-        UUID4_REGEX, updated_table.loc[3, "id"]
+        UUID4_REGEX, sample_table.loc[3, "id"]
     ), "Nans in provided table should become uuids"
     assert (
-        updated_table["id"].str.match(UUID4_REGEX).all()
+        sample_table["id"].str.match(UUID4_REGEX).all()
     ), "All ids should now be uuids"

@@ -105,7 +105,7 @@ def handle_id_column(
     table_schema: TableSchema,
     id_mapping: UUIDMapping,
     id_column: str = "id",
-) -> tuple[pd.DataFrame, UUIDMapping]:
+) -> None:
     """Ensure each 'id' value in table is a uuid and all raw ids are mapped
 
     Args:
@@ -114,7 +114,7 @@ def handle_id_column(
         id_mapping: Mapping of (raw id, year, state, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
 
-    Returns:
+    Modifies:
         table: Updates `id_column` with mapped UUIDs where applicable.
         id_mapping: Updates `id_mapping` with new id mappings
     """
@@ -133,4 +133,3 @@ def handle_id_column(
     id_mapping.update(new_mappings)
     # this can be done more efficiently if we filter table here
     map_ids_to_uuids(table, table_type, new_mappings, id_column, mask=raw_ids_mask)
-    return table, id_mapping
