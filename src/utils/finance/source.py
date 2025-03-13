@@ -120,6 +120,7 @@ class SchemaTransformer:
         standard_schema_table = self._add_duplicate_columns(
             standard_relevant_column_table
         )
+        standard_schema_table = self._add_state_code(standard_schema_table)
 
         return standard_schema_table
 
