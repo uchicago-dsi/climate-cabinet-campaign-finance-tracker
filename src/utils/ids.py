@@ -89,7 +89,7 @@ def create_new_uuid_mapping(
         )
         for _, row in table[
             (table[id_column].notna())
-            & (~table[id_column].str.match(UUID4_REGEX, na=False))
+            & (~table[id_column].astype(str).str.match(UUID4_REGEX, na=False))
         ].iterrows()
     }
     return new_mappings
