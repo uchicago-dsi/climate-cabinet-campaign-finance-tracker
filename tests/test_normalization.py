@@ -185,6 +185,93 @@ def database_1_1NF() -> dict[str, pd.DataFrame]:
 
 
 @pytest.fixture
+def database_3_unnormalized():
+    """Provides sample mixed data."""
+    return {
+        "Transaction": pd.DataFrame(
+            {
+                "amount-1": [100, 200],
+                "amount-2": [150, 250],
+                "amount": [34, None],
+                "donor--full_name": ["John Doe", "Jane Smith"],
+                "recipient_id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                ],
+                "transaction_type-1": ["contribution", "contribution"],
+                "transaction_type-2": ["contribution", "contribution"],
+                "transaction_type": ["contribution", None],
+                "date-1": ["2024-01-23", "2024-02-10"],
+                "date-2": ["2024-01-26", "2024-02-18"],
+                "date": ["2025-02-23", None],
+            }
+        ),
+        "Transactor": pd.DataFrame(
+            {
+                "id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                ],
+                "first_name": ["Alice", "Bob"],
+                "last_name": ["Johnson", "Smith"],
+                "full_name": ["Alice Johnson", "Bob Smith"],
+            },
+        ).set_index("id"),
+    }
+
+
+@pytest.fixture
+def database_3_1NF() -> dict[str, pd.DataFrame]:
+    """Sample database #3 in 1NF"""
+    return {
+        "Transaction": pd.DataFrame(
+            {
+                "amount": [100, 150, 200, 250, 34],
+                "donor--full_name": [
+                    "John Doe",
+                    "John Doe",
+                    "Jane Smith",
+                    "Jane Smith",
+                    "John Doe",
+                ],
+                "recipient_id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                ],
+                "transaction_type": [
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                ],
+                "date": [
+                    "2024-01-23",
+                    "2024-01-26",
+                    "2024-02-10",
+                    "2024-02-18",
+                    "2025-02-23",
+                ],
+            }
+        ),
+        "Transactor": pd.DataFrame(
+            {
+                "id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                ],
+                "first_name": ["Alice", "Bob"],
+                "last_name": ["Johnson", "Smith"],
+                "full_name": ["Alice Johnson", "Bob Smith"],
+            },
+        ).set_index("id"),
+    }
+
+
+@pytest.fixture
 def database_1_1NF_mixed_types() -> dict[str, pd.DataFrame]:
     """Sample database #1 in 1NF with data from donors and recipients"""
     return {
@@ -741,6 +828,31 @@ def test_1NF_from_unnormalized(database_1_unnormalized, database_1_1NF, sample_s
     """Tests removing repeating columns (Level 0 to Level 1)."""
     normalizer = Normalizer(database_1_unnormalized, sample_schema)
     expected_value = database_1_1NF["Transaction"].copy()
+
+    normalizer.convert_to_1NF_from_unnormalized("Transaction")
+    normalized_transactions = normalizer.database["Transaction"]
+    normalized_transactions = make_df_standard_for_testing(
+        normalized_transactions, normalized_transactions.columns
+    )
+    expected_value = make_df_standard_for_testing(
+        expected_value, normalized_transactions.columns
+    )
+    normalized_transactions.columns.name = None
+
+    pd.testing.assert_frame_equal(
+        normalized_transactions,
+        expected_value,
+        check_like=True,
+        check_dtype=False,
+    )
+
+
+def test_1NF_from_unnormalized_mixed(
+    database_3_unnormalized, database_3_1NF, sample_schema
+):
+    """Tests removing repeating columns (Level 0 to Level 1)."""
+    normalizer = Normalizer(database_3_unnormalized, sample_schema)
+    expected_value = database_3_1NF["Transaction"].copy()
 
     normalizer.convert_to_1NF_from_unnormalized("Transaction")
     normalized_transactions = normalizer.database["Transaction"]

@@ -151,9 +151,11 @@ class Normalizer:
                         if col.startswith(base_column_name)
                     ]
                 )
+                new_column_name = f"{base_column_name}-{max_repeat + 1}"
                 unnormalized_table = unnormalized_table.rename(
-                    columns={base_column_name: f"{base_column_name}-{max_repeat + 1}"}
+                    columns={base_column_name: new_column_name}
                 )
+                repeated_columns.append(new_column_name)
         unnormalized_table.loc[:, "temp_id"] = range(0, len(unnormalized_table))
         static_columns = [
             column
