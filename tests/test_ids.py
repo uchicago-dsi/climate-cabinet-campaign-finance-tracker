@@ -20,7 +20,7 @@ def sample_table():
         {
             "id": [1, "invalid_uuid", "550e8400-e29b-41d4-a716-446655440000", None, 1],
             "year": [2023, 2022, 2021, 2020, 2023],
-            "state": ["CA", "NY", "TX", "FL", "CA"],
+            "reported_state": ["CA", "NY", "TX", "FL", "CA"],
         }
     )
 
@@ -50,9 +50,7 @@ def test_create_new_uuid_mapping(sample_table):
     """Test new UUIDs are created for invalid/missing IDs"""
     new_mapping = create_new_uuid_mapping(sample_table, "tableA", "id")
 
-    assert len(new_mapping) == len(
-        sample_table.drop_duplicates()
-    ), "All unique combinations should be mapped"
+    assert len(new_mapping) == 2, "All unique combinations should be mapped"
     for key, value in new_mapping.items():
         assert isinstance(value, str) and re.match(
             UUID4_REGEX, value

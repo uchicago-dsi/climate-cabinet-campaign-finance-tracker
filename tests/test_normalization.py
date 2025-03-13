@@ -21,7 +21,7 @@ def sample_schema(tmp_path):
     Transactor:
       child_types: ["Individual", "Organization"]
       required_attributes: ["id"]
-      attributes: ["id", "full_name", "transactor_type_specific", "transactor_type", "phone_number"]
+      attributes: ["id", "full_name", "transactor_type_specific", "transactor_type", "phone_number", "reported_state"]
       enum_columns:
         transactor_type: ["Individual", "Organization"]
         transactor_type_specific: ["Lobbyist", "Candidate", "Vendor", "Corporation", "Non-profit", "Committee", "Party"]
@@ -46,7 +46,7 @@ def sample_schema(tmp_path):
 
     Transaction:
       required_attributes: ["amount", "donor_id", "recipient_id"]
-      attributes: ["id", "amount", "date", "transaction_type", "description", "reported_election_id", "donor_id", "recipient_id"]
+      attributes: ["id", "amount", "date", "transaction_type", "description", "reported_election_id", "donor_id", "recipient_id", "reported_state"]
       forward_relations:
         donor: Transactor
         recipient: Transactor
@@ -56,22 +56,22 @@ def sample_schema(tmp_path):
         transaction_type: ["contribution"]
 
     Address:
-      attributes: ["transactor_id", "city", "state"]
+      attributes: ["transactor_id", "city", "state", "reported_state"]
       forward_relations:
         transactor: Transactor
 
     Membership:
-      attributes: ["member_id", "organization_id"]
+      attributes: ["member_id", "organization_id", "reported_state"]
       forward_relations:
         member: Individual
         organization: Organization
 
     Election:
       required_attributes: ["year", "district", "office_sought", "state"]
-      attributes: ["id", "year", "district", "office_sought", "state"]
+      attributes: ["id", "year", "district", "office_sought", "state", "reported_state"]
 
     ElectionResult:
-      attributes: ["candidate_id", "election_id", "votes_recieved", "win"]
+      attributes: ["candidate_id", "election_id", "votes_recieved", "win", "reported_state"]
       forward_relations:
         candidate: Individual
         election: Election
@@ -185,6 +185,111 @@ def database_1_1NF() -> dict[str, pd.DataFrame]:
 
 
 @pytest.fixture
+def database_1_1NF_mixed_types() -> dict[str, pd.DataFrame]:
+    """Sample database #1 in 1NF with data from donors and recipients"""
+    return {
+        "Transaction": pd.DataFrame(
+            {
+                "amount": [100, 150, 200, 250, 102, 111],
+                "donor_id": [
+                    None,
+                    None,
+                    None,
+                    None,
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                ],
+                "donor--full_name": [
+                    "John Doe",
+                    "John Doe",
+                    "Jane Smith",
+                    "Jane Smith",
+                    None,
+                    None,
+                ],
+                "donor--address--city": [
+                    "Chicago",
+                    "Chicago",
+                    "New York",
+                    "New York",
+                    None,
+                    None,
+                ],
+                "donor--address--state": ["IL", "IL", "NY", "NY", None, None],
+                "donor--employer--organization--full_name": [
+                    "University of Chicago",
+                    "University of Chicago",
+                    "NYU",
+                    "NYU",
+                    None,
+                    None,
+                ],
+                "donor--employer--organization--address--city": [
+                    "Chicago",
+                    "Chicago",
+                    "New York",
+                    "New York",
+                    None,
+                    None,
+                ],
+                "recipient_id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    None,
+                    None,
+                ],
+                "recipient--full_name": [
+                    None,
+                    None,
+                    None,
+                    None,
+                    "Person 3",
+                    "Person 4",
+                ],
+                "transaction_type": [
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                ],
+                "date": [
+                    "2024-01-23",
+                    "2024-01-26",
+                    "2024-02-10",
+                    "2024-02-18",
+                    "2024-03-01",
+                    "2024-03-14",
+                ],
+                "reported_state": [
+                    "NY",
+                    "NY",
+                    "IL",
+                    "IL",
+                    "TX",
+                    "PA",
+                ],
+            }
+        ),
+        "Transactor": pd.DataFrame(
+            {
+                "id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                ],
+                "first_name": ["Alice", "Bob"],
+                "last_name": ["Johnson", "Smith"],
+                "full_name": ["Alice Johnson", "Bob Smith"],
+                "reported_state": ["MI", "MI"],
+            },
+        ).set_index("id"),
+    }
+
+
+@pytest.fixture
 def database_1_3NF() -> dict[str, pd.DataFrame]:
     """Sample database #1 in 3NF"""
     return {
@@ -256,6 +361,132 @@ def database_1_3NF() -> dict[str, pd.DataFrame]:
                 ],
                 "city": ["Chicago", "New York", "Chicago", "New York"],
                 "state": ["IL", "NY", None, None],
+            }
+        ),
+    }
+
+
+@pytest.fixture
+def database_1_3NF_mixed_types() -> dict[str, pd.DataFrame]:
+    """Sample database #1 in 3NF"""
+    return {
+        "Transaction": pd.DataFrame(
+            {
+                "amount": [100, 150, 200, 250, 102, 111],
+                "donor_id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                    "00000000-0000-4000-8000-000000000002",
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                ],
+                "recipient_id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    "00000000-0000-4000-8000-000000000005",
+                    "00000000-0000-4000-8000-000000000006",
+                ],
+                "transaction_type": [
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                    "contribution",
+                ],
+                "date": [
+                    "2024-01-23",
+                    "2024-01-26",
+                    "2024-02-10",
+                    "2024-02-18",
+                    "2024-03-01",
+                    "2024-03-14",
+                ],
+                "reported_state": [
+                    "NY",
+                    "NY",
+                    "IL",
+                    "IL",
+                    "TX",
+                    "PA",
+                ],
+            }
+        ),
+        "Transactor": pd.DataFrame(
+            {
+                "id": [
+                    "bc152604-0e5b-4613-b858-d51afc259846",
+                    "d7ed5203-810c-498a-824d-605f8bd22238",
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                    "00000000-0000-4000-8000-000000000003",
+                    "00000000-0000-4000-8000-000000000004",
+                    "00000000-0000-4000-8000-000000000005",
+                    "00000000-0000-4000-8000-000000000006",
+                ],
+                "full_name": [
+                    "Alice Johnson",
+                    "Bob Smith",
+                    "John Doe",
+                    "Jane Smith",
+                    "University of Chicago",
+                    "NYU",
+                    "Person 3",
+                    "Person 4",
+                ],
+                "first_name": [
+                    "Alice",
+                    "Bob",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ],
+                "last_name": ["Johnson", "Smith", None, None, None, None, None, None],
+                "reported_state": [
+                    "MI",
+                    "MI",
+                    "NY",
+                    "IL",
+                    "NY",
+                    "IL",
+                    "TX",
+                    "PA",
+                ],
+            },
+        ).set_index("id"),
+        "Membership": pd.DataFrame(
+            {
+                "member_id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                ],
+                "organization_id": [
+                    "00000000-0000-4000-8000-000000000003",
+                    "00000000-0000-4000-8000-000000000004",
+                ],
+                "reported_state": [
+                    "NY",
+                    "IL",
+                ],
+            }
+        ),
+        "Address": pd.DataFrame(
+            {
+                "transactor_id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                    "00000000-0000-4000-8000-000000000003",
+                    "00000000-0000-4000-8000-000000000004",
+                ],
+                "city": ["Chicago", "New York", "Chicago", "New York"],
+                "state": ["IL", "NY", None, None],
+                "reported_state": ["NY", "IL", "NY", "IL"],
             }
         ),
     }
@@ -546,6 +777,36 @@ def test_3NF_from_1NF(database_1_1NF, database_1_3NF, sample_schema, determined_
             ),
             make_df_standard_for_testing(
                 database_1_3NF[table_type], database_1_3NF[table_type].columns
+            ),
+            check_like=True,
+            check_dtype=False,
+        )
+
+
+def test_3NF_from_1NF_complicated(
+    database_1_1NF_mixed_types,
+    database_1_3NF_mixed_types,
+    sample_schema,
+    determined_uuids,
+):
+    """Tests extracting foreign key attributes into separate tables (Level 1 to Level 3)."""
+    normalizer = Normalizer(database_1_1NF_mixed_types, sample_schema)
+    normalizer.convert_to_3NF_from_1NF()
+    database_result_3NF = normalizer.database
+
+    assert (
+        database_result_3NF.keys() == database_1_3NF_mixed_types.keys()
+    ), f"Result database has keys: {database_result_3NF.keys()}"
+
+    for table_type in database_result_3NF:
+        pd.testing.assert_frame_equal(
+            make_df_standard_for_testing(
+                database_result_3NF[table_type],
+                database_1_3NF_mixed_types[table_type].columns,
+            ),
+            make_df_standard_for_testing(
+                database_1_3NF_mixed_types[table_type],
+                database_1_3NF_mixed_types[table_type].columns,
             ),
             check_like=True,
             check_dtype=False,

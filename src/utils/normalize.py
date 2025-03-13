@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils.ids import handle_id_column
+from utils.ids import handle_existing_ids, handle_id_column
 from utils.schema import DataSchema, TableSchema
 
 UNNORMALIZED_FLAG = 0
@@ -108,14 +108,12 @@ class Normalizer:
         self.schema = schema
         self._id_mapping = {}
 
-    def get_foreign_table_type(
-        self, base_type: str, column_name: str, schema: DataSchema
-    ) -> str:
+    def get_foreign_table_type(self, base_type: str, column_name: str) -> str:
         """Retrieve the type of a multivalued/foreign table"""
         column_tokens = column_name.split(SPLIT)
         current_table_type = base_type
         for column_token in column_tokens:
-            current_table_schema = schema.schema[current_table_type]
+            current_table_schema = self.schema.schema[current_table_type]
             if column_token in current_table_schema.relations:
                 current_table_type = current_table_schema.relations[column_token]
                 continue
@@ -205,6 +203,34 @@ class Normalizer:
 
         return table
 
+    def _merge_existing_forward_relations(
+        self,
+        table: pd.DataFrame,
+        relation_prefix: str,
+    ) -> None:
+        """Merges existing and computed foreign key values, raising an error in conflict
+
+        Args:
+            table: DataFrame containing {relation_prefix}_id and
+                temp_{relation_prefix}_id.
+            relation_prefix: name of foreign key
+        Raises:
+            ValueError if there exists a row where {relation_prefix}_id and
+                temp_{relation_prefix}_id both exist and are notna
+        """
+        conflicting_rows = table[
+            (table[f"{relation_prefix}_id"].notna())
+            & (table[f"temp_{relation_prefix}_id"].notna())
+            & (table[f"{relation_prefix}_id"] != table[f"temp_{relation_prefix}_id"])
+        ]
+        if not conflicting_rows.empty:
+            raise ValueError(
+                f"Erroneous {relation_prefix} ID created\n{conflicting_rows}"
+            )
+        table[f"{relation_prefix}_id"] = table[f"{relation_prefix}_id"].fillna(
+            table[f"temp_{relation_prefix}_id"]
+        )
+
     def _split_prefixed_columns(
         self,
         table: pd.DataFrame,
@@ -240,10 +266,16 @@ class Normalizer:
         # step 2 - split foreign table off of old base table
         extracted_table = table[foreign_columns_in_base_table]
         extracted_table.columns = foreign_columns_in_foreign_table
+        extracted_table["reported_state"] = table["reported_state"]
+        # some columns are trivial and should be ignored for some actions
+        non_metadata_columns = [
+            column for column in extracted_table.columns if column != "reported_state"
+        ]
         # step 3 - drop incomplete rows
-        extracted_table = extracted_table.dropna(how="all")
+        extracted_table = extracted_table.dropna(how="all", subset=non_metadata_columns)
         extracted_table_type = self.get_foreign_table_type(
-            table_type, relation_prefix, self.schema
+            table_type,
+            relation_prefix,
         )
         extracted_table_schema = self.schema.schema[extracted_table_type]
         required_columns = set(extracted_table_schema.required_attributes).difference(
@@ -263,16 +295,29 @@ class Normalizer:
         handle_id_column(
             extracted_table, extracted_table_schema, self.id_mapping, id_column="id"
         )
-        # step 6 - add relation
+        # step 7 - add relation
         if relation_prefix in self.schema.schema[table_type].forward_relations:
             mapping_dict = extracted_table.set_index(foreign_columns_in_foreign_table)[
                 "id"
             ].to_dict()
-
-            # Map the combinations in `table` to the ids from `foreign_key_table`
-            table[f"{relation_prefix}_id"] = table[foreign_columns_in_base_table].apply(
-                lambda row: mapping_dict.get(tuple(row), None), axis=1
+            # Map the combinations in `table` to the ids from `extracted_table`
+            table[f"temp_{relation_prefix}_id"] = table[
+                foreign_columns_in_base_table
+            ].apply(
+                lambda row: mapping_dict.get(
+                    row[0]
+                    if len(foreign_columns_in_foreign_table) == 1
+                    else tuple(row),
+                    None,
+                ),
+                axis=1,
             )
+            if f"{relation_prefix}_id" in table.columns:
+                self._merge_existing_forward_relations(table, relation_prefix)
+            else:
+                table[f"{relation_prefix}_id"] = table[f"temp_{relation_prefix}_id"]
+
+            table = table.drop(columns=[f"temp_{relation_prefix}_id"])
 
         columns_to_drop = list(foreign_columns_in_base_table)
         table = table.drop(columns=columns_to_drop)
@@ -310,9 +355,12 @@ class Normalizer:
         updated_database = self.schema.empty_database()
         active_table = table
         while normalization_levels_to_columns[FIRST_NORMAL_FORM_FLAG]:
-            first_column_token = normalization_levels_to_columns[
-                FIRST_NORMAL_FORM_FLAG
-            ].pop()
+            first_column_token = sorted(
+                normalization_levels_to_columns[FIRST_NORMAL_FORM_FLAG]
+            )[0]
+            normalization_levels_to_columns[FIRST_NORMAL_FORM_FLAG].remove(
+                first_column_token
+            )  # not using pop to avoid non-determinism
             # this is where the heavy lifting is done and a new foreign table
             # is created derived from the columns that did not belong in base table
             active_table, extracted_table = self._split_prefixed_columns(
@@ -335,7 +383,8 @@ class Normalizer:
     def convert_to_3NF_from_1NF(self) -> None:
         """Converts database in first normal form (1NF) to third normal form (3NF)
 
-        When called, each table in self.database should have appropriate ids
+        When called, each table in self.database should have appropriate ids, and
+        a filled 'reported_state' column.
 
         Args:
             first_normal_form_database: TODO: spec of database somewhere
@@ -384,6 +433,15 @@ class Normalizer:
         for table_type, table in self.database.items():
             handle_id_column(table, self.schema.schema[table_type], self.id_mapping)
             # TODO: handle for _id columns??
+            for column in table.columns:
+                if column.endswith("_id"):
+                    column_reference_table = self.get_foreign_table_type(
+                        table_type, column[: -len("_id")]
+                    )
+                    handle_existing_ids(
+                        table, column_reference_table, self.id_mapping, column
+                    )
+
         # bring to 1NF
         database_1NF = {}
         for table_type in self.database:

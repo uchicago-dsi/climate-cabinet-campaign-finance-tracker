@@ -4,6 +4,8 @@ base:
     sep: ","
     encoding: latin-1
     on_bad_lines: warn
+  state_code_columns:
+    - reported_state
 
 
 contributions:
@@ -19,7 +21,7 @@ contributions:
 
     - raw_name: EYEAR
       type: Int16
-      standard_name: reported_election--year
+      standard_name: reported_election_year
 
     - raw_name: SubmittedDate
       type: str
@@ -112,8 +114,6 @@ contributions:
     - raw_name: CONTDESC
       type: str
       standard_name: description
-  state_code_columns:
-    - reported_election--state
   
 contributions_post_2023:
   inherits: contributions
@@ -344,7 +344,7 @@ expense:
 
     - raw_name: EYEAR
       type: Int16
-      standard_name: reported_election--year
+      standard_name: reported_election_year
 
     - raw_name: SubmittedDate
       type: str
@@ -388,8 +388,6 @@ expense:
     - raw_name: EXPDESC
       type: str
       standard_name: description
-  state_code_columns:
-    - reported_election--state
 
 expense_through_2022:
   inherits: expense

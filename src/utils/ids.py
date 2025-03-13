@@ -58,7 +58,7 @@ def map_ids_to_uuids(
             (
                 row[id_column],
                 row.get("year"),
-                row.get("state"),
+                row.get("reported_state"),
                 table_name,
             ),
             row[id_column],
@@ -72,6 +72,9 @@ def create_new_uuid_mapping(
 ) -> UUIDMapping:
     """Create UUIDs for rows with invalid or missing UUIDs in `id_column`.
 
+    This function will skip any rows for which the id_column is NA or
+    a valid uuid.
+
     Args:
         table: DataFrame with an existing `id_column`.
         table_name: Name of the table (used in mapping).
@@ -81,10 +84,13 @@ def create_new_uuid_mapping(
         A dictionary mapping (raw_id, year, state, table_name) → new UUID.
     """
     new_mappings = {
-        (row[id_column], row.get("year"), row.get("state"), table_name): str(
+        (row[id_column], row.get("year"), row.get("reported_state"), table_name): str(
             uuid.uuid4()
         )
-        for _, row in table.iterrows()
+        for _, row in table[
+            (table[id_column].notna())
+            & (~table[id_column].str.match(UUID4_REGEX, na=False))
+        ].iterrows()
     }
     return new_mappings
 
@@ -100,6 +106,31 @@ def get_raw_ids_mask(table: pd.DataFrame, id_column: str) -> pd.Series:
     return raw_ids_mask
 
 
+def handle_existing_ids(
+    table: pd.DataFrame, table_type: str, id_mapping: UUIDMapping, id_column: str
+) -> None:
+    """Ensure all non null ids in id_column are mapped to a uuid in id_mapping
+
+    Args:
+        table: DataFrame with `id_column`.
+        table_type: Name of table type the id represents.
+        id_mapping: Mapping of (raw id, year, reported_state, table_name) to UUIDs.
+        id_column: Name of the column to replace with UUIDs.
+
+    Modifies:
+        table: Updates `id_column` with mapped UUIDs where applicable.
+        id_mapping: Updates `id_mapping` with new id mappings
+    """
+    map_ids_to_uuids(table, table_type, id_mapping, id_column)
+    raw_ids_mask = get_raw_ids_mask(table, id_column)
+    new_mappings = create_new_uuid_mapping(
+        table.loc[raw_ids_mask], table_type, id_column
+    )
+    id_mapping.update(new_mappings)
+    # this can be done more efficiently if we filter table here
+    map_ids_to_uuids(table, table_type, new_mappings, id_column, mask=raw_ids_mask)
+
+
 def handle_id_column(
     table: pd.DataFrame,
     table_schema: TableSchema,
@@ -111,11 +142,11 @@ def handle_id_column(
     Args:
         table: DataFrame with or without `id_column`.
         table_schema: Schema defining properties of table.
-        id_mapping: Mapping of (raw id, year, state, table_name) to UUIDs.
+        id_mapping: Mapping of (raw id, year, reported_state, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
 
     Modifies:
-        table: Updates `id_column` with mapped UUIDs where applicable.
+        table: Creates/Updates `id_column` to have UUIDs
         id_mapping: Updates `id_mapping` with new id mappings
     """
     table_type = table_schema.table_type
@@ -125,11 +156,4 @@ def handle_id_column(
         table[id_column] = None
 
     add_uuids_to_table(table, id_column)
-    map_ids_to_uuids(table, table_type, id_mapping, id_column)
-    raw_ids_mask = get_raw_ids_mask(table, id_column)
-    new_mappings = create_new_uuid_mapping(
-        table.loc[raw_ids_mask], table_type, id_column
-    )
-    id_mapping.update(new_mappings)
-    # this can be done more efficiently if we filter table here
-    map_ids_to_uuids(table, table_type, new_mappings, id_column, mask=raw_ids_mask)
+    handle_existing_ids(table, table_type, id_mapping, id_column)
