@@ -4,8 +4,7 @@ import argparse
 
 from utils.constants import BASE_FILEPATH
 from utils.io import load_database_from_csv, save_database_to_csv
-from utils.normalize import normalize_database
-from utils.schema import DataSchema
+from utils.normalize import Normalizer
 
 parser = argparse.ArgumentParser()
 
@@ -44,7 +43,7 @@ if args.schema is None:
 else:
     schema_path = args.schema
 
-data_schema = DataSchema(schema_path)
 standardized_database = load_database_from_csv(input_directory)
-normalized_database = normalize_database(standardized_database, data_schema)
+normalizer = Normalizer(standardized_database, schema_path)
+normalized_database = normalizer.normalize_database()
 save_database_to_csv(normalized_database, output_directory)
