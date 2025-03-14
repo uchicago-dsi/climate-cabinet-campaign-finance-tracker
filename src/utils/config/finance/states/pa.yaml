@@ -289,6 +289,9 @@ filer:
 
     - raw_name: INKIND
       type: Float32
+  duplicate_columns:
+    reported_state: 
+      - election_result--election--state
 
 filer_through_2022:
   inherits: filer
