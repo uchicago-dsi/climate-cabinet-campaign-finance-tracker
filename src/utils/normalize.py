@@ -185,6 +185,55 @@ class Normalizer:
         ]
         self.database[table_name] = first_normal_form_table
 
+    def _drop_verifiably_incomplete_rows(
+        self,
+        table_type: str,
+        table: pd.DataFrame,
+    ) -> list[str]:
+        """Drop all rows from table that cannot become complete after normalization
+
+        Example: when normalizing, we may come accross a missing required foreign key
+        column because the object the foreign key refers to is still stored in the
+        current table (so prop--x exists, but prop_id does not yet exist, but will
+        once normalization is completed)
+
+        Args:
+            table_type: TODO
+            table: list of columns in table
+        Modifies:
+            table with verifiably incomplete rows dropped
+        """
+        table_schema = self.schema.schema[table_type]
+        required_attributes = set(table_schema.required_attributes)
+        if "id" in required_attributes:
+            required_attributes.remove("id")  # id has not been generated yet
+        # check if any required attributes are forward relations (and therefore
+        # may not exist in a valid table that is not yet normalized)
+        required_forward_relations = [
+            attribute[: -len(ID_SUFFIX)]
+            for attribute in required_attributes
+            if attribute[: -len(ID_SUFFIX)] in table_schema.forward_relations
+        ]
+        for forward_relation in required_forward_relations:
+            # a row is valid if the forward relation is valid. Either
+            # its id column exists and is notna or all of its required columns
+            required_attributes.remove(f"{forward_relation}{ID_SUFFIX}")
+            # this list includes any potential forward_relation{ID_SUFFIX} column.
+            # this is desired because there may be a mixture of normalized and
+            # unnormalized rows for a given relation. Regardless at least one
+            # such column must be notna.
+            forward_relation_columns = [
+                col for col in table.columns if col.startswith(forward_relation)
+            ]
+            if forward_relation_columns == []:
+                # table has no columns for required forward relations, it is
+                # verifiably incomplete
+                return pd.DataFrame()
+            # drop all rows that are all na for required forward relation
+            table = table.dropna(subset=forward_relation_columns, how="all")
+        # now drop all rows that are na for any non forward relation columns
+        table = table.dropna(subset=required_attributes, how="any")
+
     def _add_relation_to_extracted_table(
         self,
         table: pd.DataFrame,
@@ -280,17 +329,7 @@ class Normalizer:
             relation_prefix,
         )
         extracted_table_schema = self.schema.schema[extracted_table_type]
-        required_columns = set(extracted_table_schema.required_attributes).difference(
-            ["id"]
-        )
-        if not set(required_columns).issubset(extracted_table.columns):
-            extracted_table = pd.DataFrame()
-            print(
-                f"Extracted table {extracted_table_type} from table {table_type} lacks"
-                " required columns: "
-                f"{set(required_columns).difference(set(extracted_table.columns))}"
-            )
-        extracted_table = extracted_table.dropna(subset=required_columns)
+        self._drop_verifiably_incomplete_rows(extracted_table_type, extracted_table)
         # step 4 - drop duplicates - deduplication
         extracted_table = extracted_table.drop_duplicates()
         # step 5 - generate ids if the extracted table has an id column
@@ -299,21 +338,16 @@ class Normalizer:
         )
         # step 7 - add relation
         if relation_prefix in self.schema.schema[table_type].forward_relations:
-            mapping_dict = extracted_table.set_index(foreign_columns_in_foreign_table)[
-                "id"
-            ].to_dict()
-            # Map the combinations in `table` to the ids from `extracted_table`
-            table[f"temp_{relation_prefix}_id"] = table[
-                foreign_columns_in_base_table
-            ].apply(
-                lambda row: mapping_dict.get(
-                    row[0]
-                    if len(foreign_columns_in_foreign_table) == 1
-                    else tuple(row),
-                    None,
-                ),
-                axis=1,
+            mapping_df = extracted_table.copy()
+            mapping_df = mapping_df.rename(columns={"id": f"temp_{relation_prefix}_id"})
+            mapping_df = mapping_df.drop(columns=["reported_state"])
+            table = table.merge(
+                mapping_df,
+                left_on=foreign_columns_in_base_table,
+                right_on=foreign_columns_in_foreign_table,
+                how="left",
             )
+            # Map the combinations in `table` to the ids from `extracted_table`
             if f"{relation_prefix}_id" in table.columns:
                 self._merge_existing_forward_relations(table, relation_prefix)
             else:
@@ -321,8 +355,10 @@ class Normalizer:
 
             table = table.drop(columns=[f"temp_{relation_prefix}_id"])
 
-        columns_to_drop = list(foreign_columns_in_base_table)
-        table = table.drop(columns=columns_to_drop)
+        columns_to_drop = list(foreign_columns_in_base_table) + list(
+            foreign_columns_in_foreign_table
+        )
+        table = table.drop(columns=columns_to_drop, errors="ignore")
         return table, extracted_table
 
     def _convert_table_to_3NF_from_1NF(
@@ -445,13 +481,12 @@ class Normalizer:
                     )
 
         # bring to 1NF
-        database_1NF = {}
         for table_type in self.database:
-            database_1NF[table_type] = self.convert_to_1NF_from_unnormalized(table_type)
+            self.convert_to_1NF_from_unnormalized(table_type)
 
         # bring to 3NF
-        database_3NF = self.convert_to_3NF_from_1NF()
-        return database_3NF
+        self.convert_to_3NF_from_1NF()
+        return self.database
 
     def convert_to_class_table_from_single_table(
         self, database_single_table: dict[str, pd.DataFrame], data_schema: DataSchema
