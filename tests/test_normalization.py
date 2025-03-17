@@ -1,7 +1,10 @@
+import json
+from pathlib import Path
 from uuid import UUID
 
 import pandas as pd
 import pytest
+from utils.constants import BASE_FILEPATH
 from utils.normalize import Normalizer, get_normalization_form_by_column
 from utils.schema import DataSchema
 
@@ -12,726 +15,6 @@ def determined_uuids(mocker):
         UUID(f"00000000-0000-4000-8000-{i:012}", version=4) for i in range(1, 10000)
     )
     return mocker.patch("uuid.uuid4", side_effect=side_effect)
-
-
-@pytest.fixture
-def sample_schema(tmp_path):
-    """Creates a DataSchema object from a sample YAML schema."""
-    schema_yaml = """
-    Transactor:
-      child_types: ["Individual", "Organization"]
-      required_attributes: ["id"]
-      attributes: ["id", "full_name", "transactor_type_specific", "transactor_type", "phone_number", "reported_state"]
-      enum_columns:
-        transactor_type: ["Individual", "Organization"]
-        transactor_type_specific: ["Lobbyist", "Candidate", "Vendor", "Corporation", "Non-profit", "Committee", "Party"]
-      reverse_relations:
-        address: Address
-      reverse_relation_names:
-        address: transactor_id
-
-    Individual:
-      parent_type: Transactor
-      attributes: ["first_name", "middle_name", "last_name", "name_suffix", "name_title", "name_preferred", "occupation", "party"]
-      reverse_relations:
-        employer: Membership
-        election_result: ElectionResult
-      reverse_relation_names:
-        employer: member_id
-        election_result: candidate_id
-
-    Organization:
-      parent_type: Transactor
-      attributes: ["naics", "sic", "stock_symbol"]
-
-    Transaction:
-      required_attributes: ["amount", "donor_id", "recipient_id"]
-      attributes: ["id", "amount", "date", "transaction_type", "description", "reported_election_id", "donor_id", "recipient_id", "reported_state"]
-      forward_relations:
-        donor: Transactor
-        recipient: Transactor
-        reported_election: Election
-      repeating_columns: ["amount", "transaction_type", "date", "description"]
-      enum_columns:
-        transaction_type: ["contribution"]
-
-    Address:
-      attributes: ["transactor_id", "city", "state", "reported_state"]
-      forward_relations:
-        transactor: Transactor
-
-    Membership:
-      attributes: ["member_id", "organization_id", "reported_state"]
-      forward_relations:
-        member: Individual
-        organization: Organization
-
-    Election:
-      required_attributes: ["year", "district", "office_sought", "state"]
-      attributes: ["id", "year", "district", "office_sought", "state", "reported_state"]
-
-    ElectionResult:
-      attributes: ["candidate_id", "election_id", "votes_recieved", "win", "reported_state"]
-      forward_relations:
-        candidate: Individual
-        election: Election
-    """
-
-    schema_file = tmp_path / "test_schema.yaml"
-    schema_file.write_text(schema_yaml)
-
-    return DataSchema(schema_file)
-
-
-@pytest.fixture
-def database_1_unnormalized():
-    """Provides sample data for testing normalization steps."""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount-1": [100, 200],
-                "amount-2": [150, 250],
-                "donor--full_name": ["John Doe", "Jane Smith"],
-                "donor--address--city": ["Chicago", "New York"],
-                "donor--address--state": ["IL", "NY"],
-                "donor--employer--organization--full_name": [
-                    "University of Chicago",
-                    "NYU",
-                ],
-                "donor--employer--organization--address--city": ["Chicago", "New York"],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "transaction_type-1": ["contribution", "contribution"],
-                "transaction_type-2": ["contribution", "contribution"],
-                "date-1": ["2024-01-23", "2024-02-10"],
-                "date-2": ["2024-01-26", "2024-02-18"],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "first_name": ["Alice", "Bob"],
-                "last_name": ["Johnson", "Smith"],
-                "full_name": ["Alice Johnson", "Bob Smith"],
-            },
-        ).set_index("id"),
-    }
-
-
-@pytest.fixture
-def database_1_1NF() -> dict[str, pd.DataFrame]:
-    """Sample database #1 in 1NF"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount": [100, 150, 200, 250],
-                "donor--full_name": [
-                    "John Doe",
-                    "John Doe",
-                    "Jane Smith",
-                    "Jane Smith",
-                ],
-                "donor--address--city": [
-                    "Chicago",
-                    "Chicago",
-                    "New York",
-                    "New York",
-                ],
-                "donor--address--state": ["IL", "IL", "NY", "NY"],
-                "donor--employer--organization--full_name": [
-                    "University of Chicago",
-                    "University of Chicago",
-                    "NYU",
-                    "NYU",
-                ],
-                "donor--employer--organization--address--city": [
-                    "Chicago",
-                    "Chicago",
-                    "New York",
-                    "New York",
-                ],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "transaction_type": [
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                ],
-                "date": ["2024-01-23", "2024-01-26", "2024-02-10", "2024-02-18"],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "first_name": ["Alice", "Bob"],
-                "last_name": ["Johnson", "Smith"],
-                "full_name": ["Alice Johnson", "Bob Smith"],
-            },
-        ).set_index("id"),
-    }
-
-
-@pytest.fixture
-def database_3_unnormalized():
-    """Provides sample mixed data."""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount-1": [100, 200],
-                "amount-2": [150, 250],
-                "amount": [34, None],
-                "donor--full_name": ["John Doe", "Jane Smith"],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "transaction_type-1": ["contribution", "contribution"],
-                "transaction_type-2": ["contribution", "contribution"],
-                "transaction_type": ["contribution", None],
-                "date-1": ["2024-01-23", "2024-02-10"],
-                "date-2": ["2024-01-26", "2024-02-18"],
-                "date": ["2025-02-23", None],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "first_name": ["Alice", "Bob"],
-                "last_name": ["Johnson", "Smith"],
-                "full_name": ["Alice Johnson", "Bob Smith"],
-            },
-        ).set_index("id"),
-    }
-
-
-@pytest.fixture
-def database_3_1NF() -> dict[str, pd.DataFrame]:
-    """Sample database #3 in 1NF"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount": [100, 150, 200, 250, 34],
-                "donor--full_name": [
-                    "John Doe",
-                    "John Doe",
-                    "Jane Smith",
-                    "Jane Smith",
-                    "John Doe",
-                ],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                ],
-                "transaction_type": [
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                ],
-                "date": [
-                    "2024-01-23",
-                    "2024-01-26",
-                    "2024-02-10",
-                    "2024-02-18",
-                    "2025-02-23",
-                ],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "first_name": ["Alice", "Bob"],
-                "last_name": ["Johnson", "Smith"],
-                "full_name": ["Alice Johnson", "Bob Smith"],
-            },
-        ).set_index("id"),
-    }
-
-
-@pytest.fixture
-def database_1_1NF_mixed_types() -> dict[str, pd.DataFrame]:
-    """Sample database #1 in 1NF with data from donors and recipients"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount": [100, 150, 200, 250, 102, 111],
-                "donor_id": [
-                    None,
-                    None,
-                    None,
-                    None,
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "donor--full_name": [
-                    "John Doe",
-                    "John Doe",
-                    "Jane Smith",
-                    "Jane Smith",
-                    None,
-                    None,
-                ],
-                "donor--address--city": [
-                    "Chicago",
-                    "Chicago",
-                    "New York",
-                    "New York",
-                    None,
-                    None,
-                ],
-                "donor--address--state": ["IL", "IL", "NY", "NY", None, None],
-                "donor--employer--organization--full_name": [
-                    "University of Chicago",
-                    "University of Chicago",
-                    "NYU",
-                    "NYU",
-                    None,
-                    None,
-                ],
-                "donor--employer--organization--address--city": [
-                    "Chicago",
-                    "Chicago",
-                    "New York",
-                    "New York",
-                    None,
-                    None,
-                ],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    None,
-                    None,
-                ],
-                "recipient--full_name": [
-                    None,
-                    None,
-                    None,
-                    None,
-                    "Person 3",
-                    "Person 4",
-                ],
-                "transaction_type": [
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                ],
-                "date": [
-                    "2024-01-23",
-                    "2024-01-26",
-                    "2024-02-10",
-                    "2024-02-18",
-                    "2024-03-01",
-                    "2024-03-14",
-                ],
-                "reported_state": [
-                    "NY",
-                    "NY",
-                    "IL",
-                    "IL",
-                    "TX",
-                    "PA",
-                ],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "first_name": ["Alice", "Bob"],
-                "last_name": ["Johnson", "Smith"],
-                "full_name": ["Alice Johnson", "Bob Smith"],
-                "reported_state": ["MI", "MI"],
-            },
-        ).set_index("id"),
-    }
-
-
-@pytest.fixture
-def database_1_3NF() -> dict[str, pd.DataFrame]:
-    """Sample database #1 in 3NF"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount": [100, 150, 200, 250],
-                "donor_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000002",
-                ],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "transaction_type": [
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                ],
-                "date": ["2024-01-23", "2024-01-26", "2024-02-10", "2024-02-18"],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-                "full_name": [
-                    "Alice Johnson",
-                    "Bob Smith",
-                    "John Doe",
-                    "Jane Smith",
-                    "University of Chicago",
-                    "NYU",
-                ],
-                "first_name": ["Alice", "Bob", None, None, None, None],
-                "last_name": ["Johnson", "Smith", None, None, None, None],
-            },
-        ).set_index("id"),
-        "Membership": pd.DataFrame(
-            {
-                "member_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                ],
-                "organization_id": [
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-            }
-        ),
-        "Address": pd.DataFrame(
-            {
-                "transactor_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-                "city": ["Chicago", "New York", "Chicago", "New York"],
-                "state": ["IL", "NY", None, None],
-            }
-        ),
-    }
-
-
-@pytest.fixture
-def database_1_3NF_mixed_types() -> dict[str, pd.DataFrame]:
-    """Sample database #1 in 3NF"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount": [100, 150, 200, 250, 102, 111],
-                "donor_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000002",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "00000000-0000-4000-8000-000000000005",
-                    "00000000-0000-4000-8000-000000000006",
-                ],
-                "transaction_type": [
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                ],
-                "date": [
-                    "2024-01-23",
-                    "2024-01-26",
-                    "2024-02-10",
-                    "2024-02-18",
-                    "2024-03-01",
-                    "2024-03-14",
-                ],
-                "reported_state": [
-                    "NY",
-                    "NY",
-                    "IL",
-                    "IL",
-                    "TX",
-                    "PA",
-                ],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                    "00000000-0000-4000-8000-000000000005",
-                    "00000000-0000-4000-8000-000000000006",
-                ],
-                "full_name": [
-                    "Alice Johnson",
-                    "Bob Smith",
-                    "John Doe",
-                    "Jane Smith",
-                    "University of Chicago",
-                    "NYU",
-                    "Person 3",
-                    "Person 4",
-                ],
-                "first_name": [
-                    "Alice",
-                    "Bob",
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                ],
-                "last_name": ["Johnson", "Smith", None, None, None, None, None, None],
-                "reported_state": [
-                    "MI",
-                    "MI",
-                    "NY",
-                    "IL",
-                    "NY",
-                    "IL",
-                    "TX",
-                    "PA",
-                ],
-            },
-        ).set_index("id"),
-        "Membership": pd.DataFrame(
-            {
-                "member_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                ],
-                "organization_id": [
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-                "reported_state": [
-                    "NY",
-                    "IL",
-                ],
-            }
-        ),
-        "Address": pd.DataFrame(
-            {
-                "transactor_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-                "city": ["Chicago", "New York", "Chicago", "New York"],
-                "state": ["IL", "NY", None, None],
-                "reported_state": ["NY", "IL", "NY", "IL"],
-            }
-        ),
-    }
-
-
-@pytest.fixture
-def database_1_3NF_CTI() -> dict[str, pd.DataFrame]:
-    """Sample database #1 in 3rd normal form with class table inheritance"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "amount": [100, 150, 200, 250],
-                "donor_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000002",
-                ],
-                "recipient_id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                ],
-                "transaction_type": [
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                    "contribution",
-                ],
-                "date": ["2024-01-23", "2024-01-26", "2024-02-10", "2024-02-18"],
-            }
-        ),
-        "Transactor": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-                "full_name": [
-                    "Alice Johnson",
-                    "Bob Smith",
-                    "John Doe",
-                    "Jane Smith",
-                    "University of Chicago",
-                    "NYU",
-                ],
-                "transactor_type": [
-                    "Individual",
-                    "Individual",
-                    "Individual",
-                    "Individual",
-                    "Organization",
-                    "Organization",
-                ],
-            },
-        ).set_index("id"),
-        "Individual": pd.DataFrame(
-            {
-                "id": [
-                    "bc152604-0e5b-4613-b858-d51afc259846",
-                    "d7ed5203-810c-498a-824d-605f8bd22238",
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                ],
-                "first_name": [
-                    "Alice",
-                    "Bob",
-                    None,
-                    None,
-                ],
-                "last_name": ["Johnson", "Smith", None, None],
-            }
-        ).set_index("id"),
-        "Organization": pd.DataFrame(
-            {
-                "id": [
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ]
-            }
-        ).set_index("id"),
-        "Membership": pd.DataFrame(
-            {
-                "member_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                ],
-                "organization_id": [
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-            }
-        ),
-        "Address": pd.DataFrame(
-            {
-                "transactor_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    "00000000-0000-4000-8000-000000000003",
-                    "00000000-0000-4000-8000-000000000004",
-                ],
-                "city": ["Chicago", "New York", "Chicago", "New York"],
-                "state": ["IL", "NY", "IL", "NY"],
-            }
-        ),
-    }
-
-
-@pytest.fixture
-def database_2_1NF() -> dict[str, pd.DataFrame]:
-    """Database in 1NF result of merging transactions with donor and recipient info"""
-    return {
-        "Transaction": pd.DataFrame(
-            {
-                "recipient_id": [
-                    "00000000-0000-4000-8000-000000000001",
-                    "00000000-0000-4000-8000-000000000002",
-                    None,
-                    None,
-                    None,
-                ],
-                "recipient--full_name": [
-                    None,
-                    None,
-                    "Fake Name",
-                    "Sample Name",
-                    "Sample Name",
-                ],
-                "recipient--address--line_1": [
-                    None,
-                    None,
-                    "123 Main St.",
-                    "345 First Ave.",
-                    "345 First Ave.",
-                ],
-                "amount": [
-                    45,
-                    32,
-                    25.34,
-                    103.40,
-                    143,
-                ],
-                "date": [
-                    "2023-01-12",
-                    "2022-03-05",
-                    "2024-07-30",
-                    "2023-01-23",
-                    "2023-01-23",
-                ],
-                "recipient--election_result--election--year": [],
-            }
-        )
-    }
 
 
 def make_df_standard_for_testing(df: pd.DataFrame, columns: pd.Index) -> pd.DataFrame:
@@ -745,106 +28,127 @@ def make_df_standard_for_testing(df: pd.DataFrame, columns: pd.Index) -> pd.Data
     return df.sort_values(by=columns.tolist()).reset_index(drop=True)
 
 
-def test_normalization_status_unnormalized(database_1_unnormalized, sample_schema):
+def load_database(database_path):
+    """Loads all database tables from a given directory."""
+    full_database = {}
+    for normalization_directory in ["unnormalized", "1NF", "3NF"]:
+        database_normalization_level_path = database_path / normalization_directory
+        if database_normalization_level_path.exists():
+            database = {}
+            for csv_file in Path(database_normalization_level_path).glob("*.csv"):
+                table_name = csv_file.stem
+                table = pd.read_csv(csv_file)
+                # if "id" in table.columns:
+                #     table = table.set_index("id")
+                #     if "Unnamed: 0" in table.columns:
+                #         table = table.drop(columns=["Unnamed: 0"])
+                database[table_name] = table
+            full_database[normalization_directory] = database
+    return full_database
+
+
+def load_schema(database_path: Path) -> DataSchema:
+    """Loads a dataschema from given directory"""
+    schema_file = database_path / "schema.yaml"
+    if schema_file.exists():
+        return DataSchema(schema_file)
+    return None
+
+
+def _format_loaded_json(raw_json: dict) -> dict:
+    """Convert raw json to expected python dict format"""
+    formatted_json = {}
+    for key, value in raw_json.items():
+        try:
+            new_key = int(key)
+        except ValueError:
+            new_key = key
+        if isinstance(value, list):
+            formatted_json[new_key] = set(value)
+        elif isinstance(value, dict):
+            formatted_json[new_key] = _format_loaded_json(value)
+    return formatted_json
+
+
+def load_normalization_levels(database_path: Path) -> dict[str, dict]:
+    """Load normalization level dict for each table in database"""
+    normalization_status_file = database_path / "table_column_normalization_levels.json"
+    if normalization_status_file.exists():
+        with normalization_status_file.open("r") as f:
+            normalization_statuses = json.load(f)
+        return _format_loaded_json(normalization_statuses)
+    return None
+
+
+@pytest.fixture
+def database_fixture(request):
+    """Loads full database and config dynamically"""
+    database_name = request.param
+    database_path = BASE_FILEPATH / "tests" / "data" / "normalization" / database_name
+    return {
+        "data": load_database(database_path),
+        "schema": load_schema(database_path),
+        "normalization_levels": load_normalization_levels(database_path),
+    }
+
+
+@pytest.mark.parametrize(
+    "database_fixture, normalization_key",
+    [
+        (("campaign-finance-sample"), "unnormalized"),
+        (("campaign-finance-sample"), "1NF"),
+        (("campaign-finance-sample"), "3NF"),
+    ],
+    indirect=["database_fixture"],
+)
+def test_normalization_status(database_fixture, normalization_key):
     """Test normalization status of unnormalized database"""
-    transaction_result = get_normalization_form_by_column(
-        database_1_unnormalized["Transaction"], sample_schema.schema["Transaction"]
-    )
-    transactor_result = get_normalization_form_by_column(
-        database_1_unnormalized["Transactor"].reset_index(),
-        sample_schema.schema["Transactor"],
-    )
-
-    expected_value = {
-        "Transaction": {
-            0: {
-                "amount-1",
-                "amount-2",
-                "transaction_type-1",
-                "transaction_type-2",
-                "date-1",
-                "date-2",
-            },
-            1: {
-                "donor",
-            },
-            3: {
-                "recipient_id",
-            },
-        },
-        "Transactor": {
-            3: {
-                "id",
-                "first_name",
-                "last_name",
-                "full_name",
-            },
-            0: set(),
-            1: set(),
-        },
-    }
-    assert transaction_result == expected_value["Transaction"]
-    assert transactor_result == expected_value["Transactor"]
+    schema = database_fixture["schema"]
+    for table_name, table in database_fixture["data"][normalization_key].items():
+        transaction_result = get_normalization_form_by_column(
+            table, schema.schema[table_name]
+        )
+        expected_result = database_fixture["normalization_levels"][normalization_key][
+            table_name
+        ]
+        assert (
+            transaction_result == expected_result
+        ), f"{table_name} normalization levels did not match expected"
 
 
-def test_normalization_status_1NF(database_1_1NF, sample_schema):
-    """Test normalization status of 1NF database"""
-    transaction_result = get_normalization_form_by_column(
-        database_1_1NF["Transaction"], sample_schema.schema["Transaction"]
-    )
-    transactor_result = get_normalization_form_by_column(
-        database_1_1NF["Transactor"].reset_index(), sample_schema.schema["Transactor"]
-    )
-
-    expected_value = {
-        "Transaction": {
-            0: set(),
-            1: {
-                "donor",
-            },
-            3: {
-                "recipient_id",
-                "amount",
-                "transaction_type",
-                "date",
-            },
-        },
-        "Transactor": {
-            3: {
-                "id",
-                "first_name",
-                "last_name",
-                "full_name",
-            },
-            0: set(),
-            1: set(),
-        },
-    }
-    assert transaction_result == expected_value["Transaction"]
-    assert transactor_result == expected_value["Transactor"]
-
-
-def test_1NF_from_unnormalized(database_1_unnormalized, database_1_1NF, sample_schema):
+@pytest.mark.parametrize(
+    "database_fixture",
+    [
+        ("campaign-finance-sample"),
+    ],
+    indirect=True,
+)
+def test_1NF_from_unnormalized(database_fixture):
     """Tests removing repeating columns (Level 0 to Level 1)."""
-    normalizer = Normalizer(database_1_unnormalized, sample_schema)
-    expected_value = database_1_1NF["Transaction"].copy()
+    unnormalized_database = database_fixture["data"]["unnormalized"]
+    database_1NF = database_fixture["data"]["1NF"]
+    schema = database_fixture["schema"]
+    normalizer = Normalizer(unnormalized_database, schema)
 
-    normalizer.convert_to_1NF_from_unnormalized("Transaction")
-    normalized_transactions = normalizer.database["Transaction"]
-    normalized_transactions = make_df_standard_for_testing(
-        normalized_transactions, normalized_transactions.columns
-    )
-    expected_value = make_df_standard_for_testing(
-        expected_value, normalized_transactions.columns
-    )
-    normalized_transactions.columns.name = None
+    for table_type, table in database_1NF.items():
+        expected_value = table.copy()
 
-    pd.testing.assert_frame_equal(
-        normalized_transactions,
-        expected_value,
-        check_like=True,
-        check_dtype=False,
-    )
+        normalizer.convert_to_1NF_from_unnormalized(table_type)
+        normalized_transactions = normalizer.database[table_type]
+        normalized_transactions = make_df_standard_for_testing(
+            normalized_transactions, normalized_transactions.columns
+        )
+        expected_value = make_df_standard_for_testing(
+            expected_value, normalized_transactions.columns
+        )
+        normalized_transactions.columns.name = None
+
+        pd.testing.assert_frame_equal(
+            normalized_transactions,
+            expected_value,
+            check_like=True,
+            check_dtype=False,
+        )
 
 
 def test_1NF_from_unnormalized_mixed(
@@ -872,79 +176,38 @@ def test_1NF_from_unnormalized_mixed(
     )
 
 
-def test_3NF_from_1NF(database_1_1NF, database_1_3NF, sample_schema, determined_uuids):
+@pytest.mark.parametrize(
+    "database_fixture",
+    [
+        ("campaign-finance-sample"),
+    ],
+    indirect=True,
+)
+def test_3NF_from_1NF(database_fixture, determined_uuids):
     """Tests extracting foreign key attributes into separate tables (Level 1 to Level 3)."""
-    normalizer = Normalizer(database_1_1NF, sample_schema)
+    database_3NF = database_fixture["data"]["3NF"]
+    database_1NF = database_fixture["data"]["1NF"]
+    schema = database_fixture["schema"]
+    normalizer = Normalizer(database_1NF, schema)
     normalizer.convert_to_3NF_from_1NF()
     database_result_3NF = normalizer.database
 
     assert (
-        database_result_3NF.keys() == database_1_3NF.keys()
+        database_result_3NF.keys() == database_3NF.keys()
     ), f"Result database has keys: {database_result_3NF.keys()}"
 
     for table_type in database_result_3NF:
+        if database_result_3NF[table_type].index.name:
+            database_result_3NF[table_type] = database_result_3NF[
+                table_type
+            ].reset_index()
         pd.testing.assert_frame_equal(
             make_df_standard_for_testing(
-                database_result_3NF[table_type], database_1_3NF[table_type].columns
+                database_result_3NF[table_type], database_3NF[table_type].columns
             ),
             make_df_standard_for_testing(
-                database_1_3NF[table_type], database_1_3NF[table_type].columns
+                database_3NF[table_type], database_3NF[table_type].columns
             ),
             check_like=True,
             check_dtype=False,
         )
-
-
-def test_3NF_from_1NF_complicated(
-    database_1_1NF_mixed_types,
-    database_1_3NF_mixed_types,
-    sample_schema,
-    determined_uuids,
-):
-    """Tests extracting foreign key attributes into separate tables (Level 1 to Level 3)."""
-    normalizer = Normalizer(database_1_1NF_mixed_types, sample_schema)
-    normalizer.convert_to_3NF_from_1NF()
-    database_result_3NF = normalizer.database
-
-    assert (
-        database_result_3NF.keys() == database_1_3NF_mixed_types.keys()
-    ), f"Result database has keys: {database_result_3NF.keys()}"
-
-    for table_type in database_result_3NF:
-        pd.testing.assert_frame_equal(
-            make_df_standard_for_testing(
-                database_result_3NF[table_type],
-                database_1_3NF_mixed_types[table_type].columns,
-            ),
-            make_df_standard_for_testing(
-                database_1_3NF_mixed_types[table_type],
-                database_1_3NF_mixed_types[table_type].columns,
-            ),
-            check_like=True,
-            check_dtype=False,
-        )
-
-
-# def test_inheritance_strategy_CTI_from_STI(
-#     database_1_3NF, database_1_3NF_CTI, sample_schema
-# ):
-#     """Test changing the inheritance strategy from single table to class table"""
-#     database_result_CTI = convert_to_class_table_from_single_table(
-#         database_1_3NF, sample_schema
-#     )
-
-#     assert database_result_CTI.keys() == database_1_3NF_CTI.keys(), (
-#         f"Result database has keys: {database_result_CTI.keys()}"
-#     )
-
-#     for table_type in database_result_CTI:
-#         pd.testing.assert_frame_equal(
-#             make_df_standard_for_testing(
-#                 database_result_CTI[table_type], database_1_3NF_CTI[table_type].columns
-#             ),
-#             make_df_standard_for_testing(
-#                 database_1_3NF_CTI[table_type], database_1_3NF_CTI[table_type].columns
-#             ),
-#             check_like=True,
-#             check_dtype=False,
-#         )
