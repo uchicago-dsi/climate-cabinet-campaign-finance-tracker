@@ -2,6 +2,7 @@
 ruff
 pre-commit~=3.5
 pytest~=7.4
+pytest-mock~=3.14
 coverage~=7.3
 ipykernel~=6.16
 setuptools>=64.0.0
