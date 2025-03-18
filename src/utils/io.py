@@ -30,5 +30,5 @@ def load_database_from_csv(input_path: Path) -> dict[str, pd.DataFrame]:
     for file in input_path.iterdir():
         database[file.stem] = pd.read_csv(
             file,
-        ).loc[:1000]
+        )
     return database
