@@ -68,7 +68,6 @@ Transaction:
     # - year
     # - state
   attributes:
-    - id
     - amount
     - date
     - year
@@ -83,7 +82,7 @@ Transaction:
   forward_relations:
     donor: Transactor
     recipient: Transactor
-    reported_election: Election
+    # reported_election: Election
   repeating_columns:
     - date
     - amount
