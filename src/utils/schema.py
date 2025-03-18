@@ -7,9 +7,9 @@ here TODO
 import copy
 import re
 from pathlib import Path
-from typing import Self
 
 import yaml
+from typing_extensions import Self
 
 UNNORMALIZED_FLAG = 0
 FIRST_NORMAL_FORM_FLAG = 1
