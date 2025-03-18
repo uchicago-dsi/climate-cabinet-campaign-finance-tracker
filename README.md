@@ -3,14 +3,14 @@
 ## Process
 
 1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
-2. Transform: Define database schema for storing transaction and entity information and write code to transform and validate raw data to fit appropriate schema.
-3. Clean: Perform record linkage and fix likely data entry errors.
+2. Standardize: Define database schema for storing transaction and entity information and standardize column names and values.
+3. Normalize: Normalize data into provided schema
 4. Classify: Label all entities as fossil fuel, clean energy, or other
 5. Graph: Construct a network graph of campaign finance contributions
 6. Analyze: Perform analysis on network data and join with other relevant dataset
 
 
-## Setup
+## Local Development
 
 ### Data Collection and Standardization Pipeline
 1. Collect the data through **<span style="color: red;">one</span>** of the steps below
@@ -18,15 +18,20 @@
     b. Go to the [Project's Google Drive]('https://drive.google.com/file/d/1fazviLqQWOXDVkP8NR80tO522lsIu5-H/view?usp=drive_link') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
 2. Run `pip install -r requirements.txt` and `pip install -e .` if not in Docker (not recommended for development)
 
+### Docker Development
+
+The repository provides a Dockerfile and devcontainer configuration. It is recommended to develop in Docker. 
+
 
 ## Usage
 
 The main components of the package are broken up into subpackages which can be imported and used in external code. To run pipelines directly you can use the scripts in the `scripts` directory. These scripts have been dockerized already and can be run simply using `make` commands.
 
-- `make run-transform-pipeline`: This runs the pipeline to transform raw data from each state into the appropriate schema. 
-  - Expects there to be a folder for each state in a `data/raw` folder. Follow setup instructions to get data. 
-- `make run-clean-classify-graph-pipeline`: This runs the pipeline to clean, classify, and graph data that is already in the correct schema. 
-  - Expects there to be an `inds_mini.csv`, `orgs_mini.csv`, and `trans_mini.csv` in a `data/transformed` directory (should be in git by default) 
+- `make run-standardize-pipeline`: This runs the pipeline to read in raw data and standardize column names and data.
+  - Expects there to be a folder for each state in a `data/raw` folder. Follow setup instructions to get data.  Outputs to `output/standardized`
+- `make run-normalize-pipeline`: This runs the pipeline to normalize data. 
+  - Expects data in `output/standardized`. Outputes to `output/normalized`
+- `make run-standardize-normalize-pipeline`. Combines both pipelines.
 
 For developing, please use either a Docker dev container or slurm computer cluster. See more details in `CONTRIBUTING.md`
 
@@ -47,49 +52,8 @@ If the data is larger than 50MB than you should not add it to the repo and inste
 
 This [README.md file](/data/README.md) should be kept up to date.
 
-### output
-This folder is empty by default. The final outputs of make commands will be placed here by default.
 
-
-
-transactor-election-year
-
-
-name
-type
-address
-
-
-
-
-## Steps
-
-### Step 1: Collect Data
-#### Implemented in `collect` 
-Retrieve data from state agencies and store in flat files
-
-### Step 2: Normalize Transaction Data
-#### Implemented in `normalize`
-Convert raw data into a standardized simple schema centered around a `transactions` table.
-The `transactions` represents monetary transactions and each row, at minimum, specifies
-a donor, recipient, date, and amount. Donor and recipient are foreign keys to a `transactors`
-table which is related to `organizations` and `individuals` tables. See schema here TODO. 
-
-The only modifications to source data here are dropping of invalid rows and changing of data types (i.e. 20240627 and June 27, 2024 will both be standardized as datetimes.)
-
-### Step 3: Clean Transaction Data
-#### Implemented in `clean`
-Modify raw data where appropriate to fix mistakes with high confidence. 
-
-### Step 4: Record Linkage
-#### Implemented in `link`
-Perform record linkage for individuals and organization. Further normalize the table to include `memberships` and `addresses` tables.
-
-### Step 5: Incorporate Elections
-#### Implemented in 
-
-
-## Team Member
+## Past Student Team Members
 
 Student Name: Nicolas Posner
 Student Email: nrposner@uchicago.edu
