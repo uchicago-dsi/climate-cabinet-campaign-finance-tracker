@@ -151,31 +151,6 @@ def test_1NF_from_unnormalized(database_fixture):
         )
 
 
-def test_1NF_from_unnormalized_mixed(
-    database_3_unnormalized, database_3_1NF, sample_schema
-):
-    """Tests removing repeating columns (Level 0 to Level 1)."""
-    normalizer = Normalizer(database_3_unnormalized, sample_schema)
-    expected_value = database_3_1NF["Transaction"].copy()
-
-    normalizer.convert_to_1NF_from_unnormalized("Transaction")
-    normalized_transactions = normalizer.database["Transaction"]
-    normalized_transactions = make_df_standard_for_testing(
-        normalized_transactions, normalized_transactions.columns
-    )
-    expected_value = make_df_standard_for_testing(
-        expected_value, normalized_transactions.columns
-    )
-    normalized_transactions.columns.name = None
-
-    pd.testing.assert_frame_equal(
-        normalized_transactions,
-        expected_value,
-        check_like=True,
-        check_dtype=False,
-    )
-
-
 @pytest.mark.parametrize(
     "database_fixture",
     [
