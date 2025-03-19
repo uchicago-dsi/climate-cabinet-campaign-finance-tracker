@@ -315,7 +315,7 @@ class Normalizer:
             for column in foreign_columns_in_base_table
         ]
         # step 2 - split foreign table off of old base table
-        extracted_table = table[foreign_columns_in_base_table]
+        extracted_table = table[foreign_columns_in_base_table].copy()
         extracted_table.columns = foreign_columns_in_foreign_table
         extracted_table["reported_state"] = table["reported_state"]
         # some columns are trivial and should be ignored for some actions
