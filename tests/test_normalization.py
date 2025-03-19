@@ -95,9 +95,9 @@ def database_fixture(request):
 @pytest.mark.parametrize(
     "database_fixture, normalization_key",
     [
-        (("campaign-finance-sample"), "unnormalized"),
-        (("campaign-finance-sample"), "1NF"),
-        (("campaign-finance-sample"), "3NF"),
+        ("campaign-finance-sample", "unnormalized"),
+        ("campaign-finance-sample", "1NF"),
+        ("campaign-finance-sample", "3NF"),
     ],
     indirect=["database_fixture"],
 )
