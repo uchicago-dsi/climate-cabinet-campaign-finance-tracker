@@ -4,9 +4,10 @@ from uuid import UUID
 
 import pandas as pd
 import pytest
-from utils.constants import BASE_FILEPATH
 from utils.normalize import Normalizer, get_normalization_form_by_column
 from utils.schema import DataSchema
+
+BASE_FILEPATH = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture()
@@ -73,8 +74,6 @@ def _format_loaded_json(raw_json: dict) -> dict:
 def load_normalization_levels(database_path: Path) -> dict[str, dict]:
     """Load normalization level dict for each table in database"""
     normalization_status_file = database_path / "table_column_normalization_levels.json"
-    print("Normalization status file ", normalization_status_file)
-    print("database directory: ", list(normalization_status_file.parent.iterdir()))
     if normalization_status_file.exists():
         with normalization_status_file.open("r", encoding="UTF-8") as f:
             normalization_statuses = json.load(f)
@@ -162,7 +161,6 @@ def test_1NF_from_unnormalized(database_fixture):
 )
 def test_3NF_from_1NF(database_fixture, determined_uuids):
     """Tests extracting foreign key attributes into separate tables (Level 1 to Level 3)."""
-    print(list(BASE_FILEPATH.iterdir()))
     database_3NF = database_fixture["data"]["3NF"]
     database_1NF = database_fixture["data"]["1NF"]
     schema = database_fixture["schema"]
