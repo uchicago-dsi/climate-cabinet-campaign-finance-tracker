@@ -16,7 +16,13 @@ jobs:
 
       - name: Checkout Code Repository
         uses: actions/checkout@v3
-
+        with:
+          fetch-depth: 0
+      - name: Debug File Structure
+        run: |
+          echo "Current Directory: $(pwd)"
+          ls -R
+          ls -R tests/data/normalization/
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
