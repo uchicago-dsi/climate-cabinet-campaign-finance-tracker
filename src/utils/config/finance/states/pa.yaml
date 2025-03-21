@@ -10,7 +10,7 @@ base:
 
 contributions:
   inherits: base
-  table_type: Transaction
+  table_name: Transaction
   column_details:
     - raw_name: CampaignFinanceID
       type: str
@@ -164,7 +164,7 @@ contributions_through_2022:
 
 filer:
   inherits: base
-  table_type: Transactor
+  table_name: Transactor
   enum_mapper:
     # source: https://www.pa.gov/agencies/dos/resources/voting-and-elections-resources/campaign-finance-resources/technical-specifications-for-electronic-filing-of-campaign-expen.html#accordion-6a5fc1b7ea-item-8245f60064
     election_result--election--office_sought:
@@ -335,7 +335,7 @@ filer_2023:
 
 expense:
   inherits: base
-  table_type: Transaction
+  table_name: Transaction
   column_details:
     - raw_name: CampaignFinanceID
       type: str

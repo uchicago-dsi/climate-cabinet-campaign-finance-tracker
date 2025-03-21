@@ -51,9 +51,9 @@ class ConfigHandler:
         return self._state_code
 
     @property
-    def table_type(self) -> str:
+    def table_name(self) -> str:
         """Type of table: 'Transaction', 'Transactor', etc."""
-        return self._table_type
+        return self._table_name
 
     @property
     def raw_data_path_pattern(self) -> str:
@@ -193,5 +193,5 @@ class ConfigHandler:
         self._new_empty_columns = form_config.get("new_empty_columns", [])
         self._state_code_columns = form_config.get("state_code_columns", [])
         self._state_code = form_config.get("state_code", state_code)
-        self._table_type = form_config.get("table_type")
+        self._table_name = form_config.get("table_name")
         self._raw_data_path_pattern = form_config.get("path_pattern")

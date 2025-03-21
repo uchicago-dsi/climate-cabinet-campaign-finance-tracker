@@ -128,18 +128,18 @@ class TableSchema:
         """Parent type of given entity type"""
         return self._parent_type
 
-    def __init__(self, data_schema: dict, table_type: str):  # noqa ANN204
+    def __init__(self, data_schema: dict, table_name: str):  # noqa ANN204
         """Creates a tableschema instance used to validate tables
 
         Args:
             data_schema: dict
-            table_type: string must be a key in data_schema
+            table_name: string must be a key in data_schema
         """
-        if table_type not in data_schema:
+        if table_name not in data_schema:
             raise KeyError(
-                f"{table_type} not found in {data_schema}. Available options: {data_schema.keys()}"
+                f"{table_name} not found in {data_schema}. Available options: {data_schema.keys()}"
             )
-        self.table_type = table_type
+        self.table_name = table_name
         self.data_schema = data_schema
         self.property_cache = {
             "single table inheritance": {},
@@ -185,8 +185,8 @@ class TableSchema:
                     self.property_cache[inheritance_strategy][
                         f"{property_type}_regex"
                     ] = re.compile("|".join(self.attributes))
-        self._child_types = self.data_schema[table_type].get("child_types", [])
-        self._parent_type = self.data_schema[table_type].get("parent_type", None)
+        self._child_types = self.data_schema[table_name].get("child_types", [])
+        self._parent_type = self.data_schema[table_name].get("parent_type", None)
 
     def _fill_properties(
         self,
@@ -203,7 +203,7 @@ class TableSchema:
 
         # Make sure we don't modify the original data schema
         property_value = copy.deepcopy(
-            self.data_schema[self.table_type].get(
+            self.data_schema[self.table_name].get(
                 property_name, [] if property_type == "list" else {}
             )
         )
@@ -219,7 +219,7 @@ class TableSchema:
         )
 
         # Process child types
-        for child in self.data_schema[self.table_type].get("child_types", []):
+        for child in self.data_schema[self.table_name].get("child_types", []):
             child_value = copy.deepcopy(
                 self.data_schema[child].get(
                     property_name, [] if property_type == "list" else {}
@@ -231,7 +231,7 @@ class TableSchema:
                 accumulated_values.update(child_value)
 
         # Process parent type
-        parent_type_name = self.data_schema[self.table_type].get("parent_type")
+        parent_type_name = self.data_schema[self.table_name].get("parent_type")
         if parent_type_name:
             parent_value = copy.deepcopy(
                 self.data_schema[parent_type_name].get(
@@ -248,11 +248,11 @@ class TableSchema:
             "forward_relations",
         ]:
             updated_values = {}
-            for key, related_table_type in accumulated_values.items():
-                if data_schema[related_table_type].get("parent_type", None):
-                    updated_values[key] = data_schema[related_table_type]["parent_type"]
+            for key, related_table_name in accumulated_values.items():
+                if data_schema[related_table_name].get("parent_type", None):
+                    updated_values[key] = data_schema[related_table_name]["parent_type"]
                 else:
-                    updated_values[key] = related_table_type
+                    updated_values[key] = related_table_name
             accumulated_values = updated_values
 
         return (
@@ -265,11 +265,11 @@ class DataSchema:
 
     @property
     def schema(self) -> dict[str, TableSchema]:
-        """Maps table types to their TableSchemas"""
+        """Maps table names to their TableSchemas"""
         if self._schema is None:
             self._schema = {}
-            for table_type in self.raw_data_schema:
-                self._schema[table_type] = TableSchema(self.raw_data_schema, table_type)
+            for table_name in self.raw_data_schema:
+                self._schema[table_name] = TableSchema(self.raw_data_schema, table_name)
         return self._schema
 
     @property
@@ -287,7 +287,7 @@ class DataSchema:
 
     def empty_database(self) -> dict[str, list]:
         """Returns an empty database of the given schema"""
-        return {table_type: [] for table_type in self.schema.keys()}
+        return {table_name: [] for table_name in self.schema.keys()}
 
     def __init__(self, path_to_data_schema: Path | str) -> None:
         """Representation of a single table"""

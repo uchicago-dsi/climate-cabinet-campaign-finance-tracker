@@ -20,7 +20,7 @@ def standardize_states(
             will default to all states that have been implemented
 
     Returns:
-        dictionary mapping table type to tables of that type
+        dictionary mapping table name to tables of that type
     """
     load_state_modules()
     if states is None:
@@ -30,11 +30,11 @@ def standardize_states(
     for state in states:
         for source in ALL_STATE_SOURCES[state]:
             standardized_source_table = source.load_and_standardize_data_source()
-            if source.table_type not in database:
-                database[source.table_type] = pd.DataFrame()
+            if source.table_name not in database:
+                database[source.table_name] = pd.DataFrame()
 
-            database[source.table_type] = pd.concat(
-                [database[source.table_type], standardized_source_table]
+            database[source.table_name] = pd.concat(
+                [database[source.table_name], standardized_source_table]
             )
 
     return database

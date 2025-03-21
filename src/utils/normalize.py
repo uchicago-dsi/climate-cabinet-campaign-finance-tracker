@@ -75,7 +75,7 @@ def get_normalization_form_by_column(
         else:
             raise ValueError(
                 f"Invalid Table: {first_column_token} in {column} not expected"
-                f" in {table_schema.table_type}"
+                f" in {table_schema.table_name}"
             )
     return first_column_token_by_normalization_form
 
@@ -87,7 +87,7 @@ class Normalizer:
     def id_mapping(self) -> dict[tuple, str]:
         """Dictionary mapping original ids to uuids
 
-        Original ids are stored as tuples of the form (raw id, table_type, year, state)
+        Original ids are stored as tuples of the form (raw id, table_name, year, state)
         """
         return self._id_mapping
 
@@ -108,18 +108,18 @@ class Normalizer:
         self.schema = schema
         self._id_mapping = {}
 
-    def get_foreign_table_type(self, base_type: str, column_name: str) -> str:
+    def get_foreign_table_name(self, base_type: str, column_name: str) -> str:
         """Retrieve the type of a multivalued/foreign table"""
         column_tokens = column_name.split(SPLIT)
-        current_table_type = base_type
+        current_table_name = base_type
         for column_token in column_tokens:
-            current_table_schema = self.schema.schema[current_table_type]
+            current_table_schema = self.schema.schema[current_table_name]
             if column_token in current_table_schema.relations:
-                current_table_type = current_table_schema.relations[column_token]
+                current_table_name = current_table_schema.relations[column_token]
                 continue
             elif current_table_schema.attributes_regex.match(column_token):
-                return current_table_type
-        return current_table_type
+                return current_table_name
+        return current_table_name
 
     def convert_to_1NF_from_unnormalized(self, table_name: str) -> None:
         """Converts an unnormalized table into first normal form (1NF)
@@ -127,7 +127,7 @@ class Normalizer:
         Removes anticipated repeating groups
 
         Args:
-            table_name: name of table type to normalize
+            table_name: name of table name to normalize
         Modifies:
             database[table_name] transformed to 1NF
         """
@@ -187,7 +187,7 @@ class Normalizer:
 
     def _drop_verifiably_incomplete_rows(
         self,
-        table_type: str,
+        table_name: str,
         table: pd.DataFrame,
     ) -> list[str]:
         """Drop all rows from table that cannot become complete after normalization
@@ -198,12 +198,12 @@ class Normalizer:
         once normalization is completed)
 
         Args:
-            table_type: TODO
+            table_name: TODO
             table: list of columns in table
         Modifies:
             table with verifiably incomplete rows dropped
         """
-        table_schema = self.schema.schema[table_type]
+        table_schema = self.schema.schema[table_name]
         required_attributes = set(table_schema.required_attributes)
         if "id" in required_attributes:
             required_attributes.remove("id")  # id has not been generated yet
@@ -237,12 +237,12 @@ class Normalizer:
     def _add_relation_to_extracted_table(
         self,
         table: pd.DataFrame,
-        table_type: str,
+        table_name: str,
         schema: DataSchema,
         foreign_key_prefix: str,
     ) -> pd.DataFrame:
         """Checks if a column linking back to the base table is required in a foreign table"""
-        backlink_column = schema.schema[table_type].reverse_relation_names[
+        backlink_column = schema.schema[table_name].reverse_relation_names[
             foreign_key_prefix
         ]
         if f"{foreign_key_prefix}{SPLIT}{backlink_column}" not in table.columns:
@@ -285,14 +285,14 @@ class Normalizer:
     def _split_prefixed_columns(
         self,
         table: pd.DataFrame,
-        table_type: str,
+        table_name: str,
         relation_prefix: str,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Remove columns starting with prefix from table, optionally keeping foreign key
 
         Args:
             table: any pandas dataframe
-            table_type: table type present in schema
+            table_name: table name present in schema
             relation_prefix: prefix of columns to be split from table. prefix should be in one of
                 self.forward_relations or self.reverse_relations
         Returns: original table with columns removed, new foreign table
@@ -300,9 +300,9 @@ class Normalizer:
         # step 0 - handle reverse relations
         # we do this earlier than forward relation ids, because we want to
         # deduplicate forward relation ids before the ids are created
-        if relation_prefix in self.schema.schema[table_type].reverse_relations:
+        if relation_prefix in self.schema.schema[table_name].reverse_relations:
             table = self._add_relation_to_extracted_table(
-                table, table_type, self.schema, relation_prefix
+                table, table_name, self.schema, relation_prefix
             )
         # step 1
         foreign_columns_in_base_table = [
@@ -324,12 +324,12 @@ class Normalizer:
         ]
         # step 3 - drop incomplete rows
         extracted_table = extracted_table.dropna(how="all", subset=non_metadata_columns)
-        extracted_table_type = self.get_foreign_table_type(
-            table_type,
+        extracted_table_name = self.get_foreign_table_name(
+            table_name,
             relation_prefix,
         )
-        extracted_table_schema = self.schema.schema[extracted_table_type]
-        self._drop_verifiably_incomplete_rows(extracted_table_type, extracted_table)
+        extracted_table_schema = self.schema.schema[extracted_table_name]
+        self._drop_verifiably_incomplete_rows(extracted_table_name, extracted_table)
         # step 4 - drop duplicates - deduplication
         extracted_table = extracted_table.drop_duplicates()
         # step 5 - generate ids if the extracted table has an id column
@@ -337,7 +337,7 @@ class Normalizer:
             extracted_table, extracted_table_schema, self.id_mapping, id_column="id"
         )
         # step 7 - add relation
-        if relation_prefix in self.schema.schema[table_type].forward_relations:
+        if relation_prefix in self.schema.schema[table_name].forward_relations:
             mapping_df = extracted_table.copy()
             mapping_df = mapping_df.rename(columns={"id": f"temp_{relation_prefix}_id"})
             mapping_df = mapping_df.drop(columns=["reported_state"])
@@ -364,29 +364,29 @@ class Normalizer:
     def _convert_table_to_3NF_from_1NF(
         self,
         table: pd.DataFrame,
-        table_type: str,
+        table_name: str,
     ) -> dict[str, list[pd.DataFrame]]:
         """Normalize table and any derivative tables to desired level given table schema
 
         Args:
-            table: a valid table of table_type given schema
-            table_type: used to identify which type of table in given schema
+            table: a valid table of table_name given schema
+            table_name: used to identify which type of table in given schema
                 table should fit
 
         Returns:
-            Dictionary mapping table_types to list of tables attaining the desired
+            Dictionary mapping table_names to list of tables attaining the desired
                 normalization level.
         """
         # Step 1: Figure out which columns need to be normalized
         normalization_levels_to_columns = get_normalization_form_by_column(
-            table, self.schema.schema[table_type]
+            table, self.schema.schema[table_name]
         )
         normalization_level = min(
             k for k, v in normalization_levels_to_columns.items() if v
         )
         # Step 2: Base case - if the table is at the desired level, return it.
         if normalization_level >= THIRD_NORMAL_FORM_FLAG:
-            return {table_type: [table]}
+            return {table_name: [table]}
         # Step 3: If the table needs to be normalized, go through
         # each column that needs to be normalized and normalize it. This will
         # return a new table and potentially a derivative table.
@@ -402,19 +402,19 @@ class Normalizer:
             # this is where the heavy lifting is done and a new foreign table
             # is created derived from the columns that did not belong in base table
             active_table, extracted_table = self._split_prefixed_columns(
-                active_table, table_type, first_column_token
+                active_table, table_name, first_column_token
             )
             # Step 4 - Recursive step. Bring the foreign derivative table to the
             # desired form and all ensuing derivative tables
             extracted_table_derived_database = self._convert_table_to_3NF_from_1NF(
                 extracted_table,
-                self.schema.schema[table_type].relations[first_column_token],
+                self.schema.schema[table_name].relations[first_column_token],
             )
-            for derived_table_type in extracted_table_derived_database:
-                updated_database[derived_table_type].extend(
-                    extracted_table_derived_database[derived_table_type]
+            for derived_table_name in extracted_table_derived_database:
+                updated_database[derived_table_name].extend(
+                    extracted_table_derived_database[derived_table_name]
                 )
-        updated_database[table_type].append(active_table)
+        updated_database[table_name].append(active_table)
         # ensure indices are correct
         return updated_database
 
@@ -432,16 +432,16 @@ class Normalizer:
             database: updates database so that each table is in at least 3NF
         """
         normalized_database = self.schema.empty_database()
-        for table_type, table in self.database.items():
+        for table_name, table in self.database.items():
             if table.index.name:
                 table = table.reset_index()
             updated_database = self._convert_table_to_3NF_from_1NF(
                 table,
-                table_type,
+                table_name,
             )
-            for normalized_table_type in updated_database:
-                normalized_database[normalized_table_type].extend(
-                    updated_database[normalized_table_type]
+            for normalized_table_name in updated_database:
+                normalized_database[normalized_table_name].extend(
+                    updated_database[normalized_table_name]
                 )
         normalized_database = self._consolidate_database(normalized_database)
         self.database = normalized_database
@@ -450,39 +450,39 @@ class Normalizer:
         self,
         database: dict[str, list[pd.DataFrame]],
     ) -> dict[str, pd.DataFrame]:
-        """Consolidate the database by concatenating each table type"""
+        """Consolidate the database by concatenating each table name"""
         consolidated_database = {}
-        for table_type in database:
-            if database[table_type] == []:
+        for table_name in database:
+            if database[table_name] == []:
                 continue
-            consolidated_table = pd.concat(database[table_type], ignore_index=True)
+            consolidated_table = pd.concat(database[table_name], ignore_index=True)
             if "id" in consolidated_table.columns:
                 consolidated_table = consolidated_table.set_index("id")
-            consolidated_database[table_type] = consolidated_table
+            consolidated_database[table_name] = consolidated_table
         return consolidated_database
 
     def normalize_database(self) -> dict[str, pd.DataFrame]:
         """Bring a database to 4NF given the provided schema
 
         Returns:
-            dictionary mapping table types to respective tables
+            dictionary mapping table names to respective tables
         """
         # to start, ensure all ids are properly handled in the database
-        for table_type, table in self.database.items():
-            handle_id_column(table, self.schema.schema[table_type], self.id_mapping)
+        for table_name, table in self.database.items():
+            handle_id_column(table, self.schema.schema[table_name], self.id_mapping)
             # TODO: handle for _id columns??
             for column in table.columns:
                 if column.endswith(ID_SUFFIX):
-                    column_reference_table = self.get_foreign_table_type(
-                        table_type, column[: -len(ID_SUFFIX)]
+                    column_reference_table = self.get_foreign_table_name(
+                        table_name, column[: -len(ID_SUFFIX)]
                     )
                     handle_existing_ids(
                         table, column_reference_table, self.id_mapping, column
                     )
 
         # bring to 1NF
-        for table_type in self.database:
-            self.convert_to_1NF_from_unnormalized(table_type)
+        for table_name in self.database:
+            self.convert_to_1NF_from_unnormalized(table_name)
 
         # bring to 3NF
         self.convert_to_3NF_from_1NF()
@@ -493,10 +493,10 @@ class Normalizer:
     ) -> dict[str, pd.DataFrame]:
         """[WIP] convert a database from a single table to class table inheritance strategy"""
         database_class_table = {}
-        for table_type in database_single_table:
-            original_table = database_single_table[table_type]
+        for table_name in database_single_table:
+            original_table = database_single_table[table_name]
             data_schema.inheritance_strategy = "class table inheritance"
-            for child_type in data_schema.schema[table_type].child_types:
+            for child_type in data_schema.schema[table_name].child_types:
                 child_schema = data_schema.schema[child_type]
                 child_table = original_table[
                     [
@@ -507,7 +507,7 @@ class Normalizer:
                 ]
                 child_table = child_table.dropna(how="all")
                 database_class_table[child_type] = child_table
-            parent_schema = data_schema.schema[table_type]
+            parent_schema = data_schema.schema[table_name]
             parent_table = original_table[
                 [
                     col
@@ -515,5 +515,5 @@ class Normalizer:
                     if col in parent_schema.attributes
                 ]
             ]
-            database_class_table[table_type] = parent_table
+            database_class_table[table_name] = parent_table
         return database_class_table

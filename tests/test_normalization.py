@@ -131,11 +131,11 @@ def test_1NF_from_unnormalized(database_fixture):
     schema = database_fixture["schema"]
     normalizer = Normalizer(unnormalized_database, schema)
 
-    for table_type, table in database_1NF.items():
+    for table_name, table in database_1NF.items():
         expected_value = table.copy()
 
-        normalizer.convert_to_1NF_from_unnormalized(table_type)
-        normalized_transactions = normalizer.database[table_type]
+        normalizer.convert_to_1NF_from_unnormalized(table_name)
+        normalized_transactions = normalizer.database[table_name]
         normalized_transactions = make_df_standard_for_testing(
             normalized_transactions, normalized_transactions.columns
         )
@@ -172,17 +172,17 @@ def test_3NF_from_1NF(database_fixture, determined_uuids):
         database_result_3NF.keys() == database_3NF.keys()
     ), f"Result database has keys: {database_result_3NF.keys()}"
 
-    for table_type in database_result_3NF:
-        if database_result_3NF[table_type].index.name:
-            database_result_3NF[table_type] = database_result_3NF[
-                table_type
+    for table_name in database_result_3NF:
+        if database_result_3NF[table_name].index.name:
+            database_result_3NF[table_name] = database_result_3NF[
+                table_name
             ].reset_index()
         pd.testing.assert_frame_equal(
             make_df_standard_for_testing(
-                database_result_3NF[table_type], database_3NF[table_type].columns
+                database_result_3NF[table_name], database_3NF[table_name].columns
             ),
             make_df_standard_for_testing(
-                database_3NF[table_type], database_3NF[table_type].columns
+                database_3NF[table_name], database_3NF[table_name].columns
             ),
             check_like=True,
             check_dtype=False,

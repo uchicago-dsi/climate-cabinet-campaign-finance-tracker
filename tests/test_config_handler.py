@@ -28,7 +28,7 @@ def sample_config(tmp_path):
             "new_empty_columns": ["additional_column"],
             "state_code_columns": ["reported_election--state"],
             "state_code": "NY",
-            "table_type": "Transaction",
+            "table_name": "Transaction",
             "path_pattern": "(?i)^(19[0-9][0-9]|20[0-1][0-9]|2020|2021)/contrib.*\\.txt$",
         }
     }
@@ -98,7 +98,7 @@ def test_config_handler_init(sample_config):
     assert handler._column_details, "Columns should be loaded from config"
     assert handler._enum_mapper, "Enum mapper should be loaded from config"
     assert handler._read_csv_params, "Read CSV parameters should be loaded from config"
-    assert handler._table_type, "Table type must be loaded from config"
+    assert handler._table_name, "table name must be loaded from config"
     assert handler._raw_data_path_pattern, "Path pattern must be loaded from config"
 
 
@@ -234,7 +234,7 @@ def inheritance_config(tmp_path):
             "enum_mapper": {"category": {"A": "Alpha", "B": "Beta"}},
             "read_csv_params": {"sep": "|"},
             "state_code": "CA",
-            "table_type": "BaseTable",
+            "table_name": "BaseTable",
             "path_pattern": "(?i)^base/.*\\.txt$",
         },
         "derived_form": {
@@ -270,8 +270,8 @@ def test_inherits(inheritance_config):
         col["raw_name"] for col in handler._column_details
     ], "CHILD_COLUMN should be present as it takes precedence over inherited column"
     assert (
-        handler.table_type == "BaseTable"
-    ), "Table type should be inherited from base_form"
+        handler.table_name == "BaseTable"
+    ), "table name should be inherited from base_form"
     assert handler.read_csv_params["sep"] == "|", "Read CSV params should be inherited"
     assert handler.enum_mapper == {
         "category": {"A": "Alpha", "B": "Beta"}

@@ -84,8 +84,8 @@ def sample_schemas():
 @pytest.fixture
 def schema_instance(request, sample_schemas):
     """Returns a TableSchema instance based on test parameters."""
-    schema_type, table_type = request.param
-    return TableSchema(sample_schemas[schema_type], table_type)
+    schema_type, table_name = request.param
+    return TableSchema(sample_schemas[schema_type], table_name)
 
 
 @pytest.fixture
@@ -306,8 +306,8 @@ def test_invalid_forward_relations(
     assert expected_error in str(excinfo.value)
 
 
-def test_invalid_table_type(complete_data_schema_data, tmp_path):
-    """Tests behavior when an invalid table type is given."""
+def test_invalid_table_name(complete_data_schema_data, tmp_path):
+    """Tests behavior when an invalid table name is given."""
     schema_file = tmp_path / "test_schema.yaml"
     schema_file.write_text(yaml.dump(complete_data_schema_data))
 

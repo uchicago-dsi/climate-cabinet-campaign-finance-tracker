@@ -107,13 +107,13 @@ def get_raw_ids_mask(table: pd.DataFrame, id_column: str) -> pd.Series:
 
 
 def handle_existing_ids(
-    table: pd.DataFrame, table_type: str, id_mapping: UUIDMapping, id_column: str
+    table: pd.DataFrame, table_name: str, id_mapping: UUIDMapping, id_column: str
 ) -> None:
     """Ensure all non null ids in id_column are mapped to a uuid in id_mapping
 
     Args:
         table: DataFrame with `id_column`.
-        table_type: Name of table type the id represents.
+        table_name: Name of table name the id represents.
         id_mapping: Mapping of (raw id, year, reported_state, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
 
@@ -121,14 +121,14 @@ def handle_existing_ids(
         table: Updates `id_column` with mapped UUIDs where applicable.
         id_mapping: Updates `id_mapping` with new id mappings
     """
-    map_ids_to_uuids(table, table_type, id_mapping, id_column)
+    map_ids_to_uuids(table, table_name, id_mapping, id_column)
     raw_ids_mask = get_raw_ids_mask(table, id_column)
     new_mappings = create_new_uuid_mapping(
-        table.loc[raw_ids_mask], table_type, id_column
+        table.loc[raw_ids_mask], table_name, id_column
     )
     id_mapping.update(new_mappings)
     # this can be done more efficiently if we filter table here
-    map_ids_to_uuids(table, table_type, new_mappings, id_column, mask=raw_ids_mask)
+    map_ids_to_uuids(table, table_name, new_mappings, id_column, mask=raw_ids_mask)
 
 
 def handle_id_column(
@@ -149,11 +149,11 @@ def handle_id_column(
         table: Creates/Updates `id_column` to have UUIDs
         id_mapping: Updates `id_mapping` with new id mappings
     """
-    table_type = table_schema.table_type
+    table_name = table_schema.table_name
     if id_column not in table_schema.attributes:
         return None
     if id_column not in table.columns:
         table[id_column] = None
 
     add_uuids_to_table(table, id_column)
-    handle_existing_ids(table, table_type, id_mapping, id_column)
+    handle_existing_ids(table, table_name, id_mapping, id_column)

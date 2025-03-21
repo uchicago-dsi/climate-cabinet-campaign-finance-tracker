@@ -209,9 +209,9 @@ class DataSourceStandardizationPipeline:
     """Run pipeline for a single data source from file to standardized dataframe"""
 
     @property
-    def table_type(self) -> str:
-        """Table type that pipeline standardizes"""
-        return self.config_handler.table_type
+    def table_name(self) -> str:
+        """Table name that pipeline standardizes"""
+        return self.config_handler.table_name
 
     def __init__(
         self,

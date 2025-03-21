@@ -61,7 +61,7 @@ Both first level keys have the same set of subkeys:
 - enum_mapper:
     - keys are names of standardized column names and map to mappings of raw values to standard values for a given enum.
     - if additional keys generated that are enums, their names should be listed here as well. 
-- table_type: type of table represented. transaction, transactor, election, election_result, address, membership.
+- table_name: type of table represented. transaction, transactor, election, election_result, address, membership.
 - path_pattern: regex describing the default location of default raw files of this type. Relative to the `data/raw/${state_code}` directory. 
 
 ### Walkthrough: Pennsylvania

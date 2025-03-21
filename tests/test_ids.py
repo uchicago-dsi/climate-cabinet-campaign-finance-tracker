@@ -74,7 +74,7 @@ def test_handle_id_column(sample_table):
     """Test full handling logic"""
     mock_schema = MagicMock()
     mock_schema.attributes = ["id"]
-    mock_schema.table_type = "tableA"
+    mock_schema.table_name = "tableA"
 
     id_mapping = {
         (1, 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",

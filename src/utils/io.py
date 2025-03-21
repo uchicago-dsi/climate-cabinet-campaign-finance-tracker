@@ -21,7 +21,7 @@ def save_database_to_csv(database: dict[str, pd.DataFrame], output_path: Path) -
 
 
 def load_database_from_csv(input_path: Path) -> dict[str, pd.DataFrame]:
-    """Load a database from a directory containing csv file for each table type
+    """Load a database from a directory containing csv file for each table name
 
     Args:
         input_path: path to directory with csv files
