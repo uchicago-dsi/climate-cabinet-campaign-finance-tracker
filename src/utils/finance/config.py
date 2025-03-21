@@ -99,8 +99,8 @@ class ConfigHandler:
 
     @property
     def relevant_columns(self) -> list[str]:
-        """List of standardized column names to keep"""
-        return list(self.column_mapper.values())
+        """List of raw column names to keep"""
+        return list(self.column_mapper.keys())
 
     @property
     def duplicate_columns(self) -> dict[str, str]:

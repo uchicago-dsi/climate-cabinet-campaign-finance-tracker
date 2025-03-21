@@ -114,10 +114,8 @@ class SchemaTransformer:
         Args:
             raw_data_table: single dataframe with raw column names
         """
-        standard_column_name_table = self._rename_columns(raw_data_table)
-        standard_relevant_column_table = self._drop_unused_columns(
-            standard_column_name_table
-        )
+        relevant_raw_table = self._drop_unused_columns(raw_data_table)
+        standard_relevant_column_table = self._rename_columns(relevant_raw_table)
         standard_relevant_column_table = self._add_state_code(
             standard_relevant_column_table
         )

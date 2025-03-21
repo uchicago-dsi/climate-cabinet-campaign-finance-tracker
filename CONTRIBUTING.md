@@ -51,7 +51,7 @@ Both first level keys have the same set of subkeys:
 - column_details: list of column properties where each may have the following keys:
     - raw_name: the name of the column as it appears in the raw data
     - type: Pandas dtype of the column
-    - standard_name: (optional) If the column is used, [standard name](#TODO)
+    - standard_name: (optional) If the column is used, [standard name](#TODO). Even if the standard name is the same as the raw name, this must be included. 
     - date_format: (optional) Format of dates in the provided data according to [datetime strftime](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior).
 - column_order: list of columns in the order they appear in the data format. If not provided, will default to the order in column_properties.
 - duplicate_columns:

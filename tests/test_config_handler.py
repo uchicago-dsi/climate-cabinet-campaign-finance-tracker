@@ -118,7 +118,7 @@ def test_column_mapper(sample_config):
 
 def test_relevant_columns(sample_config):
     handler = ConfigHandler("contributions", config_file_path=sample_config)
-    assert set(handler.relevant_columns) == {"recipient_id", "date-1"}
+    assert set(handler.relevant_columns) == {"FILERID", "CONTDATE1"}
 
 
 def test_enum_mapper(sample_config):
