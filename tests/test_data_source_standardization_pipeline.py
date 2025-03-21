@@ -228,7 +228,7 @@ class TestDataStandardizer:
     ):
         """Ensure date formats are correctly converted."""
         standardizer = DataStandardizer(mock_config_handler)
-        standardized_date_data = standardizer._standardize_column_to_date_format(
+        standardized_date_data = standardizer._standardize_date_format(
             renamed_columns_data
         )
         assert [str(date) for date in standardized_date_data["date"].tolist()] == [
@@ -274,11 +274,11 @@ def mock_pipeline(
     return pipeline
 
 
-def test_standardize_data_source(mock_pipeline, standardized_data):
+def test_load_standardize_data_source(mock_pipeline, standardized_data):
     """Test standardize_data_source to ensure it processes data correctly without real I/O."""
 
     # Run the pipeline's standardization process
-    result_df = mock_pipeline.standardize_data_source()
+    result_df = mock_pipeline.load_and_standardize_data_source()
 
     # Validate the output
     pd.testing.assert_frame_equal(result_df, standardized_data)

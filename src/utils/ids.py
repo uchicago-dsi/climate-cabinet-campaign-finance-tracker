@@ -151,7 +151,7 @@ def handle_id_column(
     """
     table_type = table_schema.table_type
     if id_column not in table_schema.attributes:
-        return table
+        return None
     if id_column not in table.columns:
         table[id_column] = None
 

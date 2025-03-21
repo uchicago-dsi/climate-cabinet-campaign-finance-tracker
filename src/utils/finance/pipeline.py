@@ -29,7 +29,7 @@ def standardize_states(
     database = {}
     for state in states:
         for source in ALL_STATE_SOURCES[state]:
-            standardized_source_table = source.standardize_data_source()
+            standardized_source_table = source.load_and_standardize_data_source()
             if source.table_type not in database:
                 database[source.table_type] = pd.DataFrame()
 

@@ -472,9 +472,9 @@ class Normalizer:
             handle_id_column(table, self.schema.schema[table_type], self.id_mapping)
             # TODO: handle for _id columns??
             for column in table.columns:
-                if column.endswith("_id"):
+                if column.endswith(ID_SUFFIX):
                     column_reference_table = self.get_foreign_table_type(
-                        table_type, column[: -len("_id")]
+                        table_type, column[: -len(ID_SUFFIX)]
                     )
                     handle_existing_ids(
                         table, column_reference_table, self.id_mapping, column

@@ -35,9 +35,7 @@ class DataReader:
         self._default_paths = config_handler.raw_data_file_paths
         self.columns = config_handler.raw_column_order
 
-    def read_tabular_data(
-        self, path: str = None, dtype_dict: dict = None
-    ) -> pd.DataFrame:
+    def read_tabular_data(self, path: str = None) -> pd.DataFrame:
         """Read raw tabular data from state provided files into a DataFrame
 
         This method should maintain the data as closely as possible. The only
@@ -47,8 +45,6 @@ class DataReader:
         """
         if path is None:
             path = self.default_raw_data_paths[0]
-        if dtype_dict is None:
-            dtype_dict = self.dtype_dict
         table = pd.read_csv(
             str(path),
             dtype=self.dtype_dict,
@@ -86,7 +82,15 @@ class SchemaTransformer:
         return standard_data_table
 
     def _add_duplicate_columns(self, standard_data_table: pd.DataFrame) -> pd.DataFrame:
-        """Add new columns that are copies of existing columns"""
+        """Add new columns that are copies of existing columns
+
+        This can be wanted in cases where a column represents a property of two
+        separate entities. For example, a raw file might have a 'state' column
+        that denotes both the state of the election the candidate is running for
+        and the state in which the transaction took place. Duplicating here allows
+        for the normalization logic to decompose tables without worrying about
+        state specific configuration.
+        """
         for base_column, duplicate_column_list in self.duplicate_columns.items():
             for duplicate_column in duplicate_column_list:
                 standard_data_table[duplicate_column] = standard_data_table[base_column]
@@ -144,23 +148,29 @@ class DataStandardizer:
         for column_name, column_enum_map in self.enum_mapper.items():
             if column_name not in standard_schema_table.columns:
                 raise ValueError(f"Provided enum: {column_name} not in table")
-            # map each value in the table's column according to the
-            # provided enum mapper
+            # map each value in the table's column according to the provided enum mapper
             standard_schema_table[column_name] = standard_schema_table[column_name].map(
                 column_enum_map
             )
         return standard_schema_table
 
-    def _standardize_column_to_date_format(
+    def _standardize_date_format(
         self, standard_schema_table: pd.DataFrame
     ) -> pd.DataFrame:
-        for date_column in self.column_to_date_format:
+        """For each column with a configured date format, convert dates to ISO standard
+
+        Args:
+            standard_schema_table: table that has already passed through
+                SchemaTransformer (most revelantly the column names should
+                be standard)
+        """
+        for date_column, date_format in self.column_to_date_format.items():
             na_mask = standard_schema_table[date_column].isna()
             temp_column = f"tmp-{date_column}"
             standard_schema_table[temp_column] = pd.NA
             standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
                 standard_schema_table.loc[~na_mask, date_column],
-                format=self.column_to_date_format[date_column],
+                format=date_format,
                 errors="coerce",
             ).dt.date
             standard_schema_table = standard_schema_table.drop(columns=date_column)
@@ -193,9 +203,7 @@ class DataStandardizer:
         if column_to_date_format is not None:
             self.column_to_date_format = column_to_date_format
         standard_schema_table = self._standardize_enums(standard_schema_table)
-        standard_data_table = self._standardize_column_to_date_format(
-            standard_schema_table
-        )
+        standard_data_table = self._standardize_date_format(standard_schema_table)
         return standard_data_table
 
 
@@ -249,8 +257,8 @@ class DataSourceStandardizationPipeline:
         else:
             self.data_standardizer = data_standardizer
 
-    def standardize_data_source(self) -> pd.DataFrame:
-        """Process all data for a data_source"""
+    def load_and_standardize_data_source(self) -> pd.DataFrame:
+        """Load and process all data for a source into a single concatenated dataframe"""
         standardized_tables = []
         if self.data_reader.default_raw_data_paths == []:
             return pd.DataFrame()
