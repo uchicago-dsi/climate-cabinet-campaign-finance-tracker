@@ -83,14 +83,6 @@ Transaction:
     donor: Transactor
     recipient: Transactor
     # reported_election: Election
-  repeating_columns:
-    - date
-    - amount
-    - transaction_type
-    - year
-    - month
-    - day
-    - description
   enum_columns:
     transaction_type:
       - contribution

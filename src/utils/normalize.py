@@ -24,60 +24,17 @@ includes:
 #     immediately normalizing.
 """
 
+import re
 from pathlib import Path
 
 import pandas as pd
 
 from utils.ids import handle_existing_ids, handle_id_column
-from utils.schema import DataSchema, TableSchema
+from utils.schema import DataSchema
 
-UNNORMALIZED_FLAG = 0
-FIRST_NORMAL_FORM_FLAG = 1
-THIRD_NORMAL_FORM_FLAG = 3
-NORMALIZATION_LEVELS = [
-    UNNORMALIZED_FLAG,
-    FIRST_NORMAL_FORM_FLAG,
-    THIRD_NORMAL_FORM_FLAG,
-]
 SPLIT = "--"
 ID_SUFFIX = "_id"
-
-
-def get_normalization_form_by_column(
-    table: pd.DataFrame, table_schema: TableSchema
-) -> dict[int, set]:
-    """Map each normalization form to the first column tokens in that form
-
-    Args:
-        table: a dataframe representing a table in a valid table_schema
-        table_schema: represents specification of table's schema
-    """
-    first_column_token_by_normalization_form = {
-        flag: set() for flag in NORMALIZATION_LEVELS
-    }
-
-    for column in table.columns:
-        first_column_token = column.split(SPLIT)[0]
-        if table_schema.repeating_columns_regex.match(first_column_token):
-            first_column_token_by_normalization_form[UNNORMALIZED_FLAG].add(
-                first_column_token
-            )
-        elif table_schema.forward_relations_regex.match(
-            first_column_token
-        ) or table_schema.reverse_relations_regex.match(first_column_token):
-            first_column_token_by_normalization_form[FIRST_NORMAL_FORM_FLAG].add(
-                first_column_token
-            )
-        elif table_schema.attributes_regex.match(first_column_token):
-            first_column_token_by_normalization_form[THIRD_NORMAL_FORM_FLAG].add(
-                first_column_token
-            )
-        else:
-            raise ValueError(
-                f"Invalid Table: {first_column_token} in {column} not expected"
-                f" in {table_schema.table_name}"
-            )
-    return first_column_token_by_normalization_form
+REPEATING_COLUMN_REGEX = r"^[A-Za-z_]+-\d+$"
 
 
 class Normalizer:
@@ -121,6 +78,23 @@ class Normalizer:
                 return current_table_name
         return current_table_name
 
+    def _get_repeated_columns(self, table_columns: str) -> list[str]:
+        r"""Given a list of columns and potentially repeating columns
+
+        Example: 'amount' could be considered a repeating column if 'amount-\d' were
+        in the table as well, but otherwise is not.
+        """
+        repeating_column_base_names = [
+            col.split("-")[0]
+            for col in table_columns
+            if re.match(REPEATING_COLUMN_REGEX, col)
+        ]
+        return [
+            col
+            for col in table_columns
+            if col.split("-")[0] in repeating_column_base_names
+        ]
+
     def convert_to_1NF_from_unnormalized(self, table_name: str) -> None:
         """Converts an unnormalized table into first normal form (1NF)
 
@@ -131,58 +105,26 @@ class Normalizer:
         Modifies:
             database[table_name] transformed to 1NF
         """
-        table_schema = self.schema.schema[table_name]
         unnormalized_table = self.database[table_name]
-        repeated_columns = [
-            column
-            for column in unnormalized_table.columns
-            if table_schema.repeating_columns_regex.match(column)
-        ]
-        if repeated_columns == []:
-            return unnormalized_table
-        for column in repeated_columns:
-            base_column_name = column.split("-")[0]
-            if base_column_name in unnormalized_table.columns:
-                # base table has col and col-1. Replace col with col-{n+1}
-                max_repeat = max(
-                    [
-                        int(col.split("-")[-1])
-                        for col in repeated_columns
-                        if col.startswith(base_column_name)
-                    ]
-                )
-                new_column_name = f"{base_column_name}-{max_repeat + 1}"
-                unnormalized_table = unnormalized_table.rename(
-                    columns={base_column_name: new_column_name}
-                )
-                repeated_columns.append(new_column_name)
-        unnormalized_table.loc[:, "temp_id"] = range(0, len(unnormalized_table))
-        static_columns = [
-            column
-            for column in unnormalized_table.columns
-            if column not in repeated_columns
-        ]
-        melted_table = pd.melt(
-            unnormalized_table, id_vars=static_columns, value_vars=repeated_columns
+        repeated_columns = self._get_repeated_columns(unnormalized_table.columns)
+        repeat_col_table = unnormalized_table[repeated_columns]
+        if repeat_col_table.empty:
+            return None
+        # Add "nosuffix" as the suffix for repeating columns without suffixes
+        repeat_col_table = repeat_col_table.rename(
+            columns={
+                col: f"{col}-nosuffix" for col in repeated_columns if "-" not in col
+            }
         )
-        melted_table[["variable", "instance"]] = melted_table["variable"].str.rsplit(
-            "-",
-            n=1,
-            expand=True,  # TODO: split variable
+        # Split the suffixes into a second index level, and unstack
+        repeat_col_table.columns = pd.MultiIndex.from_tuples(
+            repeat_col_table.columns.to_series().str.split("-")
         )
-        first_normal_form_table = melted_table.pivot(  # noqa: PD010
-            index=static_columns + ["instance"],
-            columns="variable",
-            values="value",
-        ).reset_index()
-        first_normal_form_table = first_normal_form_table.drop(
-            columns=["temp_id", "instance"]
-        )
-        first_normal_form_table = first_normal_form_table[
-            first_normal_form_table["amount"].notna()
-            & first_normal_form_table["amount"]
-            > 0
-        ]
+        unstacked_repeat_col_table = repeat_col_table.stack(1).droplevel(1)  # noqa: PD013
+        # Join with unrepeated columns
+        first_normal_form_table = unnormalized_table.drop(
+            columns=repeated_columns
+        ).join(unstacked_repeat_col_table)
         self.database[table_name] = first_normal_form_table
 
     def _drop_verifiably_incomplete_rows(
@@ -378,27 +320,18 @@ class Normalizer:
                 normalization level.
         """
         # Step 1: Figure out which columns need to be normalized
-        normalization_levels_to_columns = get_normalization_form_by_column(
-            table, self.schema.schema[table_name]
-        )
-        normalization_level = min(
-            k for k, v in normalization_levels_to_columns.items() if v
-        )
-        # Step 2: Base case - if the table is at the desired level, return it.
-        if normalization_level >= THIRD_NORMAL_FORM_FLAG:
-            return {table_name: [table]}
-        # Step 3: If the table needs to be normalized, go through
-        # each column that needs to be normalized and normalize it. This will
-        # return a new table and potentially a derivative table.
+        table_schema = self.schema.schema[table_name]
+        columns_in_1NF = {
+            col.split(SPLIT)[0]
+            for col in table.columns
+            if col.split(SPLIT)[0] in table_schema.relations
+        }
+        # Step 2: Go through columns that need to be normalized, if any.
+        # Each decomposition may return a derivative table that also needs
+        # normalization so this function will run on each derived table.
         updated_database = self.schema.empty_database()
         active_table = table
-        while normalization_levels_to_columns[FIRST_NORMAL_FORM_FLAG]:
-            first_column_token = sorted(
-                normalization_levels_to_columns[FIRST_NORMAL_FORM_FLAG]
-            )[0]
-            normalization_levels_to_columns[FIRST_NORMAL_FORM_FLAG].remove(
-                first_column_token
-            )  # not using pop to avoid non-determinism
+        for first_column_token in sorted(columns_in_1NF):
             # this is where the heavy lifting is done and a new foreign table
             # is created derived from the columns that did not belong in base table
             active_table, extracted_table = self._split_prefixed_columns(
@@ -415,7 +348,6 @@ class Normalizer:
                     extracted_table_derived_database[derived_table_name]
                 )
         updated_database[table_name].append(active_table)
-        # ensure indices are correct
         return updated_database
 
     def convert_to_3NF_from_1NF(self) -> None:

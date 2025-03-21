@@ -13,7 +13,6 @@ def sample_schemas():
         "complete": yaml.safe_load("""
             Person:
               attributes: ["id", "name", "age", "gender", "phone"]
-              repeating_columns: ["phone"]
               reverse_relations:
                 address: "Address"
               reverse_relation_names:
@@ -50,7 +49,6 @@ def sample_schemas():
         "missing_attribute_key": yaml.safe_load("""
             Person:
               attributes: ["id", "name", "dob"]
-              repeating_columns: ["phone"]
               enum_columns:
                 gender: ["Male", "Female", "Other"]
         """),

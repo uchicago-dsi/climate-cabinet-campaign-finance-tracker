@@ -1,10 +1,9 @@
-import json
 from pathlib import Path
 from uuid import UUID
 
 import pandas as pd
 import pytest
-from utils.normalize import Normalizer, get_normalization_form_by_column
+from utils.normalize import Normalizer
 from utils.schema import DataSchema
 
 BASE_FILEPATH = Path(__file__).resolve().parent.parent
@@ -56,31 +55,6 @@ def load_schema(database_path: Path) -> DataSchema:
     return None
 
 
-def _format_loaded_json(raw_json: dict) -> dict:
-    """Convert raw json to expected python dict format"""
-    formatted_json = {}
-    for key, value in raw_json.items():
-        try:
-            new_key = int(key)
-        except ValueError:
-            new_key = key
-        if isinstance(value, list):
-            formatted_json[new_key] = set(value)
-        elif isinstance(value, dict):
-            formatted_json[new_key] = _format_loaded_json(value)
-    return formatted_json
-
-
-def load_normalization_levels(database_path: Path) -> dict[str, dict]:
-    """Load normalization level dict for each table in database"""
-    normalization_status_file = database_path / "table_column_normalization_levels.json"
-    if normalization_status_file.exists():
-        with normalization_status_file.open("r", encoding="UTF-8") as f:
-            normalization_statuses = json.load(f)
-        return _format_loaded_json(normalization_statuses)
-    return None
-
-
 @pytest.fixture
 def database_fixture(request):
     """Loads full database and config dynamically"""
@@ -89,39 +63,12 @@ def database_fixture(request):
     return {
         "data": load_database(database_path),
         "schema": load_schema(database_path),
-        "normalization_levels": load_normalization_levels(database_path),
     }
 
 
 @pytest.mark.parametrize(
-    "database_fixture, normalization_key",
-    [
-        ("campaign-finance-sample", "unnormalized"),
-        ("campaign-finance-sample", "1NF"),
-        ("campaign-finance-sample", "3NF"),
-    ],
-    indirect=["database_fixture"],
-)
-def test_normalization_status(database_fixture, normalization_key):
-    """Test normalization status of unnormalized database"""
-    schema = database_fixture["schema"]
-    for table_name, table in database_fixture["data"][normalization_key].items():
-        transaction_result = get_normalization_form_by_column(
-            table, schema.schema[table_name]
-        )
-        expected_result = database_fixture["normalization_levels"][normalization_key][
-            table_name
-        ]
-        assert (
-            transaction_result == expected_result
-        ), f"{table_name} normalization levels did not match expected"
-
-
-@pytest.mark.parametrize(
     "database_fixture",
-    [
-        ("campaign-finance-sample"),
-    ],
+    [("campaign-finance-sample"), ("campaign-finance-tricky")],
     indirect=True,
 )
 def test_1NF_from_unnormalized(database_fixture):

@@ -55,16 +55,6 @@ class TableSchema:
         return self.property_cache[self.inheritance_strategy]["attributes_regex"]
 
     @property
-    def repeating_columns(self) -> list:
-        """List of columns that may be repeated in unnormalized form"""
-        return self.property_cache[self.inheritance_strategy]["repeating_columns"]
-
-    @property
-    def repeating_columns_regex(self) -> re.Pattern:
-        """Full regex to match any repeating columns"""
-        return self.property_cache[self.inheritance_strategy]["repeating_columns_regex"]
-
-    @property
     def reverse_relations(self) -> dict[str, Self]:
         """Columns that may have multiple values for an instance of the entity type
 
@@ -150,7 +140,6 @@ class TableSchema:
             ("attributes", "list"),
             ("required_attributes", "list"),
             ("enum_columns", "dict"),
-            ("repeating_columns", "list"),
             ("forward_relations", "dict"),
             ("reverse_relations", "dict"),
             ("reverse_relation_names", "dict"),
@@ -171,16 +160,6 @@ class TableSchema:
                     ] = self._get_regex(
                         list(self.property_cache[inheritance_strategy][property_type])
                     )
-                elif property_type == "repeating_columns":
-                    repeating_columns_regex_list = [
-                        repeated_column + "-\d+$"
-                        for repeated_column in self.property_cache[
-                            inheritance_strategy
-                        ][property_type]
-                    ]
-                    self.property_cache[inheritance_strategy][
-                        f"{property_type}_regex"
-                    ] = self._get_regex(repeating_columns_regex_list)
                 elif property_type == "attributes":
                     self.property_cache[inheritance_strategy][
                         f"{property_type}_regex"
@@ -396,11 +375,10 @@ class DataSchema:
     def _validate_attribute_consistency(
         self, table_name: str, table_def: dict, attributes: set
     ) -> list[str]:
-        """Ensures enum_columns, repeating_columns, and required_attributes exist in attributes"""
+        """Ensures enum_columns, and required_attributes exist in attributes"""
         errors = []
         attribute_categories = [
             "enum_columns",
-            "repeating_columns",
             "required_attributes",
         ]
 

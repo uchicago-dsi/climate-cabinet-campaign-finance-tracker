@@ -51,7 +51,7 @@ Both first level keys have the same set of subkeys:
 - column_details: list of column properties where each may have the following keys:
     - raw_name: the name of the column as it appears in the raw data
     - type: Pandas dtype of the column
-    - standard_name: (optional) If the column is used, [standard name](#TODO). Even if the standard name is the same as the raw name, this must be included. 
+    - standard_name: (optional) If the column is used, [standard name](#standard-column-naming). Even if the standard name is the same as the raw name, this must be included. 
     - date_format: (optional) Format of dates in the provided data according to [datetime strftime](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior).
 - column_order: list of columns in the order they appear in the data format. If not provided, will default to the order in column_properties.
 - duplicate_columns:
@@ -63,6 +63,9 @@ Both first level keys have the same set of subkeys:
     - if additional keys generated that are enums, their names should be listed here as well. 
 - table_name: type of table represented. transaction, transactor, election, election_result, address, membership.
 - path_pattern: regex describing the default location of default raw files of this type. Relative to the `data/raw/${state_code}` directory. 
+
+#### Standard Column Naming
+The state source standardization steps are to prepare the state code to be normalized and joined with other states. As part of this there is a specific naming pattern for columns. Standard table attributes are named in table.yaml under attributes. Provided source data, however, may not be normalized. These columns will be named with a SPLIT separator ('--') between the name of the relation and the name of the attribute in the related column. This may be nested (i.e. if in a transaction table we are given a donor's address, this would be shown as 'donor--address--line_1'). If a column is a repeated column (i.e. there are two amount columns to signify two transactions that share all other properties), it will end with '-\d' where \d is an integer. Valid column names include alphabetic characters and underscores.
 
 ### Walkthrough: Pennsylvania
 
