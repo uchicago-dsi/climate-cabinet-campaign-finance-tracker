@@ -20,15 +20,15 @@ def sample_schemas():
               enum_columns:
                 gender: ["Male", "Female", "Other"]
               required_attributes: ["id", "name"]
-              child_types: ["Teacher", "Student"]
+              child_tables: ["Teacher", "Student"]
 
             Teacher:
               attributes: ["position", "department"]
-              parent_type: "Person"
+              parent_table: "Person"
 
             Student:
               attributes: ["grade", "homeroom_id"]
-              parent_type: "Person"
+              parent_table: "Person"
               enum_columns:
                 grade: ["Freshman", "Sophomore", "Junior", "Senior"]
               forward_relations:
@@ -55,7 +55,7 @@ def sample_schemas():
         "missing_parent": yaml.safe_load("""
             Person:
               attributes: ["id", "name"]
-              child_types: ["Teacher"]
+              child_tables: ["Teacher"]
 
             Teacher:
               attributes: ["position"]
@@ -217,8 +217,8 @@ def test_reverse_relations(
     ],
     indirect=["schema_instance"],
 )
-def test_parent_type(schema_instance, expected_parent):
-    assert schema_instance.parent_type == expected_parent
+def test_parent_table(schema_instance, expected_parent):
+    assert schema_instance.parent_table == expected_parent
 
 
 @pytest.mark.parametrize(

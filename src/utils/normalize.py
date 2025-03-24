@@ -428,8 +428,8 @@ class Normalizer:
         for table_name in database_single_table:
             original_table = database_single_table[table_name]
             data_schema.inheritance_strategy = "class table inheritance"
-            for child_type in data_schema.schema[table_name].child_types:
-                child_schema = data_schema.schema[child_type]
+            for child_table in data_schema.schema[table_name].child_tables:
+                child_schema = data_schema.schema[child_table]
                 child_table = original_table[
                     [
                         col
@@ -438,7 +438,7 @@ class Normalizer:
                     ]
                 ]
                 child_table = child_table.dropna(how="all")
-                database_class_table[child_type] = child_table
+                database_class_table[child_table] = child_table
             parent_schema = data_schema.schema[table_name]
             parent_table = original_table[
                 [

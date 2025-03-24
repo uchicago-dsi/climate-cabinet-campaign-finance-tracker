@@ -2,7 +2,7 @@ Transactor:
 # whether to make Transactor a 'parent' table that Individual and Organization
 # inherit from was a difficult design decision.
 # sources: https://stackoverflow.com/a/695860
-  child_types:
+  child_tables:
     - Individual
     - Organization
   required_attributes:
@@ -34,7 +34,7 @@ Transactor:
     address: transactor_id
 
 Individual:
-  parent_type: Transactor
+  parent_table: Transactor
   attributes:
     - first_name
     - middle_name
@@ -52,7 +52,7 @@ Individual:
     election_result: candidate_id
 
 Organization:
-  parent_type: Transactor
+  parent_table: Transactor
   attributes:
     - naics
     - sic

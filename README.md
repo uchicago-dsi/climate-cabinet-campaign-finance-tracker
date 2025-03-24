@@ -84,8 +84,8 @@ Student Email: klee2024@uchicago.edu
 
 Each top level key is the name of a table that exists in the schema.  
 Tables may have the following keys:
-- child_types (list of strings where each string is a table name): schema. These are types that inherit this table's properties. If the parent has a matching key, it is extended. If the parent has a matching key that maps to a dictionary and there are matching keys in that dictionary, the values of the child are kept. 
-- parent_type (single string that is a table name): A name of another table defined within the schema that the current table inherits from. 
+- child_tables (list of strings where each string is a table name): schema. These are types that inherit this table's properties. If the parent has a matching key, it is extended. If the parent has a matching key that maps to a dictionary and there are matching keys in that dictionary, the values of the child are kept. 
+- parent_table (single string that is a table name): A name of another table defined within the schema that the current table inherits from. 
 - required_attributes (list of strings): list of necessary attributes for a row of the table this schema block represents to be valid. (For example, without donor, recipient, and amount, a transaction is not useful). If a required attribute is a relation (it ends with id), it will be considered present if it exists as a token (TODO) without the _id suffix.
 - attributes (list of strings): all attributes of the table (all columns)
 - enum_columns (mapping where keys are attributes and values are lists of strings): has keys that are names of table attributes that maps to a list of valid values for that attribute

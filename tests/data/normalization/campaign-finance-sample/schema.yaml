@@ -1,5 +1,5 @@
 Transactor:
-  child_types: ["Individual", "Organization"]
+  child_tables: ["Individual", "Organization"]
   required_attributes: ["id"]
   attributes: ["id", "full_name", "transactor_type_specific", "transactor_type", "phone_number", "reported_state"]
   enum_columns:
@@ -11,7 +11,7 @@ Transactor:
     address: transactor_id
 
 Individual:
-  parent_type: Transactor
+  parent_table: Transactor
   attributes: ["first_name", "middle_name", "last_name", "name_suffix", "name_title", "name_preferred", "occupation", "party"]
   reverse_relations:
     employer: Membership
@@ -21,7 +21,7 @@ Individual:
     election_result: candidate_id
 
 Organization:
-  parent_type: Transactor
+  parent_table: Transactor
   attributes: ["naics", "sic", "stock_symbol"]
 
 Transaction:

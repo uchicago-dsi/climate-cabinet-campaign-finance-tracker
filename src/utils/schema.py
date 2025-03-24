@@ -96,14 +96,14 @@ class TableSchema:
         return self._fill_properties_list("required_attributes")
 
     @property
-    def child_types(self) -> list:
+    def child_tables(self) -> list:
         """Types that inherit attributes from the current type"""
-        return self._child_types
+        return self._child_tables
 
     @property
-    def parent_type(self) -> str:
+    def parent_table(self) -> str:
         """Parent type of given entity type"""
-        return self._parent_type
+        return self._parent_table
 
     def __init__(
         self,
@@ -136,8 +136,8 @@ class TableSchema:
         self.inheritance_strategy = inheritance_strategy
         self.table_name = table_name
         self.data_schema = data_schema
-        self._child_types = self.data_schema[table_name].get("child_types", [])
-        self._parent_type = self.data_schema[table_name].get("parent_type", None)
+        self._child_tables = self.data_schema[table_name].get("child_tables", [])
+        self._parent_table = self.data_schema[table_name].get("parent_table", None)
 
     def _fill_properties_dict(self, property_name: str) -> dict:
         """Calculate properties represented as dictionaries based on data schema"""
@@ -149,10 +149,10 @@ class TableSchema:
             return property_value
         # If the schema is using single table inheritance, all values of parent
         # or child tables can be present in the table
-        if self.parent_type:
-            related_types = self.child_types + [self.parent_type]
+        if self.parent_table:
+            related_types = self.child_tables + [self.parent_table]
         else:
-            related_types = self.child_types
+            related_types = self.child_tables
         for related_type in related_types:
             for key, value in (
                 self.data_schema[related_type].get(property_name, {}).items()
@@ -170,10 +170,10 @@ class TableSchema:
             return property_value
         # If the schema is using single table inheritance, all values of parent
         # or child tables can be present in the table
-        if self.parent_type:
-            related_types = self.child_types + [self.parent_type]
+        if self.parent_table:
+            related_types = self.child_tables + [self.parent_table]
         else:
-            related_types = self.child_types
+            related_types = self.child_tables
         for related_type in related_types:
             property_value.extend(self.data_schema[related_type].get(property_name, []))
         return property_value
@@ -182,9 +182,9 @@ class TableSchema:
         """For single table inheritance, replace relation tables with their parents"""
         updated_values = {}
         for key, related_table_name in property_values.items():
-            if self.data_schema[related_table_name].get("parent_type", None):
+            if self.data_schema[related_table_name].get("parent_table", None):
                 updated_values[key] = self.data_schema[related_table_name][
-                    "parent_type"
+                    "parent_table"
                 ]
             else:
                 updated_values[key] = related_table_name
@@ -283,20 +283,20 @@ class DataSchema:
     ) -> list[str]:
         """Ensures all parent-child relationships exist and are bidirectional"""
         errors = []
-        parent_type = table_def.get("parent_type")
-        child_types = set(table_def.get("child_types", []))
+        parent_table = table_def.get("parent_table")
+        child_tables = set(table_def.get("child_tables", []))
 
-        if parent_type and parent_type not in table_names:
+        if parent_table and parent_table not in table_names:
             errors.append(
-                f"Error in {table_name}: parent '{parent_type}' does not exist in schema."
+                f"Error in {table_name}: parent '{parent_table}' does not exist in schema."
             )
 
-        for child in child_types:
+        for child in child_tables:
             if child not in table_names:
                 errors.append(
                     f"Error in {table_name}: child '{child}' does not exist in schema."
                 )
-            elif table_name not in self.raw_data_schema[child].get("parent_type", []):
+            elif table_name not in self.raw_data_schema[child].get("parent_table", []):
                 errors.append(
                     f"Error: {child} lists {table_name} as a child, but {table_name} does not list {child} as a parent."
                 )
