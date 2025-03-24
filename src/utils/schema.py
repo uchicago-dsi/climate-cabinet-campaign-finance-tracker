@@ -154,10 +154,7 @@ class TableSchema:
         else:
             related_types = self.child_tables
         for related_type in related_types:
-            for key, value in (
-                self.data_schema[related_type].get(property_name, {}).items()
-            ):
-                property_value[key] = value
+            property_value.update(self.data_schema[related_type].get(property_name, {}))
         return property_value
 
     def _fill_properties_list(self, property_name: str) -> list:
