@@ -4,8 +4,8 @@ Schema is derived from configuration in a yaml configuration file, defined
 here TODO
 """
 
-import copy
 import re
+from functools import cached_property
 from pathlib import Path
 
 import yaml
@@ -28,57 +28,41 @@ SPLIT = "--"
 class TableSchema:
     """class representation of a single table schema"""
 
-    @property
-    def inheritance_strategy(self) -> str:
-        """How to handle inheritance in tables
-
-        Options are single table inheritance or class table inheritance
-        - https://martinfowler.com/eaaCatalog/singleTableInheritance.html
-        - https://martinfowler.com/eaaCatalog/classTableInheritance.html
-        """
-        return self._inheritance_strategy
-
-    @inheritance_strategy.setter
-    def inheritance_strategy(self, strategy: str) -> None:
-        if strategy not in {"single table inheritance", "class table inheritance"}:
-            raise ValueError("Invalid inheritance strategy")
-        self._inheritance_strategy = strategy
-
-    @property
+    @cached_property
     def attributes(self) -> list:
         """List of attributes allowed for this entity"""
-        return self.property_cache[self.inheritance_strategy]["attributes"]
+        return self._fill_properties_list("attributes")
 
-    @property
+    @cached_property
     def attributes_regex(self) -> re.Pattern:
         """Full regex to match attributes"""
-        return self.property_cache[self.inheritance_strategy]["attributes_regex"]
+        return re.compile("|".join(self.attributes))
 
-    @property
+    @cached_property
     def reverse_relations(self) -> dict[str, Self]:
         """Columns that may have multiple values for an instance of the entity type
 
         For example, an individual may have multiple addresses or employers
         """
-        return self.property_cache[self.inheritance_strategy]["reverse_relations"]
+        reverse_relations = self._fill_properties_dict("reverse_relations")
+        if self.inheritance_strategy == "single table inheritance":
+            reverse_relations = self._postprocess_relations(reverse_relations)
+        return reverse_relations
 
-    @property
+    @cached_property
     def reverse_relation_names(self) -> dict[str, Self]:
         """For each reverse relation, the name of the backlink to this table"""
-        return self.property_cache[self.inheritance_strategy]["reverse_relation_names"]
+        return self._fill_properties_dict("reverse_relation_names")
 
-    @property
+    @cached_property
     def relations(self) -> dict[str, Self]:
         """List of columns that are either forward or reverse relations"""
-        return {
-            **self.property_cache[self.inheritance_strategy]["forward_relations"],
-            **self.property_cache[self.inheritance_strategy]["reverse_relations"],
-        }
+        return {**self.reverse_relations, **self.forward_relations}
 
-    @property
+    @cached_property
     def reverse_relations_regex(self) -> re.Pattern:
         """Full regex to match any multivalued columns"""
-        return self.property_cache[self.inheritance_strategy]["reverse_relations_regex"]
+        return self._get_regex(list(self.reverse_relations))
 
     def _get_regex(self, attribute_list: list[str]) -> re.Pattern:
         # add unmatchable regex so that empty list don't compile to '' which matches
@@ -88,25 +72,28 @@ class TableSchema:
         possible_attributes += [unmatchable]
         return re.compile("|".join(possible_attributes))
 
-    @property
+    @cached_property
     def forward_relations(self) -> dict[str, Self]:
         """Many-to-one relationships that are an attribute of the entity type"""
-        return self.property_cache[self.inheritance_strategy]["forward_relations"]
+        forward_relations = self._fill_properties_dict("forward_relations")
+        if self.inheritance_strategy == "single table inheritance":
+            forward_relations = self._postprocess_relations(forward_relations)
+        return forward_relations
 
-    @property
+    @cached_property
     def forward_relations_regex(self) -> re.Pattern:
         """Full regex to match any forward relation columns"""
-        return self.property_cache[self.inheritance_strategy]["forward_relations_regex"]
+        return self._get_regex(list(self.forward_relations))
 
-    @property
+    @cached_property
     def enum_columns(self) -> dict[str, list]:
         """Map enum column names to their list of allowed values"""
-        return self.property_cache[self.inheritance_strategy]["enum_columns"]
+        return self._fill_properties_dict("enum_columns")
 
-    @property
+    @cached_property
     def required_attributes(self) -> dict[str, list]:
         """Attributes required for a given record of the entity type to be relevant"""
-        return self.property_cache[self.inheritance_strategy]["required_attributes"]
+        return self._fill_properties_list("required_attributes")
 
     @property
     def child_types(self) -> list:
@@ -114,129 +101,94 @@ class TableSchema:
         return self._child_types
 
     @property
-    def parent_type(self) -> dict[str, list]:
+    def parent_type(self) -> str:
         """Parent type of given entity type"""
         return self._parent_type
 
-    def __init__(self, data_schema: dict, table_name: str):  # noqa ANN204
+    def __init__(
+        self,
+        data_schema: dict,
+        table_name: str,
+        inheritance_strategy: str = "single table inheritance",
+    ) -> None:
         """Creates a tableschema instance used to validate tables
 
         Args:
             data_schema: dict
             table_name: string must be a key in data_schema
+            inheritance_strategy: How to handle inheritance in tables
+                Options are single table inheritance or class table inheritance
+                - https://martinfowler.com/eaaCatalog/singleTableInheritance.html
+                - https://martinfowler.com/eaaCatalog/classTableInheritance.html
         """
         if table_name not in data_schema:
             raise KeyError(
                 f"{table_name} not found in {data_schema}. Available options: {data_schema.keys()}"
             )
+        if inheritance_strategy not in [
+            "single table inheritance",
+            "class table inheritance",
+        ]:
+            raise KeyError(
+                "Inheritance strategy must be 'single table inheritance'"
+                f" or 'class table inheritance. Input was {inheritance_strategy}"
+            )
+        self.inheritance_strategy = inheritance_strategy
         self.table_name = table_name
         self.data_schema = data_schema
-        self.property_cache = {
-            "single table inheritance": {},
-            "class table inheritance": {},
-        }
-        self._inheritance_strategy = "single table inheritance"
-        class_properties = [
-            ("attributes", "list"),
-            ("required_attributes", "list"),
-            ("enum_columns", "dict"),
-            ("forward_relations", "dict"),
-            ("reverse_relations", "dict"),
-            ("reverse_relation_names", "dict"),
-        ]
-        for inheritance_strategy in self.property_cache.keys():
-            for property_type, property_value_type in class_properties:
-                self.property_cache[inheritance_strategy][property_type] = (
-                    self._fill_properties(
-                        property_type,
-                        property_value_type,
-                        inheritance_strategy,
-                        data_schema,
-                    )
-                )
-                if property_type in ["forward_relations", "reverse_relations"]:
-                    self.property_cache[inheritance_strategy][
-                        f"{property_type}_regex"
-                    ] = self._get_regex(
-                        list(self.property_cache[inheritance_strategy][property_type])
-                    )
-                elif property_type == "attributes":
-                    self.property_cache[inheritance_strategy][
-                        f"{property_type}_regex"
-                    ] = re.compile("|".join(self.attributes))
         self._child_types = self.data_schema[table_name].get("child_types", [])
         self._parent_type = self.data_schema[table_name].get("parent_type", None)
 
-    def _fill_properties(
-        self,
-        property_name: str,
-        property_type: str,
-        inheritance_strategy: str,
-        data_schema: dict,
-    ) -> list | dict:
-        """Calculate properties from given data schema"""
-        if property_type not in {"list", "dict"}:
-            raise ValueError(
-                "Property type for _fill_properties should be list or dict."
-            )
+    def _fill_properties_dict(self, property_name: str) -> dict:
+        """Calculate properties represented as dictionaries based on data schema"""
+        property_value = {}
+        if property_name in self.data_schema[self.table_name]:
+            property_value = dict(self.data_schema[self.table_name][property_name])
 
-        # Make sure we don't modify the original data schema
-        property_value = copy.deepcopy(
-            self.data_schema[self.table_name].get(
-                property_name, [] if property_type == "list" else {}
-            )
-        )
-
-        if inheritance_strategy == "class table inheritance":
+        if self.inheritance_strategy == "class table inheritance":
             return property_value
+        # If the schema is using single table inheritance, all values of parent
+        # or child tables can be present in the table
+        if self.parent_type:
+            related_types = self.child_types + [self.parent_type]
+        else:
+            related_types = self.child_types
+        for related_type in related_types:
+            for key, value in (
+                self.data_schema[related_type].get(property_name, {}).items()
+            ):
+                property_value[key] = value
+        return property_value
 
-        # Ensure we're working with a separate copy
-        accumulated_values = (
-            set(property_value)
-            if property_type == "list"
-            else copy.deepcopy(property_value)
-        )
+    def _fill_properties_list(self, property_name: str) -> list:
+        """Calculate properties represented as lists based on data schema"""
+        property_value = []
+        if property_name in self.data_schema[self.table_name]:
+            property_value = list(self.data_schema[self.table_name][property_name])
 
-        # Process child types
-        for child in self.data_schema[self.table_name].get("child_types", []):
-            child_value = copy.deepcopy(
-                self.data_schema[child].get(
-                    property_name, [] if property_type == "list" else {}
-                )
-            )
-            if property_type == "list":
-                accumulated_values.update(child_value)
+        if self.inheritance_strategy == "class table inheritance":
+            return property_value
+        # If the schema is using single table inheritance, all values of parent
+        # or child tables can be present in the table
+        if self.parent_type:
+            related_types = self.child_types + [self.parent_type]
+        else:
+            related_types = self.child_types
+        for related_type in related_types:
+            property_value.extend(self.data_schema[related_type].get(property_name, []))
+        return property_value
+
+    def _postprocess_relations(self, property_values: dict) -> dict[str, str]:
+        """For single table inheritance, replace relation tables with their parents"""
+        updated_values = {}
+        for key, related_table_name in property_values.items():
+            if self.data_schema[related_table_name].get("parent_type", None):
+                updated_values[key] = self.data_schema[related_table_name][
+                    "parent_type"
+                ]
             else:
-                accumulated_values.update(child_value)
-
-        # Process parent type
-        parent_type_name = self.data_schema[self.table_name].get("parent_type")
-        if parent_type_name:
-            parent_value = copy.deepcopy(
-                self.data_schema[parent_type_name].get(
-                    property_name, [] if property_type == "list" else {}
-                )
-            )
-            if property_type == "list":
-                accumulated_values.update(parent_value)
-            else:
-                accumulated_values.update(parent_value)
-
-        if isinstance(accumulated_values, dict) and property_name in [
-            "reverse_relations",
-            "forward_relations",
-        ]:
-            updated_values = {}
-            for key, related_table_name in accumulated_values.items():
-                if data_schema[related_table_name].get("parent_type", None):
-                    updated_values[key] = data_schema[related_table_name]["parent_type"]
-                else:
-                    updated_values[key] = related_table_name
-            accumulated_values = updated_values
-
-        return (
-            list(accumulated_values) if property_type == "list" else accumulated_values
-        )
+                updated_values[key] = related_table_name
+        return updated_values
 
 
 class DataSchema:

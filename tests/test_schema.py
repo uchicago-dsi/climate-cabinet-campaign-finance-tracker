@@ -82,8 +82,8 @@ def sample_schemas():
 @pytest.fixture
 def schema_instance(request, sample_schemas):
     """Returns a TableSchema instance based on test parameters."""
-    schema_type, table_name = request.param
-    return TableSchema(sample_schemas[schema_type], table_name)
+    schema_type, table_name, inheritance_strategy = request.param
+    return TableSchema(sample_schemas[schema_type], table_name, inheritance_strategy)
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ def complete_data_schema_data(sample_schemas):
     "schema_instance,expected_attributes",
     [
         (
-            ("complete", "Person"),
+            ("complete", "Person", "single table inheritance"),
             {
                 "id",
                 "name",
@@ -111,37 +111,29 @@ def complete_data_schema_data(sample_schemas):
             },
         ),
         (
-            ("complete", "Teacher"),
+            ("complete", "Teacher", "single table inheritance"),
             {"id", "name", "age", "gender", "phone", "position", "department"},
         ),
         (
-            ("complete", "Student"),
+            ("complete", "Student", "single table inheritance"),
             {"id", "name", "age", "gender", "phone", "grade", "homeroom_id"},
         ),
-    ],
-    indirect=["schema_instance"],
-)
-def test_direct_attributes_single_table(schema_instance, expected_attributes):
-    assert set(schema_instance.attributes) == expected_attributes
-
-
-@pytest.mark.parametrize(
-    "schema_instance,expected_attributes",
-    [
-        (("complete", "Person"), {"id", "name", "age", "gender", "phone"}),
         (
-            ("complete", "Teacher"),
+            ("complete", "Person", "class table inheritance"),
+            {"id", "name", "age", "gender", "phone"},
+        ),
+        (
+            ("complete", "Teacher", "class table inheritance"),
             {"position", "department"},
         ),
         (
-            ("complete", "Student"),
+            ("complete", "Student", "class table inheritance"),
             {"grade", "homeroom_id"},
         ),
     ],
     indirect=["schema_instance"],
 )
-def test_direct_attributes_class_table(schema_instance, expected_attributes):
-    schema_instance.inheritance_strategy = "class table inheritance"
+def test_direct_attributes(schema_instance, expected_attributes):
     assert set(schema_instance.attributes) == expected_attributes
 
 
@@ -149,20 +141,23 @@ def test_direct_attributes_class_table(schema_instance, expected_attributes):
     "schema_instance,expected_enum",
     [
         (
-            ("complete", "Person"),
+            ("complete", "Person", "single table inheritance"),
             {
                 "gender": ["Male", "Female", "Other"],
                 "grade": ["Freshman", "Sophomore", "Junior", "Senior"],
             },
         ),
         (
-            ("complete", "Student"),
+            ("complete", "Student", "single table inheritance"),
             {
                 "gender": ["Male", "Female", "Other"],
                 "grade": ["Freshman", "Sophomore", "Junior", "Senior"],
             },
         ),
-        (("complete", "Teacher"), {"gender": ["Male", "Female", "Other"]}),
+        (
+            ("complete", "Teacher", "single table inheritance"),
+            {"gender": ["Male", "Female", "Other"]},
+        ),
     ],
     indirect=["schema_instance"],
 )
@@ -171,44 +166,44 @@ def test_enum_columns(schema_instance, expected_enum):
 
 
 @pytest.mark.parametrize(
-    "schema_instance,inheritance_strategy,expected_relations",
+    "schema_instance,expected_relations",
     [
-        (("complete", "Student"), "single table inheritance", {"homeroom": "Class"}),
-        (("complete", "Person"), "single table inheritance", {"homeroom": "Class"}),
-        (("complete", "Address"), "single table inheritance", {"person": "Person"}),
-        (("complete", "Class"), "single table inheritance", {"teacher": "Person"}),
-        (("complete", "Class"), "class table inheritance", {"teacher": "Teacher"}),
+        (("complete", "Student", "single table inheritance"), {"homeroom": "Class"}),
+        (("complete", "Person", "single table inheritance"), {"homeroom": "Class"}),
+        (("complete", "Address", "single table inheritance"), {"person": "Person"}),
+        (("complete", "Class", "single table inheritance"), {"teacher": "Person"}),
+        (("complete", "Class", "class table inheritance"), {"teacher": "Teacher"}),
     ],
     indirect=["schema_instance"],
 )
-def test_forward_relations(schema_instance, inheritance_strategy, expected_relations):
-    schema_instance.inheritance_strategy = inheritance_strategy
+def test_forward_relations(schema_instance, expected_relations):
     assert schema_instance.forward_relations == expected_relations
 
 
 @pytest.mark.parametrize(
-    "schema_instance,inheritance_strategy,expected_relations,expected_relation_names",
+    "schema_instance,expected_relations,expected_relation_names",
     [
         (
-            ("complete", "Student"),
-            "single table inheritance",
+            (
+                "complete",
+                "Student",
+                "single table inheritance",
+            ),
             {"address": "Address"},
             {"address": "person_id"},
         ),
         (
-            ("complete", "Person"),
-            "single table inheritance",
+            ("complete", "Person", "single table inheritance"),
             {"address": "Address"},
             {"address": "person_id"},
         ),
-        (("complete", "Student"), "class table inheritance", {}, {}),
+        (("complete", "Student", "class table inheritance"), {}, {}),
     ],
     indirect=["schema_instance"],
 )
 def test_reverse_relations(
-    schema_instance, inheritance_strategy, expected_relations, expected_relation_names
+    schema_instance, expected_relations, expected_relation_names
 ):
-    schema_instance.inheritance_strategy = inheritance_strategy
     assert schema_instance.reverse_relations == expected_relations
     assert schema_instance.reverse_relation_names == expected_relation_names
 
@@ -216,9 +211,9 @@ def test_reverse_relations(
 @pytest.mark.parametrize(
     "schema_instance,expected_parent",
     [
-        (("complete", "Teacher"), "Person"),
-        (("complete", "Student"), "Person"),
-        (("complete", "Person"), None),
+        (("complete", "Teacher", "single table inheritance"), "Person"),
+        (("complete", "Student", "single table inheritance"), "Person"),
+        (("complete", "Person", "single table inheritance"), None),
     ],
     indirect=["schema_instance"],
 )
