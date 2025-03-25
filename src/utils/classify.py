@@ -1,8 +1,15 @@
 """Code for classifying entities as fossil fuel, clean energy, or neither"""
 
 import pandas as pd
+from yaml import safe_load
 
-from utils.constants import c_org_names, f_companies, f_org_names
+from utils.constants import BASE_FILEPATH
+
+classify_config = safe_load(
+    BASE_FILEPATH / "src" / "utils" / "config" / "classify" / "companies.yaml"
+)
+fossil_fuel_organizations = classify_config["fossil_fuel_organizations"]
+clean_energy_organizations = classify_config["clean_energy_organizations"]
 
 
 def classify_wrapper(
@@ -77,7 +84,7 @@ def classify_individuals(individuals_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         an individuals dataframe updated with the fossil fuels category
     """
-    for i in f_companies:
+    for i in fossil_fuel_organizations:
         individuals_df = apply_classification_label(individuals_df, i, "company", "f")
 
     return individuals_df
@@ -98,10 +105,10 @@ def classify_orgs(organizations_df: pd.DataFrame) -> pd.DataFrame:
         an organizations dataframe updated with the fossil fuels
         and clean energy category
     """
-    for i in f_org_names:
+    for i in fossil_fuel_organizations:
         organizations_df = apply_classification_label(organizations_df, i, "name", "f")
 
-    for i in c_org_names:
+    for i in clean_energy_organizations:
         organizations_df = apply_classification_label(organizations_df, i, "name", "c")
 
     return organizations_df

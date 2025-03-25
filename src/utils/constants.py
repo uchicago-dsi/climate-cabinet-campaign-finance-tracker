@@ -6,7 +6,10 @@ import splink.duckdb.comparison_library as cl
 import splink.duckdb.comparison_template_library as ctl
 
 BASE_FILEPATH = Path(__file__).resolve().parent.parent.parent
+RAW_DATA_DIRECTORY = BASE_FILEPATH / "data" / "raw"
 # returns the base_path to the directory
+
+source_metadata_directory = BASE_FILEPATH / "src" / "utils" / "static"
 
 COMPANY_TYPES = {
     "CORP": "CORPORATION",
@@ -88,41 +91,6 @@ organizations_settings = {
 }
 
 organizations_blocking = ["l.name = r.name"]
-
-# individuals compnay f names
-f_companies = [
-    "exxon",
-    "chevron",
-    "southwest gas",
-    "petroleum",
-    "koch industries",
-    "koch companies",
-    "oil & gas",
-    "marathon oil",
-    "shell oil",
-]
-
-# organizations f names
-f_org_names = [
-    "koch industries",
-    "koch pac",
-    "kochpac",
-    "southwest gas az",
-    "pinnacle west",
-    "americans for prosperity",
-    "energy transfer",
-]
-
-# organizations c names
-c_org_names = [
-    "clean energy",
-    "vote solar action",
-    "renewable",
-    "pattern energy",
-    "beyond carbon",
-    "lcv victory",
-    "league of conservation",
-]
 
 suffixes = [
     "sr",

@@ -160,3 +160,7 @@ contribution data and READMEs in a Google Drive for the duration of this project
 3. The Finance Report states that a record must be kept for any contribution over \$10.00, but “Contributions and receipts of \$50.00 or less per contributor, during the reporting period, need not be itemized on the report” … this might mean that if 1,000 people for instance donate \$50 or less, there could be potentially thousands/tens of thousands of \$ not shown on the data, even though this information is recorded. This means that the total contributions that filers itemize does not necessarily reflect the total contributions they received. 
 
 4. Transparency USA has aggregated data on the contributions of individuals and committees. This could be a helpful source to cross-check the data and potentially help alleviate the debt-contribution issue. Pennsylvania' Dept. of State also offers a detailed website that shows all the aggregated contributions made and received, expenditures made, debts, and receipts. The catch is one must know which candidate they are looking for as it's a searchable database, but it can be very helpful for cross-matching and verification. Here's the link :https://www.campaignfinanceonline.pa.gov/Pages/CFReportSearch.aspx 
+
+## Texas
+
+Texas data is retrieved from 'Campaign Finance CSV Database' from the [Texas Ethics Commission](https://www.ethics.state.tx.us/search/cf/)

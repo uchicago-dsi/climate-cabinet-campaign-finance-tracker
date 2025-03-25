@@ -45,7 +45,10 @@ ignore = [
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/*" = ["S101", "D", "ANN"]
+"**/tests/*" = ["S101", "D", "ANN", "PLR2004"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
