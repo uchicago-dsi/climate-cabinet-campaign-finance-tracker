@@ -1,5 +1,6 @@
 """Download election results from Pennsylvania."""
 
+import argparse
 import json
 import time
 from io import StringIO
@@ -16,7 +17,42 @@ HEADERS = {
     "Origin": "https://www.electionreturns.pa.gov",
     "Referer": "https://www.electionreturns.pa.gov/ReportCenter/Reports",
 }
+ALL_ELECTION_URL = "https://www.electionreturns.pa.gov/api/ElectionReturn/GetAllElections?methodName=GetAllElections"
 TOO_MANY_REQUESTS = 429
+
+
+def get_all_election_ids(start_year: int = None, end_year: int = None) -> list[dict]:
+    """Get all valid election IDs and subtypes using the API.
+
+    Args:
+        start_year: The starting year for the elections to fetch.
+            If None, defaults to the earliest year available.
+        end_year: The ending year for the elections to fetch.
+            If None, defaults to the latest year available.
+
+    Returns:
+        A list of dictionaries containing: "EclectionID", "Subtype", and "Year".
+        "ElectionID" and "Subtype" are used to fetch election data.
+    """
+    response = requests.get(ALL_ELECTION_URL, headers=HEADERS, timeout=10)
+    response.raise_for_status()
+    # the data is returned in a horrible triple json escaped format
+    raw_data = response.json()
+    election_data_json = json.loads(raw_data)[0]["ElectionData"]
+    election_dicts = json.loads(election_data_json)
+    valid_elections = [
+        {
+            "ElectionID": int(election["Electionid"]),
+            "Subtype": election["ElectionType"],
+            "Year": int(election["ElectionYear"]),
+        }
+        for election in election_dicts
+        if (
+            (start_year is None or int(election["ElectionYear"]) >= start_year)
+            and (end_year is None or int(election["ElectionYear"]) <= end_year)
+        )
+    ]
+    return valid_elections
 
 
 def fetch_election_data(election_id: int, subtype: str) -> dict:
@@ -75,46 +111,6 @@ def fetch_all_results(elections: list[dict]) -> pd.DataFrame:
     return pd.concat(results, ignore_index=True)
 
 
-def get_all_election_ids(start_year: int = None, end_year: int = None) -> list[dict]:
-    """Get all valid election IDs and subtypes using the API.
-
-    Args:
-        start_year: The starting year for the elections to fetch.
-            If None, defaults to the earliest year available.
-        end_year: The ending year for the elections to fetch.
-            If None, defaults to the latest year available.
-
-    Returns:
-        A list of dictionaries containing: "EclectionID", "Subtype", and "Year".
-        "ElectionID" and "Subtype" are used to fetch election data.
-    """
-    url = "https://www.electionreturns.pa.gov/api/ElectionReturn/GetAllElections?methodName=GetAllElections"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.electionreturns.pa.gov/ReportCenter/Reports",
-    }
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-    # the data is returned in a horrible triple json escaped format
-    raw_data = response.json()
-    election_data_json = json.loads(raw_data)[0]["ElectionData"]
-    election_dicts = json.loads(election_data_json)
-    valid_elections = [
-        {
-            "ElectionID": int(election["Electionid"]),
-            "Subtype": election["ElectionType"],
-            "Year": int(election["ElectionYear"]),
-        }
-        for election in election_dicts
-        if (
-            (start_year is None or int(election["ElectionYear"]) >= start_year)
-            and (end_year is None or int(election["ElectionYear"]) <= end_year)
-        )
-    ]
-    return valid_elections
-
-
 def standardize_election_data(election_results: pd.DataFrame) -> pd.DataFrame:
     """Standardize the election data to a common format.
 
@@ -127,9 +123,12 @@ def standardize_election_data(election_results: pd.DataFrame) -> pd.DataFrame:
         A pandas DataFrame with standardized column names and types.
     """
     # drop missing data
-    election_results = election_results.dropna(
-        subset=["Candidate Name", "Votes", "Office Name", "District Name"]
+    required_columns = ["Candidate Name", "Votes", "Office Name", "District Name"]
+    num_missing = len(
+        election_results[election_results.loc[:, required_columns].isna().any(axis=1)]
     )
+    print(f"Dropping {num_missing} missing values from {len(election_results)} rows...")
+    election_results = election_results.dropna(subset=required_columns)
     # Remove commas and convert "Votes" column to integers
     election_results.loc[:, "Votes"] = (
         election_results["Votes"].str.replace(",", "").astype(int)
@@ -168,10 +167,10 @@ def standardize_election_data(election_results: pd.DataFrame) -> pd.DataFrame:
     return aggregated_election_results
 
 
-def main() -> None:
+def main(start_year: int = None, end_year: int = None) -> None:
     """Main function to fetch and save election results."""
     print("Discovering valid elections...")
-    elections = get_all_election_ids(start_year=2020, end_year=2022)
+    elections = get_all_election_ids(start_year=start_year, end_year=end_year)
     print(f"Found {len(elections)} valid elections.")
 
     print("Fetching election results...")
@@ -185,4 +184,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start_year", type=int, default=2020)
+    parser.add_argument("--end_year", type=int, default=2022)
+    args = parser.parse_args()
+    main(start_year=args.start_year, end_year=args.end_year)
