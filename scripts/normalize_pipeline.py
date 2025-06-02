@@ -38,8 +38,15 @@ parser.add_argument(
     default="csv",
     help="Output file format (csv or parquet). Default is csv",
 )
+parser.add_argument(
+    "--chunk-size",
+    type=int,
+    default=None,
+    help="Maximum number of rows to process at once. If not specified, processes entire dataset in memory.",
+)
 args = parser.parse_args()
 
+# Set up directory paths
 if args.output_directory is None:
     output_directory = BASE_FILEPATH / "data" / "normalized"
 else:
@@ -50,12 +57,37 @@ else:
     input_directory = args.input_directory
 input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
+
+# Set up schema path
 if args.schema is None:
     schema_path = BASE_FILEPATH / "src" / "utils" / "table.yaml"
 else:
     schema_path = args.schema
 
-standardized_database = load_database(input_directory, format=args.input_format)
-normalizer = Normalizer(standardized_database, schema_path)
-normalized_database = normalizer.normalize_database()
-save_database(normalized_database, output_directory, format=args.output_format)
+# Process database in chunks or all at once
+if args.chunk_size is None:
+    # Process entire database in memory (original behavior)
+    standardized_database = load_database(input_directory, format=args.input_format)
+    normalizer = Normalizer(standardized_database, schema_path)
+    normalized_database = normalizer.normalize_database()
+    save_database(normalized_database, output_directory, format=args.output_format)
+else:
+    # Process database in chunks
+    database_chunks = load_database(
+        input_directory, format=args.input_format, chunk_size=args.chunk_size
+    )
+
+    first_chunk = True
+    for chunk_database in database_chunks:
+        normalizer = Normalizer(chunk_database, schema_path)
+        normalized_chunk = normalizer.normalize_database()
+
+        # Save first chunk with overwrite mode, subsequent chunks with append mode
+        save_mode = "overwrite" if first_chunk else "append"
+        save_database(
+            normalized_chunk,
+            output_directory,
+            format=args.output_format,
+            mode=save_mode,
+        )
+        first_chunk = False
