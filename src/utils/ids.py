@@ -1,7 +1,9 @@
 """Code for management and creation of unique identifiers"""
 
+import json
 import re
 import uuid
+from pathlib import Path
 
 import pandas as pd
 
@@ -13,7 +15,30 @@ UUID4_REGEX = re.compile(
     re.IGNORECASE,
 )
 
-UUIDMapping = dict[tuple[int | str | None, int | None, str | None, str], str]
+UUIDMapping = dict[tuple[str, int | None, str | None, str], str]
+
+
+def normalize_id_to_string(value: int | float | str | None) -> str:
+    """Convert an ID value to a consistent string representation.
+
+    Handles the case where numeric IDs might be stored as int or float,
+    ensuring they always map to the same string key.
+    """
+    if pd.isna(value):
+        return str(value)
+
+    # If it's a numeric type, convert to int first to remove decimal places
+    try:
+        if isinstance(value, int | float) and not pd.isna(value):
+            # Convert to int if it's a whole number, otherwise keep as float
+            if float(value).is_integer():
+                return str(int(float(value)))
+            else:
+                return str(float(value))
+    except (ValueError, TypeError):
+        pass
+
+    return str(value)
 
 
 def add_uuids_to_table(table: pd.DataFrame, id_column: str) -> None:
@@ -56,7 +81,7 @@ def map_ids_to_uuids(
     table.loc[mask, id_column] = table.loc[mask].apply(
         lambda row: id_mapping.get(
             (
-                row[id_column],
+                normalize_id_to_string(row[id_column]),
                 row.get("year"),
                 row.get("reported_state"),
                 table_name,
@@ -68,30 +93,42 @@ def map_ids_to_uuids(
 
 
 def create_new_uuid_mapping(
-    table: pd.DataFrame, table_name: str, id_column: str = "id"
+    table: pd.DataFrame,
+    table_name: str,
+    id_column: str = "id",
+    existing_mapping: UUIDMapping = None,
 ) -> UUIDMapping:
     """Create UUIDs for rows with invalid or missing UUIDs in `id_column`.
 
-    This function will skip any rows for which the id_column is NA or
-    a valid uuid.
+    This function will skip any rows for which the id_column is NA,
+    a valid uuid, or already exists in the existing_mapping.
 
     Args:
         table: DataFrame with an existing `id_column`.
         table_name: Name of the table (used in mapping).
         id_column: Name of the `id` column, defaults to 'id'.
+        existing_mapping: Existing ID mapping to check against.
 
     Returns:
         A dictionary mapping (raw_id, year, state, table_name) → new UUID.
     """
-    new_mappings = {
-        (row[id_column], row.get("year"), row.get("reported_state"), table_name): str(
-            uuid.uuid4()
+    if existing_mapping is None:
+        existing_mapping = {}
+
+    new_mappings = {}
+    for _, row in table[
+        (table[id_column].notna())
+        & (~table[id_column].astype(str).str.match(UUID4_REGEX, na=False))
+    ].iterrows():
+        key = (
+            normalize_id_to_string(row[id_column]),
+            row.get("year"),
+            row.get("reported_state"),
+            table_name,
         )
-        for _, row in table[
-            (table[id_column].notna())
-            & (~table[id_column].astype(str).str.match(UUID4_REGEX, na=False))
-        ].iterrows()
-    }
+        if key not in existing_mapping:
+            new_mappings[key] = str(uuid.uuid4())
+
     return new_mappings
 
 
@@ -157,3 +194,41 @@ def handle_id_column(
 
     add_uuids_to_table(table, id_column)
     handle_existing_ids(table, table_name, id_mapping, id_column)
+
+
+def save_id_mapping(id_mapping: UUIDMapping, file_path: Path) -> None:
+    """Save ID mapping to a JSON file.
+
+    Args:
+        id_mapping: Dictionary mapping tuples to UUIDs
+        file_path: Path where to save the mapping
+    """
+    # Convert tuple keys to strings for JSON serialization
+    serializable_mapping = {json.dumps(key): value for key, value in id_mapping.items()}
+
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    with file_path.open("w") as f:
+        json.dump(serializable_mapping, f, indent=2)
+
+
+def load_id_mapping(file_path: Path) -> UUIDMapping:
+    """Load ID mapping from a JSON file.
+
+    Args:
+        file_path: Path to the saved mapping file
+
+    Returns:
+        Dictionary mapping tuples to UUIDs
+    """
+    if not file_path.exists():
+        return {}
+
+    with file_path.open("r") as f:
+        serializable_mapping = json.load(f)
+
+    # Convert string keys back to tuples
+    id_mapping = {
+        tuple(json.loads(key)): value for key, value in serializable_mapping.items()
+    }
+
+    return id_mapping
