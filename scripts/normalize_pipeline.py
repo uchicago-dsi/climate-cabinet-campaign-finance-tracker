@@ -3,7 +3,7 @@
 import argparse
 
 from utils.constants import BASE_FILEPATH
-from utils.io import load_database_from_csv, save_database_to_csv
+from utils.io import load_database, save_database
 from utils.normalize import Normalizer
 
 parser = argparse.ArgumentParser()
@@ -26,6 +26,18 @@ parser.add_argument(
     default=None,
     help="Path to data schema, defaulting to src/utils/table.yaml",
 )
+parser.add_argument(
+    "--input-format",
+    choices=["csv", "parquet"],
+    default="csv",
+    help="Input file format (csv or parquet). Default is csv",
+)
+parser.add_argument(
+    "--output-format",
+    choices=["csv", "parquet"],
+    default="csv",
+    help="Output file format (csv or parquet). Default is csv",
+)
 args = parser.parse_args()
 
 if args.output_directory is None:
@@ -43,7 +55,7 @@ if args.schema is None:
 else:
     schema_path = args.schema
 
-standardized_database = load_database_from_csv(input_directory)
+standardized_database = load_database(input_directory, format=args.input_format)
 normalizer = Normalizer(standardized_database, schema_path)
 normalized_database = normalizer.normalize_database()
-save_database_to_csv(normalized_database, output_directory)
+save_database(normalized_database, output_directory, format=args.output_format)

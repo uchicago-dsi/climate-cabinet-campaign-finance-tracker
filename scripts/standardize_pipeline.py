@@ -4,7 +4,7 @@ import argparse
 
 from utils.constants import BASE_FILEPATH
 from utils.finance.pipeline import standardize_states
-from utils.io import save_database_to_csv
+from utils.io import save_database
 
 parser = argparse.ArgumentParser()
 
@@ -32,6 +32,13 @@ parser.add_argument(
     default=None,
     help="Path to directory to save data. Default is 'data/standardized'",
 )
+parser.add_argument(
+    "-f",
+    "--format",
+    choices=["csv", "parquet"],
+    default="csv",
+    help="Output file format (csv or parquet). Default is csv",
+)
 args = parser.parse_args()
 
 if args.output_directory is None:
@@ -44,4 +51,4 @@ output_directory.mkdir(parents=True, exist_ok=True)
 database = standardize_states(
     states=states, start_year=args.start_year, end_year=args.end_year
 )
-save_database_to_csv(database, output_directory)
+save_database(database, output_directory, format=args.format)
