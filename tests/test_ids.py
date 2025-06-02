@@ -35,7 +35,7 @@ def test_add_uuids_to_table(sample_table):
 def test_map_ids_to_uuids(sample_table):
     """Test that IDs are replaced if found in the mapping"""
     id_mapping = {
-        (1, 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
+        ("1", 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
         ("invalid_uuid", 2022, "NY", "tableA"): "22222222-2222-4222-8222-222222222222",
     }
     map_ids_to_uuids(sample_table, "tableA", id_mapping, "id")
@@ -77,12 +77,13 @@ def test_handle_id_column(sample_table):
     mock_schema.table_name = "tableA"
 
     id_mapping = {
-        (1, 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
+        ("1", 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
     }
     handle_id_column(sample_table, mock_schema, id_mapping, "id")
 
     assert (
-        id_mapping[(1, 2023, "CA", "tableA")] == "11111111-1111-4111-8111-111111111111"
+        id_mapping[("1", 2023, "CA", "tableA")]
+        == "11111111-1111-4111-8111-111111111111"
     ), "Old mappings should remain"
     expected_id_mapping_length = 2
     assert re.match(
