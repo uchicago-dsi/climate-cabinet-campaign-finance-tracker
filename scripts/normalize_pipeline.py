@@ -12,13 +12,13 @@ parser.add_argument(
     "-i",
     "--input-directory",
     default=None,
-    help="Path to standardized input data. Default is 'output/standardized' in repo root",
+    help="Path to standardized input data. Default is 'data/standardized' in repo root",
 )
 parser.add_argument(
     "-o",
     "--output-directory",
     default=None,
-    help="Path to directory to save output. Default is 'output/normalized'",
+    help="Path to directory to save data. Default is 'data/normalized'",
 )
 parser.add_argument(
     "-s",
@@ -29,11 +29,11 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.output_directory is None:
-    output_directory = BASE_FILEPATH / "output" / "normalized"
+    output_directory = BASE_FILEPATH / "data" / "normalized"
 else:
     output_directory = args.output_directory
 if args.input_directory is None:
-    input_directory = BASE_FILEPATH / "output" / "standardized"
+    input_directory = BASE_FILEPATH / "data" / "standardized"
 else:
     input_directory = args.input_directory
 input_directory.mkdir(parents=True, exist_ok=True)
