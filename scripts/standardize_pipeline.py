@@ -39,6 +39,12 @@ parser.add_argument(
     default="csv",
     help="Output file format (csv or parquet). Default is csv",
 )
+parser.add_argument(
+    "-d",
+    "--data-directory",
+    default=None,
+    help="Path to directory containing raw data. Default is 'data/raw'",
+)
 args = parser.parse_args()
 
 if args.output_directory is None:
@@ -49,6 +55,9 @@ states = args.states
 output_directory.mkdir(parents=True, exist_ok=True)
 
 database = standardize_states(
-    states=states, start_year=args.start_year, end_year=args.end_year
+    states=states,
+    start_year=args.start_year,
+    end_year=args.end_year,
+    data_directory=args.data_directory,
 )
 save_database(database, output_directory, format=args.format)

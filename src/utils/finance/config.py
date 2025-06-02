@@ -5,7 +5,7 @@ from pathlib import Path
 
 from yaml import safe_load
 
-from utils.constants import BASE_FILEPATH, RAW_DATA_DIRECTORY
+from utils.constants import BASE_FILEPATH
 
 
 def resolve_inheritance(config: dict, form_code: str) -> dict:
@@ -59,20 +59,6 @@ class ConfigHandler:
     def raw_data_path_pattern(self) -> str:
         """Regex matching names of raw files in data/raw folder"""
         return re.compile(self._raw_data_path_pattern)
-
-    @property
-    def raw_data_file_paths(self) -> list[Path]:
-        """All files matching raw data pattern at compile time"""
-        state_data_directory = RAW_DATA_DIRECTORY / self.state_code
-        matching_files = [
-            path
-            for path in state_data_directory.rglob("*")
-            if path.is_file()
-            and self.raw_data_path_pattern.fullmatch(
-                str(path.relative_to(state_data_directory)).replace("\\", "/")
-            )
-        ]
-        return matching_files
 
     @property
     def dtype_dict(self) -> dict[str, str]:

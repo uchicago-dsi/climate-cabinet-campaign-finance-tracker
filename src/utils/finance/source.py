@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from utils.constants import RAW_DATA_DIRECTORY
 from utils.finance.config import ConfigHandler
 
 
@@ -31,7 +32,6 @@ class DataReader:
     ) -> None:
         """Initialize new data reader with optional year filtering"""
         self._dtype_dict = config_handler.dtype_dict
-        self._default_paths = config_handler.raw_data_file_paths
         self.read_csv_params = config_handler.read_csv_params
         self.columns = config_handler.raw_column_order
         self.year_filter_filepath_regex = config_handler.year_filter_filepath_regex
@@ -317,19 +317,46 @@ class DataSourceStandardizationPipeline:
         else:
             self.data_standardizer = data_standardizer
 
+    def _raw_data_file_paths(
+        self, state_data_directory: Path | None = None
+    ) -> list[Path]:
+        """All files matching raw data pattern at compile time
+
+        Args:
+            state_data_directory: Directory containing raw data for state.
+        """
+        if state_data_directory is None:
+            state_data_directory = RAW_DATA_DIRECTORY / self.state_code.upper()
+        matching_files = [
+            path
+            for path in state_data_directory.rglob("*")
+            if path.is_file()
+            and self.config_handler.raw_data_path_pattern.fullmatch(
+                str(path.relative_to(state_data_directory)).replace("\\", "/")
+            )
+        ]
+        return matching_files
+
     def load_and_standardize_data_source(
-        self, start_year: int | None = None, end_year: int | None = None
+        self,
+        start_year: int | None = None,
+        end_year: int | None = None,
+        state_data_directory: Path | None = None,
     ) -> pd.DataFrame:
         """Load and process all data for a source into a single concatenated dataframe
 
         Args:
             start_year: Start year of elections to run pipeline on
             end_year: End year of elections to run pipeline on
+            state_data_directory: Directory containing raw data for state. This the path
+                up to what is described in the config file.
+                Defaults to: repo root / data / raw / state_code
         """
+        raw_data_file_paths = self._raw_data_file_paths(state_data_directory)
         standardized_tables = []
-        if self.data_reader.default_raw_data_paths == []:
+        if raw_data_file_paths == []:
             return pd.DataFrame()
-        for data_path in self.data_reader.default_raw_data_paths:
+        for data_path in raw_data_file_paths:
             raw_data_table = self.data_reader.read_tabular_data(
                 data_path, start_year, end_year
             )

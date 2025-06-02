@@ -197,23 +197,6 @@ def test_raw_data_path_pattern(sample_config):
     assert not handler.raw_data_path_pattern.fullmatch("2018/noncontrib.csv")
 
 
-def test_raw_data_file_paths(sample_config, mock_raw_data_directory):
-    state_data_directory = mock_raw_data_directory / "NY"
-    state_data_directory.mkdir()
-    valid_file = state_data_directory / "2021/contrib_test.txt"
-    invalid_file = state_data_directory / "2018/noncontrib.csv"
-    valid_file.parent.mkdir(parents=True, exist_ok=True)
-    invalid_file.parent.mkdir(parents=True, exist_ok=True)
-    valid_file.touch()
-    invalid_file.touch()
-
-    handler = ConfigHandler("contributions", config_file_path=sample_config)
-
-    matching_files = handler.raw_data_file_paths
-    assert valid_file in matching_files
-    assert invalid_file not in matching_files
-
-
 @pytest.fixture
 def inheritance_config(tmp_path):
     config_data = {

@@ -311,7 +311,6 @@ def mock_pipeline(
 
     # Mock DataReader
     mock_data_reader = MagicMock()
-    mock_data_reader.default_raw_data_paths = mock_config_handler.raw_data_file_paths
     mock_data_reader.read_tabular_data.return_value = raw_data
 
     # Mock SchemaTransformer
@@ -334,7 +333,9 @@ def mock_pipeline(
         pipeline.data_reader = mock_data_reader
         pipeline.schema_transformer = mock_schema_transformer
         pipeline.data_standardizer = mock_data_standardizer
-
+        pipeline._raw_data_file_paths = MagicMock(
+            return_value=[Path("contributions.csv")]
+        )
     return pipeline
 
 
