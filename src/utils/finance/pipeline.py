@@ -11,13 +11,17 @@ ALL_STATE_SOURCES = get_registered_sources()
 
 
 def standardize_states(
-    states: list[str] = None,
+    states: list[str] = None, start_year: int = None, end_year: int = None
 ) -> dict[str, pd.DataFrame]:
     """From raw datafiles, standardize data from specified states.
 
     Args:
         states: List of states to merge data from. If None,
             will default to all states that have been implemented
+        start_year: Year to start filtering data from. If None,
+            will default to the earliest year in the data
+        end_year: Year to end filtering data at. If None,
+            will default to the latest year in the data
 
     Returns:
         dictionary mapping table name to tables of that type
@@ -29,7 +33,9 @@ def standardize_states(
     database = {}
     for state in states:
         for source in ALL_STATE_SOURCES[state]:
-            standardized_source_table = source.load_and_standardize_data_source()
+            standardized_source_table = source.load_and_standardize_data_source(
+                start_year=start_year, end_year=end_year
+            )
             if source.table_name not in database:
                 database[source.table_name] = pd.DataFrame()
 

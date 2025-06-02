@@ -136,6 +136,16 @@ class ConfigHandler:
         """List of columns in order in raw file"""
         return self._raw_colum_order
 
+    @property
+    def year_filter_filepath_regex(self) -> str | None:
+        """Regex pattern to extract year from filepath for filtering"""
+        return self._year_filter_filepath_regex
+
+    @property
+    def year_column(self) -> str | None:
+        """Raw column name containing year data for filtering"""
+        return self._year_column
+
     def __init__(
         self,
         form_code: str,
@@ -195,3 +205,5 @@ class ConfigHandler:
         self._state_code = form_config.get("state_code", state_code)
         self._table_name = form_config.get("table_name")
         self._raw_data_path_pattern = form_config.get("path_pattern")
+        self._year_filter_filepath_regex = form_config.get("year_filter_filepath_regex")
+        self._year_column = form_config.get("year_column")

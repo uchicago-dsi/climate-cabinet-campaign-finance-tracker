@@ -298,3 +298,54 @@ def test_column_details_and_order(inheritance_config):
     handler_subset = ConfigHandler("column_subset", inheritance_config)
     raw_names_subset = [col["raw_name"] for col in handler_subset._column_details]
     assert raw_names_subset == ["PARENT_COLUMN"]
+
+
+@pytest.fixture
+def year_filter_config(tmp_path):
+    """Configuration with year filtering settings"""
+    config_data = {
+        "contributions": {
+            "column_details": [
+                {"raw_name": "FILERID", "type": "str", "standard_name": "recipient_id"},
+                {
+                    "raw_name": "EYEAR",
+                    "type": "Int32",
+                    "standard_name": "election_year",
+                },
+                {
+                    "raw_name": "CONTDATE1",
+                    "type": "Int32",
+                    "date_format": "%Y%m%d",
+                    "standard_name": "date-1",
+                },
+            ],
+            "state_code": "PA",
+            "table_name": "Transaction",
+            "path_pattern": "(?i)^(\\d{4})/contrib.*\\.txt$",
+            "year_filter_filepath_regex": "^(\\d{4})/",
+            "year_column": "EYEAR",
+        }
+    }
+    config_path = tmp_path / "year_filter_config.yaml"
+    with config_path.open("w") as f:
+        safe_dump(config_data, f)
+    return config_path
+
+
+def test_year_filter_filepath_regex(year_filter_config):
+    """Test that year_filter_filepath_regex is correctly loaded"""
+    handler = ConfigHandler("contributions", config_file_path=year_filter_config)
+    assert handler.year_filter_filepath_regex == "^(\\d{4})/"
+
+
+def test_year_column(year_filter_config):
+    """Test that year_column is correctly loaded"""
+    handler = ConfigHandler("contributions", config_file_path=year_filter_config)
+    assert handler.year_column == "EYEAR"
+
+
+def test_year_filter_none_when_not_configured(sample_config):
+    """Test that year filtering properties return None when not configured"""
+    handler = ConfigHandler("contributions", config_file_path=sample_config)
+    assert handler.year_filter_filepath_regex is None
+    assert handler.year_column is None

@@ -15,6 +15,18 @@ parser.add_argument(
     help="State abbreviations of all states to run pipeline on",
 )
 parser.add_argument(
+    "--start_year",
+    type=int,
+    default=None,
+    help="Start year of elections to run pipeline on",
+)
+parser.add_argument(
+    "--end_year",
+    type=int,
+    default=None,
+    help="End year of elections to run pipeline on",
+)
+parser.add_argument(
     "-o",
     "--output-directory",
     default=None,
@@ -29,5 +41,7 @@ else:
 states = args.states
 output_directory.mkdir(parents=True, exist_ok=True)
 
-database = standardize_states(states=states)
+database = standardize_states(
+    states=states, start_year=args.start_year, end_year=args.end_year
+)
 save_database_to_csv(database, output_directory)
