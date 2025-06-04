@@ -6,6 +6,7 @@ base:
     on_bad_lines: warn
   state_code_columns:
     - reported_state
+  year_filter_filepath_regex: ".*\\/(\\d{4})\\/[^\\/]+$"
 
 
 contributions:

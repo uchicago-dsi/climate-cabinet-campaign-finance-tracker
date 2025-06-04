@@ -1,9 +1,11 @@
 """Represents raw input data from states"""
 
+import re
 from pathlib import Path
 
 import pandas as pd
 
+from utils.constants import RAW_DATA_DIRECTORY
 from utils.finance.config import ConfigHandler
 
 
@@ -24,32 +26,96 @@ class DataReader:
         """Maps raw column names in"""
         return self._dtype_dict
 
-    def __init__(self, config_handler: ConfigHandler | None = None) -> None:
-        """Initalize new data reader
-
-        Args:
-            config_handler: ConfigHandler, documented # TODO
-        """
+    def __init__(
+        self,
+        config_handler: ConfigHandler | None = None,
+    ) -> None:
+        """Initialize new data reader with optional year filtering"""
         self._dtype_dict = config_handler.dtype_dict
         self.read_csv_params = config_handler.read_csv_params
-        self._default_paths = config_handler.raw_data_file_paths
         self.columns = config_handler.raw_column_order
+        if config_handler.year_filter_filepath_regex:
+            self.year_filter_filepath_regex = re.compile(
+                config_handler.year_filter_filepath_regex
+            )
+        else:
+            self.year_filter_filepath_regex = None
+        self.year_column = config_handler.year_column
 
-    def read_tabular_data(self, path: str = None) -> pd.DataFrame:
+    def _is_filepath_in_year_range(
+        self,
+        path: Path,
+        start_year: int | None = None,
+        end_year: int | None = None,
+    ) -> bool:
+        """Filter file paths by year extracted from path"""
+        if not self.year_filter_filepath_regex:
+            return True
+
+        match = self.year_filter_filepath_regex.search(str(path))
+        if match:
+            try:
+                year = int(match.group(1))
+                if (start_year is None or year >= start_year) and (
+                    end_year is None or year <= end_year
+                ):
+                    return True
+                else:
+                    return False
+            except (ValueError, IndexError):
+                print(f"Error parsing year from path: {path}")
+                return False
+        else:
+            return False
+
+    def _filter_dataframe_to_year_range(
+        self,
+        table: pd.DataFrame,
+        start_year: int | None = None,
+        end_year: int | None = None,
+    ) -> pd.DataFrame:
+        """Filter table by year extracted from column"""
+        if (start_year is None and end_year is None) or self.year_column is None:
+            return table
+
+        if self.year_column not in table.columns:
+            print(f"Warning: Year column {self.year_column} not found in table")
+            return table
+
+        if start_year is not None:
+            table = table[table[self.year_column] >= start_year]
+        if end_year is not None:
+            table = table[table[self.year_column] <= end_year]
+        return table
+
+    def read_tabular_data(
+        self,
+        path: str | Path,
+        start_year: int | None = None,
+        end_year: int | None = None,
+    ) -> pd.DataFrame:
         """Read raw tabular data from state provided files into a DataFrame
+
+        Args:
+            path: Path to raw data file. If None, uses default_raw_data_paths
+            start_year: Start year of elections to run pipeline on
+            end_year: End year of elections to run pipeline on
 
         This method should maintain the data as closely as possible. The only
         permissible modification is the dropping of segments of data that are
         malformed and not able to be read into a dataframe. These rows should
         be (TODO #107) reported.
         """
-        if path is None:
-            path = self.default_raw_data_paths[0]
+        if not self._is_filepath_in_year_range(path, start_year, end_year):
+            return pd.DataFrame()
+
         table = pd.read_csv(
             str(path),
             dtype=self.dtype_dict,
             **self.read_csv_params,
         )
+        table = self._filter_dataframe_to_year_range(table, start_year, end_year)
+
         return table
 
 
@@ -255,13 +321,53 @@ class DataSourceStandardizationPipeline:
         else:
             self.data_standardizer = data_standardizer
 
-    def load_and_standardize_data_source(self) -> pd.DataFrame:
-        """Load and process all data for a source into a single concatenated dataframe"""
+    def _raw_data_file_paths(
+        self, state_data_directory: Path | None = None
+    ) -> list[Path]:
+        """All files matching raw data pattern at compile time
+
+        Args:
+            state_data_directory: Directory containing raw data for state.
+        """
+        if state_data_directory is None:
+            state_data_directory = RAW_DATA_DIRECTORY / self.state_code.upper()
+        matching_files = [
+            path
+            for path in state_data_directory.rglob("*")
+            if path.is_file()
+            and self.config_handler.raw_data_path_pattern.fullmatch(
+                str(path.relative_to(state_data_directory)).replace("\\", "/")
+            )
+        ]
+        return matching_files
+
+    def load_and_standardize_data_source(
+        self,
+        start_year: int | None = None,
+        end_year: int | None = None,
+        state_data_directory: Path | None = None,
+    ) -> pd.DataFrame:
+        """Load and process all data for a source into a single concatenated dataframe
+
+        Args:
+            start_year: Start year of elections to run pipeline on
+            end_year: End year of elections to run pipeline on
+            state_data_directory: Directory containing raw data for state. This the path
+                up to what is described in the config file.
+                Defaults to: repo root / data / raw / state_code
+        """
+        raw_data_file_paths = self._raw_data_file_paths(state_data_directory)
         standardized_tables = []
-        if self.data_reader.default_raw_data_paths == []:
+        if raw_data_file_paths == []:
             return pd.DataFrame()
-        for data_path in self.data_reader.default_raw_data_paths:
-            raw_data_table = self.data_reader.read_tabular_data(data_path)
+        for data_path in raw_data_file_paths:
+            raw_data_table = self.data_reader.read_tabular_data(
+                data_path, start_year, end_year
+            )
+            # Skip empty tables (files that didn't match year filter)
+            if raw_data_table.empty:
+                continue
+
             standard_schema_table = self.schema_transformer.standardize_schema(
                 raw_data_table
             )
@@ -269,4 +375,8 @@ class DataSourceStandardizationPipeline:
                 standard_schema_table
             )
             standardized_tables.append(standard_data_table)
-        return pd.concat(standardized_tables)
+
+        if standardized_tables:
+            return pd.concat(standardized_tables, ignore_index=True)
+        else:
+            return pd.DataFrame()

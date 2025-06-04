@@ -67,6 +67,26 @@ Both first level keys have the same set of subkeys:
 #### Standard Column Naming
 The state source standardization steps are to prepare the state code to be normalized and joined with other states. As part of this there is a specific naming pattern for columns. Standard table attributes are named in table.yaml under attributes. Provided source data, however, may not be normalized. These columns will be named with a SPLIT separator ('--') between the name of the relation and the name of the attribute in the related column. This may be nested (i.e. if in a transaction table we are given a donor's address, this would be shown as 'donor--address--line_1'). If a column is a repeated column (i.e. there are two amount columns to signify two transactions that share all other properties), it will end with '-\d' where \d is an integer. Valid column names include alphabetic characters and underscores.
 
+#### Year Filtering Configuration
+
+To enable year filtering for data sources, add the following optional fields:
+
+- `year_filter_filepath_regex`: (optional) Regex pattern to extract year from file paths. The first capture group should contain the year as a 4-digit number (e.g., `"^(\\d{4})/"`).
+- `year_column`: (optional) Raw column name containing year data for row-level filtering.
+
+When both are provided, filepath filtering is applied first to reduce the number of files read, then column filtering is applied to the resulting data.
+
+Example:
+```yaml
+contributions_2020_2022:
+  inherits: base
+  path_pattern: "(?i)^(20[2-3][0-9])/contrib.*\\.txt$"
+  year_filter_filepath_regex: "^(\\d{4})/"  # Extract year from path like "2021/contrib.txt"
+  year_column: "ELECTION_YEAR"  # Filter rows by this column after reading
+```
+
+This configuration allows the `standardize_states` function to filter data by year using `start_year` and `end_year` parameters.
+
 ### Walkthrough: Pennsylvania
 
 Here we go through an example of adding a new state to the campaign finance pipeline.

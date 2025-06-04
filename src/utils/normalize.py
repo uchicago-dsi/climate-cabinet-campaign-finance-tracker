@@ -49,13 +49,17 @@ class Normalizer:
         return self._id_mapping
 
     def __init__(
-        self, database: dict[str, pd.DataFrame], schema: DataSchema | Path | str
+        self,
+        database: dict[str, pd.DataFrame],
+        schema: DataSchema | Path | str,
+        existing_id_mapping: dict[tuple, str] | None = None,
     ) -> None:
         """Create new normalizer
 
         Args:
-            database: TODO
+            database: Dictionary of table names to DataFrames
             schema: DataSchema object or path to yaml file containing one
+            existing_id_mapping: Pre-existing ID mappings to maintain consistency across chunks
         """
         self.database = database
         if isinstance(schema, str | Path):
@@ -63,7 +67,7 @@ class Normalizer:
         elif not isinstance(schema, DataSchema):
             raise RuntimeError("schema must be path or DataSchema object")
         self.schema = schema
-        self._id_mapping = {}
+        self._id_mapping = existing_id_mapping.copy() if existing_id_mapping else {}
 
     def get_foreign_table_name(self, base_type: str, column_name: str) -> str:
         """Retrieve the type of a multivalued/foreign table"""

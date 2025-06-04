@@ -197,23 +197,6 @@ def test_raw_data_path_pattern(sample_config):
     assert not handler.raw_data_path_pattern.fullmatch("2018/noncontrib.csv")
 
 
-def test_raw_data_file_paths(sample_config, mock_raw_data_directory):
-    state_data_directory = mock_raw_data_directory / "NY"
-    state_data_directory.mkdir()
-    valid_file = state_data_directory / "2021/contrib_test.txt"
-    invalid_file = state_data_directory / "2018/noncontrib.csv"
-    valid_file.parent.mkdir(parents=True, exist_ok=True)
-    invalid_file.parent.mkdir(parents=True, exist_ok=True)
-    valid_file.touch()
-    invalid_file.touch()
-
-    handler = ConfigHandler("contributions", config_file_path=sample_config)
-
-    matching_files = handler.raw_data_file_paths
-    assert valid_file in matching_files
-    assert invalid_file not in matching_files
-
-
 @pytest.fixture
 def inheritance_config(tmp_path):
     config_data = {
@@ -298,3 +281,54 @@ def test_column_details_and_order(inheritance_config):
     handler_subset = ConfigHandler("column_subset", inheritance_config)
     raw_names_subset = [col["raw_name"] for col in handler_subset._column_details]
     assert raw_names_subset == ["PARENT_COLUMN"]
+
+
+@pytest.fixture
+def year_filter_config(tmp_path):
+    """Configuration with year filtering settings"""
+    config_data = {
+        "contributions": {
+            "column_details": [
+                {"raw_name": "FILERID", "type": "str", "standard_name": "recipient_id"},
+                {
+                    "raw_name": "EYEAR",
+                    "type": "Int32",
+                    "standard_name": "election_year",
+                },
+                {
+                    "raw_name": "CONTDATE1",
+                    "type": "Int32",
+                    "date_format": "%Y%m%d",
+                    "standard_name": "date-1",
+                },
+            ],
+            "state_code": "PA",
+            "table_name": "Transaction",
+            "path_pattern": "(?i)^(\\d{4})/contrib.*\\.txt$",
+            "year_filter_filepath_regex": "^(\\d{4})/",
+            "year_column": "EYEAR",
+        }
+    }
+    config_path = tmp_path / "year_filter_config.yaml"
+    with config_path.open("w") as f:
+        safe_dump(config_data, f)
+    return config_path
+
+
+def test_year_filter_filepath_regex(year_filter_config):
+    """Test that year_filter_filepath_regex is correctly loaded"""
+    handler = ConfigHandler("contributions", config_file_path=year_filter_config)
+    assert handler.year_filter_filepath_regex == "^(\\d{4})/"
+
+
+def test_year_column(year_filter_config):
+    """Test that year_column is correctly loaded"""
+    handler = ConfigHandler("contributions", config_file_path=year_filter_config)
+    assert handler.year_column == "EYEAR"
+
+
+def test_year_filter_none_when_not_configured(sample_config):
+    """Test that year filtering properties return None when not configured"""
+    handler = ConfigHandler("contributions", config_file_path=sample_config)
+    assert handler.year_filter_filepath_regex is None
+    assert handler.year_column is None

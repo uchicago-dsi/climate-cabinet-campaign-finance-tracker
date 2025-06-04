@@ -28,6 +28,15 @@ def mock_config_handler():
     }
     mock.read_csv_params = {"sep": ","}
     mock.raw_data_file_paths = [Path("contributions.csv")]
+    mock.raw_column_order = [
+        "DONOR",
+        "RECIPID",
+        "TRANSDATE",
+        "DONORCOMPNAME",
+        "amount",
+        "EOFFICE",
+        "USELESS",
+    ]
     mock.column_mapper = {
         "DONOR": "donor--name",
         "RECIPID": "recipient_id",
@@ -51,6 +60,8 @@ def mock_config_handler():
         }
     }
     mock.column_to_date_format = {"date": "%m/%d/%Y"}
+    mock.year_filter_filepath_regex = None
+    mock.year_column = None
     return mock
 
 
@@ -134,6 +145,42 @@ def standardized_data():
     )
 
 
+@pytest.fixture
+def mock_config_handler_with_year_filter():
+    """Creates a mock configuration handler with year filtering enabled."""
+    mock = MagicMock(spec=ConfigHandler)
+    mock.dtype_dict = {
+        "DONOR": "str",
+        "EYEAR": "Int32",
+        "TRANSDATE": "str",
+        "amount": "Float32",
+    }
+    mock.read_csv_params = {"sep": ","}
+    mock.raw_data_file_paths = [
+        Path("2020/contributions.csv"),
+        Path("2021/contributions.csv"),
+        Path("2022/contributions.csv"),
+        Path("2023/contributions.csv"),
+    ]
+    mock.raw_column_order = ["DONOR", "EYEAR", "TRANSDATE", "amount"]
+    mock.year_filter_filepath_regex = "^(\\d{4})/"
+    mock.year_column = "EYEAR"
+    return mock
+
+
+@pytest.fixture
+def year_filtered_data():
+    """Sample data with year column"""
+    return pd.DataFrame(
+        {
+            "DONOR": ["person 1", "person 2", "person 3", "person 4"],
+            "EYEAR": [2020, 2021, 2022, 2023],
+            "TRANSDATE": ["1/20/2020", "12/31/2021", "3/4/2022", "6/15/2023"],
+            "amount": [120.34, 1200, 3400.23, 500.00],
+        }
+    )
+
+
 # ---- UNIT TESTS ----
 class TestDataReader:
     """Tests for DataReader class."""
@@ -144,13 +191,13 @@ class TestDataReader:
         mock_read_csv.return_value = pd.DataFrame(raw_data)
         reader = DataReader(mock_config_handler)
 
-        raw_data = reader.read_tabular_data()
+        result = reader.read_tabular_data(Path("contributions.csv"))
 
         mock_read_csv.assert_called_once_with(
             "contributions.csv", dtype=mock_config_handler.dtype_dict, sep=","
         )
-        assert not raw_data.empty
-        assert list(raw_data.columns) == [
+        assert not result.empty
+        assert list(result.columns) == [
             "DONOR",
             "RECIPID",
             "TRANSDATE",
@@ -164,7 +211,24 @@ class TestDataReader:
         """Ensure an error is raised if the file is missing."""
         reader = DataReader(mock_config_handler)
         with pytest.raises(FileNotFoundError):
-            reader.read_tabular_data("non_existent_file.csv")
+            reader.read_tabular_data(Path("non_existent_file.csv"))
+
+    @patch("pandas.read_csv")
+    def test_read_tabular_data_with_year_filtering(
+        self, mock_read_csv, mock_config_handler, raw_data
+    ):
+        """Test read_tabular_data with year filtering parameters"""
+        mock_read_csv.return_value = raw_data
+        reader = DataReader(mock_config_handler)
+
+        result = reader.read_tabular_data(
+            Path("contributions.csv"), start_year=2020, end_year=2022
+        )
+
+        mock_read_csv.assert_called_once_with(
+            "contributions.csv", dtype=mock_config_handler.dtype_dict, sep=","
+        )
+        assert not result.empty
 
 
 class TestSchemaTransformer:
@@ -247,7 +311,6 @@ def mock_pipeline(
 
     # Mock DataReader
     mock_data_reader = MagicMock()
-    mock_data_reader.default_raw_data_paths = mock_config_handler.raw_data_file_paths
     mock_data_reader.read_tabular_data.return_value = raw_data
 
     # Mock SchemaTransformer
@@ -270,7 +333,9 @@ def mock_pipeline(
         pipeline.data_reader = mock_data_reader
         pipeline.schema_transformer = mock_schema_transformer
         pipeline.data_standardizer = mock_data_standardizer
-
+        pipeline._raw_data_file_paths = MagicMock(
+            return_value=[Path("contributions.csv")]
+        )
     return pipeline
 
 
@@ -283,9 +348,197 @@ def test_load_standardize_data_source(mock_pipeline, standardized_data):
     # Validate the output
     pd.testing.assert_frame_equal(result_df, standardized_data)
 
-    # Ensure each step was called once
+    # Ensure each step was called once with the correct arguments
     mock_pipeline.data_reader.read_tabular_data.assert_called_once_with(
-        Path("contributions.csv")
+        Path("contributions.csv"), None, None
     )
     mock_pipeline.schema_transformer.standardize_schema.assert_called_once()
     mock_pipeline.data_standardizer.standardize_data.assert_called_once()
+
+
+class TestDataReaderYearFiltering:
+    """Tests for DataReader year filtering functionality."""
+
+    def test_filter_year_by_filepath(self, mock_config_handler_with_year_filter):
+        """Test filtering file paths by year"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        # Test filtering for years 2021-2022
+        assert reader._is_filepath_in_year_range(
+            Path("2021/contributions.csv"), 2021, 2022
+        )
+        assert reader._is_filepath_in_year_range(
+            Path("2022/contributions.csv"), 2021, 2022
+        )
+        assert not reader._is_filepath_in_year_range(
+            Path("2020/contributions.csv"), 2021, 2022
+        )
+        assert not reader._is_filepath_in_year_range(
+            Path("2023/contributions.csv"), 2021, 2022
+        )
+
+    def test_filter_year_by_filepath_start_year_only(
+        self, mock_config_handler_with_year_filter
+    ):
+        """Test filtering with only start year"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        assert reader._is_filepath_in_year_range(
+            Path("2022/contributions.csv"), 2022, None
+        )
+        assert reader._is_filepath_in_year_range(
+            Path("2023/contributions.csv"), 2022, None
+        )
+        assert not reader._is_filepath_in_year_range(
+            Path("2021/contributions.csv"), 2022, None
+        )
+
+    def test_filter_year_by_filepath_end_year_only(
+        self, mock_config_handler_with_year_filter
+    ):
+        """Test filtering with only end year"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        assert reader._is_filepath_in_year_range(
+            Path("2020/contributions.csv"), None, 2021
+        )
+        assert reader._is_filepath_in_year_range(
+            Path("2021/contributions.csv"), None, 2021
+        )
+        assert not reader._is_filepath_in_year_range(
+            Path("2022/contributions.csv"), None, 2021
+        )
+
+    def test_filter_year_by_filepath_no_regex(self):
+        """Test that filtering returns True when no regex is configured"""
+        mock_handler = MagicMock()
+        mock_handler.year_filter_filepath_regex = None
+        mock_handler.year_column = None
+        mock_handler.dtype_dict = {}
+        mock_handler.read_csv_params = {}
+        mock_handler.raw_column_order = []
+
+        reader = DataReader(mock_handler)
+
+        assert reader._is_filepath_in_year_range(Path("file1.csv"), 2021, 2022) is True
+        assert reader._is_filepath_in_year_range(Path("file2.csv"), 2021, 2022) is True
+
+    def test_filter_year_by_column(
+        self, mock_config_handler_with_year_filter, year_filtered_data
+    ):
+        """Test filtering dataframe by year column"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        # Test filtering for years 2021-2022
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, 2021, 2022
+        )
+        expected_years = [2021, 2022]
+        assert list(filtered_data["EYEAR"]) == expected_years
+
+    def test_filter_year_by_column_start_year_only(
+        self, mock_config_handler_with_year_filter, year_filtered_data
+    ):
+        """Test filtering with only start year"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, 2022, None
+        )
+        expected_years = [2022, 2023]
+        assert list(filtered_data["EYEAR"]) == expected_years
+
+    def test_filter_year_by_column_end_year_only(
+        self, mock_config_handler_with_year_filter, year_filtered_data
+    ):
+        """Test filtering with only end year"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, None, 2021
+        )
+        expected_years = [2020, 2021]
+        assert list(filtered_data["EYEAR"]) == expected_years
+
+    def test_filter_year_by_column_no_year_column(self, year_filtered_data):
+        """Test that filtering returns original data when no year column is configured"""
+        mock_handler = MagicMock()
+        mock_handler.year_filter_filepath_regex = None
+        mock_handler.year_column = None
+        mock_handler.dtype_dict = {}
+        mock_handler.read_csv_params = {}
+        mock_handler.raw_column_order = []
+
+        reader = DataReader(mock_handler)
+
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, 2021, 2022
+        )
+        pd.testing.assert_frame_equal(filtered_data, year_filtered_data)
+
+    def test_filter_year_by_column_missing_column(
+        self, mock_config_handler_with_year_filter
+    ):
+        """Test that filtering returns original data when year column is missing from data"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+        data_without_year = pd.DataFrame(
+            {
+                "DONOR": ["person 1", "person 2"],
+                "amount": [120.34, 1200],
+            }
+        )
+
+        filtered_data = reader._filter_dataframe_to_year_range(
+            data_without_year, 2021, 2022
+        )
+        pd.testing.assert_frame_equal(filtered_data, data_without_year)
+
+    @patch("pandas.read_csv")
+    def test_read_tabular_data_with_year_filtering_single_file(
+        self, mock_read_csv, mock_config_handler_with_year_filter, year_filtered_data
+    ):
+        """Test read_tabular_data with year filtering on a single file"""
+        mock_read_csv.return_value = year_filtered_data
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        # Test reading a file that passes the year filter
+        result = reader.read_tabular_data(
+            Path("2021/contributions.csv"), start_year=2021, end_year=2022
+        )
+
+        mock_read_csv.assert_called_once_with(
+            "2021/contributions.csv",
+            dtype=mock_config_handler_with_year_filter.dtype_dict,
+            sep=",",
+        )
+        # Should contain years 2021-2022 due to column filtering
+        assert list(result["EYEAR"]) == [2021, 2022]
+
+    @patch("pandas.read_csv")
+    def test_read_tabular_data_filtered_out_by_filepath(
+        self, mock_read_csv, mock_config_handler_with_year_filter
+    ):
+        """Test that read_tabular_data returns empty DataFrame when file is filtered out by filepath"""
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        # Try to read a file that doesn't match the year filter
+        result = reader.read_tabular_data(
+            Path("2020/contributions.csv"), start_year=2021, end_year=2022
+        )
+
+        # Should not call read_csv since file is filtered out
+        mock_read_csv.assert_not_called()
+        assert result.empty
+
+    @patch("pandas.read_csv")
+    def test_read_tabular_data_no_year_filtering(
+        self, mock_read_csv, mock_config_handler_with_year_filter, year_filtered_data
+    ):
+        """Test read_tabular_data without year filtering"""
+        mock_read_csv.return_value = year_filtered_data
+        reader = DataReader(mock_config_handler_with_year_filter)
+
+        result = reader.read_tabular_data(Path("2021/contributions.csv"))
+
+        mock_read_csv.assert_called_once()
+        pd.testing.assert_frame_equal(result, year_filtered_data)
