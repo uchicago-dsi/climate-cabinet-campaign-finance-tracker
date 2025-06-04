@@ -364,16 +364,16 @@ class TestDataReaderYearFiltering:
         reader = DataReader(mock_config_handler_with_year_filter)
 
         # Test filtering for years 2021-2022
-        assert reader._filter_year_by_filepath(
+        assert reader._is_filepath_in_year_range(
             Path("2021/contributions.csv"), 2021, 2022
         )
-        assert reader._filter_year_by_filepath(
+        assert reader._is_filepath_in_year_range(
             Path("2022/contributions.csv"), 2021, 2022
         )
-        assert not reader._filter_year_by_filepath(
+        assert not reader._is_filepath_in_year_range(
             Path("2020/contributions.csv"), 2021, 2022
         )
-        assert not reader._filter_year_by_filepath(
+        assert not reader._is_filepath_in_year_range(
             Path("2023/contributions.csv"), 2021, 2022
         )
 
@@ -383,13 +383,13 @@ class TestDataReaderYearFiltering:
         """Test filtering with only start year"""
         reader = DataReader(mock_config_handler_with_year_filter)
 
-        assert reader._filter_year_by_filepath(
+        assert reader._is_filepath_in_year_range(
             Path("2022/contributions.csv"), 2022, None
         )
-        assert reader._filter_year_by_filepath(
+        assert reader._is_filepath_in_year_range(
             Path("2023/contributions.csv"), 2022, None
         )
-        assert not reader._filter_year_by_filepath(
+        assert not reader._is_filepath_in_year_range(
             Path("2021/contributions.csv"), 2022, None
         )
 
@@ -399,13 +399,13 @@ class TestDataReaderYearFiltering:
         """Test filtering with only end year"""
         reader = DataReader(mock_config_handler_with_year_filter)
 
-        assert reader._filter_year_by_filepath(
+        assert reader._is_filepath_in_year_range(
             Path("2020/contributions.csv"), None, 2021
         )
-        assert reader._filter_year_by_filepath(
+        assert reader._is_filepath_in_year_range(
             Path("2021/contributions.csv"), None, 2021
         )
-        assert not reader._filter_year_by_filepath(
+        assert not reader._is_filepath_in_year_range(
             Path("2022/contributions.csv"), None, 2021
         )
 
@@ -420,8 +420,8 @@ class TestDataReaderYearFiltering:
 
         reader = DataReader(mock_handler)
 
-        assert reader._filter_year_by_filepath(Path("file1.csv"), 2021, 2022) is True
-        assert reader._filter_year_by_filepath(Path("file2.csv"), 2021, 2022) is True
+        assert reader._is_filepath_in_year_range(Path("file1.csv"), 2021, 2022) is True
+        assert reader._is_filepath_in_year_range(Path("file2.csv"), 2021, 2022) is True
 
     def test_filter_year_by_column(
         self, mock_config_handler_with_year_filter, year_filtered_data
@@ -430,7 +430,9 @@ class TestDataReaderYearFiltering:
         reader = DataReader(mock_config_handler_with_year_filter)
 
         # Test filtering for years 2021-2022
-        filtered_data = reader._filter_year_by_column(year_filtered_data, 2021, 2022)
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, 2021, 2022
+        )
         expected_years = [2021, 2022]
         assert list(filtered_data["EYEAR"]) == expected_years
 
@@ -440,7 +442,9 @@ class TestDataReaderYearFiltering:
         """Test filtering with only start year"""
         reader = DataReader(mock_config_handler_with_year_filter)
 
-        filtered_data = reader._filter_year_by_column(year_filtered_data, 2022, None)
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, 2022, None
+        )
         expected_years = [2022, 2023]
         assert list(filtered_data["EYEAR"]) == expected_years
 
@@ -450,7 +454,9 @@ class TestDataReaderYearFiltering:
         """Test filtering with only end year"""
         reader = DataReader(mock_config_handler_with_year_filter)
 
-        filtered_data = reader._filter_year_by_column(year_filtered_data, None, 2021)
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, None, 2021
+        )
         expected_years = [2020, 2021]
         assert list(filtered_data["EYEAR"]) == expected_years
 
@@ -465,7 +471,9 @@ class TestDataReaderYearFiltering:
 
         reader = DataReader(mock_handler)
 
-        filtered_data = reader._filter_year_by_column(year_filtered_data, 2021, 2022)
+        filtered_data = reader._filter_dataframe_to_year_range(
+            year_filtered_data, 2021, 2022
+        )
         pd.testing.assert_frame_equal(filtered_data, year_filtered_data)
 
     def test_filter_year_by_column_missing_column(
@@ -480,7 +488,9 @@ class TestDataReaderYearFiltering:
             }
         )
 
-        filtered_data = reader._filter_year_by_column(data_without_year, 2021, 2022)
+        filtered_data = reader._filter_dataframe_to_year_range(
+            data_without_year, 2021, 2022
+        )
         pd.testing.assert_frame_equal(filtered_data, data_without_year)
 
     @patch("pandas.read_csv")
