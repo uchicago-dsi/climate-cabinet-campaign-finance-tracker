@@ -34,10 +34,15 @@ class DataReader:
         self._dtype_dict = config_handler.dtype_dict
         self.read_csv_params = config_handler.read_csv_params
         self.columns = config_handler.raw_column_order
-        self.year_filter_filepath_regex = config_handler.year_filter_filepath_regex
+        if config_handler.year_filter_filepath_regex:
+            self.year_filter_filepath_regex = re.compile(
+                config_handler.year_filter_filepath_regex
+            )
+        else:
+            self.year_filter_filepath_regex = None
         self.year_column = config_handler.year_column
 
-    def _filter_year_by_filepath(
+    def _is_filepath_in_year_range(
         self,
         path: Path,
         start_year: int | None = None,
@@ -47,9 +52,7 @@ class DataReader:
         if not self.year_filter_filepath_regex:
             return True
 
-        pattern = re.compile(self.year_filter_filepath_regex)
-
-        match = pattern.search(str(path))
+        match = self.year_filter_filepath_regex.search(str(path))
         if match:
             try:
                 year = int(match.group(1))
@@ -65,7 +68,7 @@ class DataReader:
         else:
             return False
 
-    def _filter_year_by_column(
+    def _filter_dataframe_to_year_range(
         self,
         table: pd.DataFrame,
         start_year: int | None = None,
@@ -76,6 +79,7 @@ class DataReader:
             return table
 
         if self.year_column not in table.columns:
+            print(f"Warning: Year column {self.year_column} not found in table")
             return table
 
         if start_year is not None:
@@ -102,7 +106,7 @@ class DataReader:
         malformed and not able to be read into a dataframe. These rows should
         be (TODO #107) reported.
         """
-        if not self._filter_year_by_filepath(path, start_year, end_year):
+        if not self._is_filepath_in_year_range(path, start_year, end_year):
             return pd.DataFrame()
 
         table = pd.read_csv(
@@ -110,7 +114,7 @@ class DataReader:
             dtype=self.dtype_dict,
             **self.read_csv_params,
         )
-        table = self._filter_year_by_column(table, start_year, end_year)
+        table = self._filter_dataframe_to_year_range(table, start_year, end_year)
 
         return table
 

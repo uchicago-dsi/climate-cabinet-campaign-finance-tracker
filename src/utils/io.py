@@ -73,6 +73,8 @@ def load_table_chunked(
         for start in range(0, total_rows, chunk_size):
             end = min(start + chunk_size, total_rows)
             yield _read_parquet_chunk(file_path, start, end)
+    else:
+        raise ValueError(f"Invalid format: {format}")
 
 
 # Private utility functions
@@ -144,6 +146,7 @@ def _save_table(
 
     elif format == "parquet":
         if mode == "append" and file_path.exists():
+            # TODO: this reads the entire file into memory. There should be a better way
             existing_df = pd.read_parquet(file_path)
             combined_df = pd.concat([existing_df, df], ignore_index=True)
             combined_df.to_parquet(file_path, index=save_index)

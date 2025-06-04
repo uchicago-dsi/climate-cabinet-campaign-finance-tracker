@@ -1,6 +1,5 @@
 """Code for management and creation of unique identifiers"""
 
-import json
 import re
 import uuid
 from pathlib import Path
@@ -24,9 +23,6 @@ def normalize_id_to_string(value: int | float | str | None) -> str:
     Handles the case where numeric IDs might be stored as int or float,
     ensuring they always map to the same string key.
     """
-    if pd.isna(value):
-        return str(value)
-
     # If it's a numeric type, convert to int first to remove decimal places
     try:
         if isinstance(value, int | float) and not pd.isna(value):
@@ -197,22 +193,35 @@ def handle_id_column(
 
 
 def save_id_mapping(id_mapping: UUIDMapping, file_path: Path) -> None:
-    """Save ID mapping to a JSON file.
+    """Save ID mapping to a TSV file.
 
     Args:
         id_mapping: Dictionary mapping tuples to UUIDs
         file_path: Path where to save the mapping
     """
-    # Convert tuple keys to strings for JSON serialization
-    serializable_mapping = {json.dumps(key): value for key, value in id_mapping.items()}
+    if not id_mapping:
+        return
 
+    # Convert mapping to DataFrame format
+    rows = []
+    for (raw_id, year, reported_state, table_name), uuid_value in id_mapping.items():
+        rows.append(
+            {
+                "raw_id": raw_id,
+                "year": year,
+                "reported_state": reported_state,
+                "table_name": table_name,
+                "uuid": uuid_value,
+            }
+        )
+
+    id_mapping_df = pd.DataFrame(rows)
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    with file_path.open("w") as f:
-        json.dump(serializable_mapping, f, indent=2)
+    id_mapping_df.to_csv(file_path, sep="\t", index=False)
 
 
 def load_id_mapping(file_path: Path) -> UUIDMapping:
-    """Load ID mapping from a JSON file.
+    """Load ID mapping from a TSV file.
 
     Args:
         file_path: Path to the saved mapping file
@@ -223,12 +232,17 @@ def load_id_mapping(file_path: Path) -> UUIDMapping:
     if not file_path.exists():
         return {}
 
-    with file_path.open("r") as f:
-        serializable_mapping = json.load(f)
+    id_mapping_df = pd.read_csv(file_path, sep="\t")
 
-    # Convert string keys back to tuples
-    id_mapping = {
-        tuple(json.loads(key)): value for key, value in serializable_mapping.items()
-    }
+    # Convert DataFrame back to mapping format
+    id_mapping = {}
+    for _, row in id_mapping_df.iterrows():
+        key = (
+            row["raw_id"],
+            row["year"] if pd.notna(row["year"]) else None,
+            row["reported_state"] if pd.notna(row["reported_state"]) else None,
+            row["table_name"],
+        )
+        id_mapping[key] = row["uuid"]
 
     return id_mapping

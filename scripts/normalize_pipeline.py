@@ -66,7 +66,7 @@ else:
     schema_path = args.schema
 
 # Set up ID mapping file path
-id_mapping_file = output_directory / "id_mapping.json"
+id_mapping_file = output_directory / "id_mapping.tsv"
 
 # Process database in chunks or all at once
 if args.chunk_size is None:
