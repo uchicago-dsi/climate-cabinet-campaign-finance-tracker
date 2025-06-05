@@ -1,0 +1,297 @@
+base:
+  state_code: AZ
+  state_code_columns:
+    - reported_state
+
+
+transactions:
+  inherits: base
+  table_name: Transaction
+  column_details:
+    - raw_name: "PublicTransactionId"
+      type: Int64
+    
+    - raw_name: "TransactionId"
+      type: Int64
+    
+    - raw_name: "TransactionDate"
+      type: str
+      standard_name: date
+      date_format: "/Date(%unix_ms)/"
+    
+    - raw_name: "TransactionTypeId"
+      type: Int32
+      standard_name: transaction_type
+      # TODO: what is the mapping
+    
+    - raw_name: "TransactionTypeDispositionId"
+      type: Int32
+      # TODO: what is this
+    
+    - raw_name: "CommitteeId"
+      type: Int64
+      standard_name: recipient_id
+      # TODO: what is difference between CommitteeId and CommitteeUniqueId?
+    
+    - raw_name: "CommitteeUniqueId"
+      type: Int64
+      standard_name: recipient_id
+    
+    - raw_name: "CommitteeName"
+      type: str
+      standard_name: recipient--full_name
+    
+    - raw_name: "Amount"
+      type: Float32
+      standard_name: amount
+    
+    - raw_name: "EntityTypeId"
+      type: Int32
+      standard_name: tranactor_type_specific
+
+    - raw_name: "SubjectCommitteeId"
+      type: str
+    
+    - raw_name: "SubjectCommitteeName"
+      type: str
+    
+    - raw_name: "IsForBenefit"
+      type: str
+    
+    - raw_name: "BallotMeasureNumber"
+      type: str
+    
+    - raw_name: "CandidateCycleId"
+      type: str
+    
+    - raw_name: "CandidateOfficeTypeId"
+      type: str
+    
+    - raw_name: "CandidateOfficeId"
+      type: str
+    
+    - raw_name: "CandidatePartyId"
+      type: str
+    
+    - raw_name: "CandidateFirstName"
+      type: str
+      standard_name: recipient--candidate--first_name
+    
+    - raw_name: "CandidateMiddleName"
+      type: str
+      standard_name: recipient--candidate--middle_name
+    
+    - raw_name: "CandidateLastName"
+      type: str
+      standard_name: recipient--candidate--last_name
+    
+    - raw_name: "TransactionNameId"
+      type: Int64
+    
+    - raw_name: "TransactionNameGroupId"
+      type: Int64
+    
+    - raw_name: "TransactionEntityTypeId"
+      type: Int32
+    
+    - raw_name: "TransactionFirstName"
+      type: str
+      standard_name: donor--first_name
+    
+    - raw_name: "TransactionMiddleName"
+      type: str
+      standard_name: donor--middle_name
+    
+    - raw_name: "TransactionLastName"
+      type: str
+      standard_name: donor--last_name
+    
+    - raw_name: "ReceivedFromOrPaidTo"
+      type: str
+    
+    - raw_name: "TransactionOccupation"
+      type: str
+      standard_name: donor--employer--role
+    
+    - raw_name: "TransactionEmployer"
+      type: str
+      standard_name: donor--employer--organization--full_name
+    
+    - raw_name: "SubjectCommitteeNameId"
+      type: str
+    
+    - raw_name: "TransactionDateYearMonth"
+      type: str 
+    
+    - raw_name: "BallotMeasureId"
+      type: str
+    
+    - raw_name: "TransactionGroupNumber"
+      type: Int32
+    
+    - raw_name: "TransactionGroupName"
+      type: str
+    
+    - raw_name: "TransactionGroupColor"
+      type: str
+    
+    - raw_name: "CommitteeGroupNumber"
+      type: Int32
+    
+    - raw_name: "CommitteeGroupName"
+      type: str
+    
+    - raw_name: "CommitteeGroupColor"
+      type: str
+    
+    - raw_name: "SubjectGroupNumber"
+      type: str
+    
+    - raw_name: "TransactionCity"
+      type: str
+      standard_name: donor--address--city
+    
+    - raw_name: "TransactionState"
+      type: str
+      standard_name: donor--address--state
+    
+    - raw_name: "TransactionZipCode"
+      type: str
+      standard_name: donor--address--zipcode
+    
+    - raw_name: "EntityDescription"
+      type: str
+    
+    - raw_name: "Memo"
+      type: str
+      standard_name: description
+    
+    - raw_name: "TransactionType"
+      type: str
+      standard_name: transaction_type
+    
+    - raw_name: "JurisdictionId"
+      type: Int32
+    
+    - raw_name: "JurisdictionName"
+      type: str
+    
+    - raw_name: "ReportId"
+      type: str
+    
+    - raw_name: "TransactionDateYear"
+      type: Int32
+      standard_name: reported_election_year
+    
+    - raw_name: "BenefitedOpposed"
+      type: str
+  
+  enum_mapper:
+    recipient--transactor_type:
+      "Candidate": "Candidate"
+      "PACs": "Committee"
+      "Political Party": "Political Party"
+      "Ballot Measure": "Ballot Measure"
+      "Other": "Other"
+  
+  path_pattern: "(?i)^transaction.*\\.csv$"
+
+
+transactor:
+  inherits: base
+  table_name: Transactor
+  column_details:
+    - raw_name: "CommitteeName"
+      type: str
+      standard_name: full_name
+    
+    - raw_name: "PhoneNo"
+      type: str
+      standard_name: phone_number
+    
+    - raw_name: "Email"
+      type: str
+      standard_name: email
+    
+    - raw_name: "Status"
+      type: str
+    
+    - raw_name: "LastAmendedDate"
+      type: str
+    
+    - raw_name: "LastFiledDate"
+      type: str
+    
+    - raw_name: "MasterCommitteeId"
+      type: Int64
+      standard_name: id
+    
+    - raw_name: "CommitteeTypeName"
+      type: str
+      standard_name: transactor_type
+    
+    - raw_name: "RegistrationDate"
+      type: str
+    
+    - raw_name: "CommitteeAddress"
+      type: str
+      standard_name: address--full_address
+    
+    - raw_name: "MailingAddress"
+      type: str
+    
+    - raw_name: "Chairman"
+      type: str
+      standard_name: chairman--full_name
+    
+    - raw_name: "Treasurer"
+      type: str
+      standard_name: treasurer--full_name
+    
+    - raw_name: "Candidate"
+      type: str
+      standard_name: candidate--full_name
+      description: "Name of the candidate"
+    
+    - raw_name: "CandidatePhoneNo"
+      type: str
+      standard_name: candidate--phone_number
+    
+    - raw_name: "CandidateEmail"
+      type: str
+      standard_name: candidate--email
+    
+    - raw_name: "Designee"
+      type: str
+    
+    - raw_name: "OfficeName"
+      type: str
+      standard_name: election_result--election--office_sought
+    
+    - raw_name: "PartyName"
+      type: str
+      standard_name: party
+    
+    - raw_name: "CountyName"
+      type: str
+      standard_name: address--county
+  
+  enum_mapper:
+    transactor_type:
+      "Candidate": "Candidate"
+      "Political Action Committee": "Committee"
+      "Political Party": "Political Party"
+      "Ballot Measure": "Ballot Measure"
+      "Other": "Other"
+    
+    party:
+      "Democratic": "Democratic Party"
+      "Republican": "Republican Party"
+      "Americans Elect": "Other"
+      "Libertarian": "Libertarian Party"
+      "Green": "Green Party"
+      "Independent": "Independent"
+      "N/A": "Other"
+      "Other": "Other"
+  
+  path_pattern: "(?i)^transactor.*\\.csv$"

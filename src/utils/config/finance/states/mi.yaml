@@ -1,0 +1,113 @@
+base:
+  state_code: MI
+  read_csv_params:
+    sep: "\t"
+    encoding: mac_roman
+    on_bad_lines: warn
+  state_code_columns:
+    - reported_state
+
+
+contributions:
+  inherits: base
+  table_name: Transaction
+  enum_mapper:
+    recipient--transactor_type:
+      Candidate: Candidate
+  column_details:
+    - raw_name: "Record Type (1=Parent, 2=Child)"
+      type: Int8
+      description: "This field denotes the type of record, be it a 'parent' or 'child' record with respect to RI breakdowns. Parent contributions have a value of 1, while their associated RI breakdown records have a value of 2. Ignore this field if you have not chosen to receive RI breakdown records."
+    - raw_name: "Record Link (Links Parents to Children)"
+      type: Int32
+      description: "This field denotes a relationship between the 'parent' and 'child' records that are described by the Record Type field. For example, if a parent contribution (Type 1) has three associated children (Type 2) records, the numeric value in this field will be the same, linking which children (RI) records are associated with with which original contributions. Once again, ignore this field if you are not receiving RI records. See note below."
+    - raw_name: "Filing Status (C=Complete,I=Incomplete)"
+      type: str
+      description: "This field helps to describe how complete the data you have chosen is. It may contain a value of 'C' for Complete, or 'I' for Incomplete. This value indicates whether all documents for the ENTIRE filing that this contribution is attached to (i.e. the 1998 Candidate Pre-General filing) have been completely keyed and verified in our system."
+    - raw_name: "Document Statement Year"
+      type: Int32
+      standard_name: reported_election_year
+      description: "The calendar year that this statement was required by the Bureau."
+    - raw_name: "Document Statement Type"
+      type: str
+      description: "The type of statement that this contribution is attached to."
+    - raw_name: "Retrieving Committee Name"
+      type: str
+      standard_name: recipient--full_name
+      description: "Name of the committee retrieving the contribution."
+    - raw_name: "Receiving Committee ID#"
+      type: str
+      standard_name: recipient_id
+      description: "Bureau ID# of the committee retrieving the contribution."
+    - raw_name: "Retrieving Committee Type"
+      type: str
+      standard_name: recipient--transactor_type
+      description: "Type of committee retrieving the contribution."
+    - raw_name: "Receiving Candidate First Name"
+      type: str
+      standard_name: recipient--first_name
+      description: "First name of the candidate (if applicable) benefitting from the contribution."
+    - raw_name: "Receiving Candidate Last Name"
+      type: str
+      standard_name: recipient--last_name
+      description: "Last name of the candidate (if applicable) benefitting from the contribution."
+    - raw_name: "Type of Contribution"
+      type: str
+      standard_name: contribution_type
+      description: "Type of contribution received."
+    - raw_name: "Loan"
+      type: str # Format unclear, keep as string
+      description: "The loan associated to the contribution."
+    - raw_name: "Contributor First Name"
+      type: str
+      standard_name: donor--first_name
+      description: "First name of the contributor."
+    - raw_name: "Organization Name/Contributor Last Name"
+      type: str
+      standard_name: donor--full_name
+      description: "The name of an organization or the last name of the contributor that made the contribution."
+    - raw_name: "Contributor Address"
+      type: str
+      standard_name: donor--address--line_1
+      description: "Street address of the contributor."
+    - raw_name: "Contributor City"
+      type: str
+      standard_name: donor--address--city
+      description: "City of the contributor."
+    - raw_name: "Contributor State"
+      type: str
+      standard_name: donor--address--state
+      description: "State of the contributor."
+    - raw_name: "Contributor Zip"
+      type: str
+      standard_name: donor--address--zipcode
+      description: "Zipcode of the contributor."
+    - raw_name: "Contributor Occupation"
+      type: str
+      standard_name: donor--employer--role
+      description: "Contributor's occupation."
+    - raw_name: "Contributor Employer"
+      type: str
+      standard_name: donor--employer--organization--full_name
+      description: "Contributor's employer."
+    - raw_name: "Fundraising Event Name"
+      type: str
+      description: "Fundraiser associated to the contribution."
+    - raw_name: "Vendor"
+      type: str
+    - raw_name: "Amount of Contribution"
+      type: Float32
+      standard_name: amount
+      description: "Dollar amount or value of the contribution, depending on the contribution type."
+    - raw_name: "Date of Contribution"
+      type: str # Date format might vary
+      standard_name: date
+      description: "Date of the contribution."
+      format: "%m%d%Y"
+    - raw_name: "Cumulative from this person/org"
+      type: Float32
+      description: "The cumulative amount from the person or organization for an election cycle (when the Committee Type is Candidate or Ballot Question) OR the cumulative amount from the person or organization for a calendar year (for all other Committee Types)."
+    - raw_name: "Receipt Type Description"
+      type: str
+      standard_name: description
+      description: "Free form text field further describing an Inkind or Other type of receipt."
