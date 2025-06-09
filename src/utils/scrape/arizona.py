@@ -6,6 +6,9 @@ import time
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
+
+from utils.constants import DATA_DIR
 
 BASE_URL = "https://seethemoney.az.gov/Reporting/AdvancedSearch/"
 HEADERS = {
@@ -352,6 +355,7 @@ def get_arizona_transaction_data(
     end_date: str | None = None,
     filer_types: list[str] | None = None,
     report_categories: list[str] | None = None,
+    output_dir: str | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Get all Arizona Campaign Finance transaction data.
 
@@ -369,10 +373,16 @@ def get_arizona_transaction_data(
         filer_types: Filer types to filter by. If None, all filer types will be included.
         report_categories: Report categories to filter by. If None, all report
             categories will be included.
+        output_dir: Directory to save the dataframes to. If None, the dataframes
+            will be saved to DATA_DIR / "raw" / "AZ".
 
     Returns:
         Dictionary with report category as key and DataFrame as value
     """
+    if output_dir is None:
+        output_dir = DATA_DIR / "raw" / "AZ"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     session = _create_session()
     _simulate_form_interaction(session)
 
@@ -404,6 +414,7 @@ def get_arizona_transaction_data(
                     election_cycle=cycle_id,
                     filer_type_id=filer_type_id,
                     session=session,
+                    output_dir=output_dir,
                 )
                 partial_df["filer_type"] = filer_type
                 all_category_data.append(partial_df)
@@ -419,6 +430,7 @@ def get_arizona_data_by_parameters(
     election_cycle: str,
     filer_type_id: str,
     session: requests.Session,
+    output_dir: str | None = None,
 ) -> pd.DataFrame:
     """Collect Arizona Campaign Finance transaction data by parameters.
 
@@ -427,15 +439,19 @@ def get_arizona_data_by_parameters(
         election_cycle: Election cycle ID with date range
         filer_type_id: ID of the filer type to filter by
         session: Requests session to use for API calls
+        output_dir: Directory to save the dataframes to. If None, the dataframes
+            will be saved to DATA_DIR / "raw" / "AZ".
 
     Returns:
         DataFrame containing filtered transaction data
     """
     start_date, end_date = _extract_date_range_from_cycle_id(election_cycle)
+    output_file = output_dir / f"{report_category}.csv"
 
     all_records = []
     start = 0
     page_size = 1000
+    progress_bar = None
 
     while True:
         try:
@@ -453,20 +469,35 @@ def get_arizona_data_by_parameters(
             if "data" not in response_data or not response_data["data"]:
                 break
 
+            # Add records to in memory dataframe and append to output file
             records = response_data["data"]
             all_records.extend(records)
+            records_df = pd.DataFrame(records)
+            records_df.to_csv(output_file, index=False, mode="a")
 
-            # Check if we've retrieved all records
+            # Initialize progress bar after first successful request
             total_records = response_data.get("recordsTotal", 0)
+            if progress_bar is None and total_records > 0:
+                progress_bar = tqdm(
+                    total=total_records,
+                    desc=f"Fetching {report_category} data for {election_cycle} and filer type {filer_type_id}",
+                    unit="records",
+                )
+            if progress_bar:
+                progress_bar.update(len(records))
+
             if start + page_size >= total_records:
                 break
-
             start += page_size
             time.sleep(0.5)  # Rate limiting
 
         except Exception as e:
             print(f"Error fetching data at offset {start}: {e}")
             break
+
+    # Close progress bar
+    if progress_bar:
+        progress_bar.close()
 
     if not all_records:
         print("No records found")
