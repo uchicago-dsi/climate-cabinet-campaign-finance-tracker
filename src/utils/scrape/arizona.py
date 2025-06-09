@@ -1,418 +1,492 @@
-"""This module provides functions to scrape Arizona Campaign Finance data.
+"""Scripts to scrape Arizona Campaign Finance data"""
 
-Arizona has relational database with an endpoint `GetNEWTableData` that seems most
-relevant and has what would usually be multiple different endpoints separated by
-a `page` parameter. The page parameter has entities:
-    1 - Candidate
-    2 - PAC
-    3 - Political Party
-    4 - Organizations
-    5 - Independent Expenditures
-    6 - Ballot Measures
-    7 - Individual Contributors
-    8 - Vendors
-
-That mainly just list the names of all entities and their IDs. Candidate usefully
-includes a candidate committee name, which seems to be the conduit for all AZ
-contributions.
-
-Each entity type has pages in a GetNEWDetailedTableData endpoint that have transaction
-level details, starting with the digit that is *one more* than their page digit.
-(Candidate details start with 2, PAC details start with 3, etc.). The next digit
-represents one of the following, always in the same order, but not always all present:
-    Income
-    Expense
-    IEFor
-    IEAgainst
-    Ballot Measure Expenditure For
-    Ballot Measure Expenditure Against
-    All Transactions
-So, to get candidate income, look at page 20, Political party all transactions is
-42 because political parties don't have IE or Ballot Measure endpoints.
-
-"""
-
-from pathlib import Path
-from typing import Any
+import datetime
+import time
 
 import pandas as pd
 import requests
+from bs4 import BeautifulSoup
 
-from utils.constants import BASE_FILEPATH
-from utils.scrape.constants import HEADERS, MAX_TIMEOUT, AZ_pages_dict
-
-BASE_URL = "https://seethemoney.az.gov/Reporting"
-BASE_ENDPOINT = "GetNEWTableData"
-DETAILED_ENDPOINT = "GetNEWDetailedTableData"
-INFO_ENDPOINT = "GetDetailedInformation"
-AZ_SEARCH_DATA = {
-    "draw": "2",
-    "order[0][column]": "0",
-    "order[0][dir]": "asc",
-    "start": "0",
-    "length": "500000",
-    "search[value]": "",
-    "search[regex]": "false",
+BASE_URL = "https://seethemoney.az.gov/Reporting/AdvancedSearch/"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "X-Requested-With": "XMLHttpRequest",
+    "Origin": "https://seethemoney.az.gov",
+    "Referer": "https://seethemoney.az.gov/Reporting/AdvancedSearch/",
+    "Connection": "keep-alive",
 }
-AZ_HEADER = HEADERS.update(
-    {
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        "Origin": "https://seethemoney.az.gov",
-        "Connection": "keep-alive",
-        "Referer": "https://seethemoney.az.gov/Reporting/Explore",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
+
+# Category mappings
+CATEGORY_TYPES = {
+    "contributions": "Income",
+    "expenditures": "Expenditures",
+    "independent_expenditures": "IndependentExpenditures",
+    "ballot_measures": "BallotMeasures",
+}
+
+# Filer type mappings
+FILER_TYPES = {
+    "candidate": "130",
+    "committee": "131",
+    "party": "132",
+    "office_holder": "96",
+}
+
+TOO_MANY_REQUESTS = 429
+
+
+def _create_session() -> requests.Session:
+    """Create and initialize a requests session with proper headers and cookies."""
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    # Make initial GET request to establish session and get cookies
+    session.get(BASE_URL, timeout=30)
+    return session
+
+
+def _simulate_form_interaction(session: requests.Session) -> None:
+    """Simulate form interaction to establish proper session state.
+
+    This may be required before POST requests will return data.
+    """
+    # Make a search request with minimal parameters to establish session state
+    form_data = {
+        "JurisdictionId": "0",
+        "CommiteeReportId": "",
+        "CategoryType": "Income",
+        "CycleId": "",
+        "StartDate": "",
+        "EndDate": "",
+        "FilerName": "",
+        "FilerId": "",
+        "BallotName": "",
+        "BallotMeasureId": "",
+        "FilerTypeId": "130",  # candidate
+        "OfficeTypeId": "",
+        "OfficeId": "",
+        "PartyId": "",
+        "ContributorName": "",
+        "VendorName": "",
+        "StateId": "",
+        "City": "",
+        "Employer": "",
+        "Occupation": "",
+        "CandidateName": "",
+        "CandidateFilerId": "",
+        "Position": "Support",
+        "LowAmount": "",
+        "HighAmount": "",
     }
-)
-BASIC_TYPE_PAGE = 10
-NAME_INFO_PAGE = 11
-MAX_DETAILED_PAGE = 20
-AZ_valid_detailed_pages = [v for v in AZ_pages_dict.values() if v >= MAX_DETAILED_PAGE]
-all_transactions_pages = [24, 36, 42, 54, 62, 72, 80, 90]
+
+    # Make a POST request to simulate form submission
+    session.post(BASE_URL, data=form_data, timeout=30)
 
 
-def scrape_and_download_az_data(
-    start_year: int, end_year: int, output_directory: Path = None
-) -> None:
-    """Collect and download all arizona data within range"""
-    if output_directory is None:
-        output_directory = BASE_FILEPATH / "data" / "raw" / "AZ2"
-        output_directory.mkdir(parents=True, exist_ok=True)
-    for page in AZ_pages_dict:
-        formatted_page = page.replace("/", "-").replace(" ", "-")
-        if AZ_pages_dict[page] not in all_transactions_pages:
-            continue
-        transaction_data, filer_data = scrape_az_page_data(page, start_year, end_year)
-        transaction_data.to_csv(output_directory / f"{formatted_page}-transactions.csv")
-        filer_data.to_csv(output_directory / f"{formatted_page}-details.csv")
-
-
-def scrape_az_page_data(
-    page: str,
-    start_year: int = 2023,
-    end_year: int = 2023,
-) -> pd.DataFrame:
-    """Scrape data from arizona database at https://seethemoney.az.gov/
-
-    This function retrieves and compiles the data from a given table
-    from the arizona database, whether aggregate or detailed,
-    within the given time period
-    NOTE: Empty returns are to be expected for some inputs,
-    as some tables are empty or near empty even for long spans of time.
+def get_available_election_cycles(
+    session: requests.Session | None = None,
+) -> dict[str, dict[str, str]]:
+    """Get available election cycles from the Arizona SeeTheMoney website.
 
     Args:
-        page: the name of a basic or detailed page in the
-            Arizona dataset, excluding the Name page.
-        start_year: earliest year to include scraped data, inclusive
-        end_year: last year to include scraped data, inclusive
+        session: Optional requests session to use. If None, creates a new one.
 
-    Returns: two pandas dataframes and two lists. The first dataframe
-    contains the requested transactions data. The following two lists
-    contain either the entity or committee name, and the final dataframe
-    contains the information on those entities or committees
+    Returns:
+        Dictionary mapping cycle names to cycle info containing 'id' and 'date_range'
     """
-    page = AZ_pages_dict[page]
+    if session is None:
+        session = _create_session()
 
-    # page is a basic type, showing entity information
-    if page < BASIC_TYPE_PAGE:
-        return scrape_wrapper(page, start_year, end_year)
-    elif page == NAME_INFO_PAGE:
-        raise ValueError("'Name' endpoint unimplemented")
-    # page is detailed, showing transaction information. Get relevant entity
-    # information first and then get transaction details for each entity
+    response = session.get(BASE_URL, timeout=30)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.content, "html.parser")
+    cycle_select = soup.find("select", {"id": "CycleId"})
+
+    if not cycle_select:
+        raise ValueError("Could not find CycleId select element on page")
+
+    cycles = {}
+    for option in cycle_select.find_all("option"):
+        value = option.get("value", "").strip()
+        text = option.get_text().strip()
+
+        if value and text and text != "Please Select an Election Cycle":
+            # Parse the cycle ID to extract date range
+            start_date, end_date = _extract_date_range_from_cycle_id(value)
+            cycles[text] = {"id": value, "start_date": start_date, "end_date": end_date}
+
+    return cycles
+
+
+def get_all_available_filer_types(
+    session: requests.Session | None = None,
+) -> dict[str, str]:
+    """Get all available filer types from the Arizona SeeTheMoney website.
+
+    Args:
+        session: Optional requests session to use. If None, creates a new one.
+    """
+    if session is None:
+        session = _create_session()
+
+    response = session.get(BASE_URL, timeout=30)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.content, "html.parser")
+    filer_type_select = soup.find("select", {"id": "FilerTypeId"})
+
+    if not filer_type_select:
+        raise ValueError("Could not find FilerTypeId select element on page")
+
+    filer_types = {}
+    for option in filer_type_select.find_all("option"):
+        value = option.get("value", "").strip()
+        # skip blank value because this is the 'All' option and we must specify
+        # at least one option to filter by
+        if not value:
+            continue
+        text = option.get_text().strip()
+        filer_types[text] = value
+
+    return filer_types
+
+
+def _extract_date_range_from_cycle_id(cycle_id: str) -> tuple[str, str]:
+    """Extract start and end dates from a cycle ID string.
+
+    Args:
+        cycle_id: Cycle ID in format like "44~1/1/2025 12:00:00 AM~12/31/2026 11:59:59 PM"
+
+    Returns:
+        Tuple of start and end dates in YYYY-MM-DD format
+    """
+    expected_tilde_sections = 2
+    if cycle_id.count("~") != expected_tilde_sections:
+        raise ValueError(f"Invalid cycle ID: {cycle_id}")
+
+    parts = cycle_id.split("~")
+    start_part = parts[1].strip()
+    end_part = parts[2].strip()
+
+    start_date = _parse_date_from_datetime_string(start_part)
+    end_date = _parse_date_from_datetime_string(end_part)
+
+    return start_date, end_date
+
+
+def _parse_date_from_datetime_string(datetime_str: str) -> datetime.date:
+    """Parse date from datetime string like '1/1/2025 12:00:00 AM' to 'YYYY-MM-DD'."""
+    try:
+        # Extract just the date part before the time
+        date_part = datetime_str.split(" ")[0]
+        month, day, year = date_part.split("/")
+        return datetime.date(int(year), int(month), int(day))
+    except ValueError as e:
+        raise ValueError(f"Invalid datetime string: {datetime_str}") from e
+
+
+def get_cycle_info_by_year(year: int) -> dict[str, str] | None:
+    """Get cycle information for a specific year.
+
+    Args:
+        year: The election year to find cycle info for
+
+    Returns:
+        Dictionary with cycle info or None if not found
+    """
+    cycles = get_available_election_cycles()
+
+    for cycle_name, cycle_info in cycles.items():
+        if str(year) in cycle_name:
+            return cycle_info
+
+    return None
+
+
+def _build_form_data(
+    category_type: str,
+    cycle_id: str,
+    start_date: str,
+    end_date: str,
+    filer_type_id: str,
+    start: int = 0,
+    length: int = 10,
+) -> str:
+    """Build form data for Arizona Campaign Finance API request."""
+    # DataTables parameters
+    datatables_params = (
+        f"draw=1&"
+        f"columns[0][data]=TransactionDate&columns[0][name]=&columns[0][searchable]=true&columns[0][orderable]=true&columns[0][search][value]=&columns[0][search][regex]=false&"
+        f"columns[1][data]=CommitteeName&columns[1][name]=&columns[1][searchable]=true&columns[1][orderable]=true&columns[1][search][value]=&columns[1][search][regex]=false&"
+        f"columns[2][data]=Amount&columns[2][name]=&columns[2][searchable]=true&columns[2][orderable]=true&columns[2][search][value]=&columns[2][search][regex]=false&"
+        f"columns[3][data]=TransactionName&columns[3][name]=&columns[3][searchable]=true&columns[3][orderable]=true&columns[3][search][value]=&columns[3][search][regex]=false&"
+        f"columns[4][data]=TransactionType&columns[4][name]=&columns[4][searchable]=true&columns[4][orderable]=true&columns[4][search][value]=&columns[4][search][regex]=false&"
+        f"columns[5][data]=City&columns[5][name]=&columns[5][searchable]=true&columns[5][orderable]=true&columns[5][search][value]=&columns[5][search][regex]=false&"
+        f"columns[6][data]=State&columns[6][name]=&columns[6][searchable]=true&columns[6][orderable]=true&columns[6][search][value]=&columns[6][search][regex]=false&"
+        f"columns[7][data]=ZipCode&columns[7][name]=&columns[7][searchable]=true&columns[7][orderable]=true&columns[7][search][value]=&columns[7][search][regex]=false&"
+        f"columns[8][data]=Memo&columns[8][name]=&columns[8][searchable]=true&columns[8][orderable]=true&columns[8][search][value]=&columns[8][search][regex]=false&"
+        f"order[0][column]=0&order[0][dir]=asc&"
+        f"start={start}&length={length}&"
+        f"search[value]=&search[regex]=false"
+    )
+
+    # Search parameters
+    search_params = (
+        f"JurisdictionId=0&"
+        f"CommiteeReportId=&"
+        f"CategoryType={category_type}&"
+        f"CycleId={cycle_id}&"
+        f"StartDate={start_date}&"
+        f"EndDate={end_date}&"
+        f"FilerName=&"
+        f"FilerId=&"
+        f"BallotName=&"
+        f"BallotMeasureId=&"
+        f"FilerTypeId={filer_type_id}&"
+        f"OfficeTypeId=&"
+        f"OfficeId=&"
+        f"PartyId=&"
+        f"ContributorName=&"
+        f"VendorName=&"
+        f"StateId=&"
+        f"City=&"
+        f"Employer=&"
+        f"Occupation=&"
+        f"CandidateName=&"
+        f"CandidateFilerId=&"
+        f"Position=Support&"
+        f"LowAmount=&"
+        f"HighAmount="
+    )
+
+    return f"{datatables_params}&{search_params}"
+
+
+def _get_cycle_ids_in_range(
+    start_date: str | None, end_date: str | None, session: requests.Session
+) -> list[str]:
+    """Get cycle IDs in the range of start_date and end_date.
+
+    Args:
+        start_date: Start date for data collection in YYYY-MM-DD format
+            If None, there will be no lower bound on the cycle start date
+        end_date: End date for data collection in YYYY-MM-DD format
+            If None, there will be no upper bound on the cycle end date
+        session: Requests session to use for API calls
+
+    Returns:
+        List of cycle IDs in the range of start_date and end_date
+    """
+    if start_date is not None:
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+    if end_date is not None:
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+
+    cycles = get_available_election_cycles(session)
+    cycle_ids = []
+    for _, cycle_info in cycles.items():
+        if (start_date is None or cycle_info["start_date"] <= end_date) and (
+            end_date is None or cycle_info["end_date"] >= start_date
+        ):
+            cycle_ids.append(cycle_info["id"])
+    return cycle_ids
+
+
+def _fetch_arizona_data_page(
+    category_type: str,
+    cycle_id: str,
+    start_date: str,
+    end_date: str,
+    filer_type_id: str,
+    session: requests.Session,
+    start: int = 0,
+    length: int = 1000,
+) -> dict:
+    """Fetch a single page of Arizona Campaign Finance data.
+
+    Args:
+        category_type: Category type (Contributions, Expenditures, IndependentExpenditures)
+        cycle_id: Election cycle ID with date range
+        start_date: Start date for data collection in YYYY-MM-DD format
+        end_date: End date for data collection in YYYY-MM-DD format
+        filer_type_id: ID of the filer type to filter by
+        session: Requests session to use for API calls
+        start: Start index for pagination
+        length: Number of records to fetch
+    """
+    form_data = _build_form_data(
+        category_type=category_type,
+        cycle_id=cycle_id,
+        start_date=start_date,
+        end_date=end_date,
+        filer_type_id=filer_type_id,
+        start=start,
+        length=length,
+    )
+
+    response = session.post(BASE_URL, data=form_data, timeout=30)
+
+    if response.status_code == TOO_MANY_REQUESTS:
+        print("Rate limited. Retrying after delay...")
+        time.sleep(10)
+        return _fetch_arizona_data_page(
+            category_type,
+            cycle_id,
+            start_date,
+            end_date,
+            filer_type_id,
+            session,
+            start,
+            length,
+        )
+
+    response.raise_for_status()
+    return response.json()
+
+
+def get_arizona_transaction_data(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    filer_types: list[str] | None = None,
+    report_categories: list[str] | None = None,
+) -> dict[str, pd.DataFrame]:
+    """Get all Arizona Campaign Finance transaction data.
+
+    This gets all income, expense, and independent expenditures data as separate
+    dataframes.
+
+    This function is a wrapper around the get_arizona_data_by_parameters function.
+    There are other parameters in the API that are not exposed here. Only those
+    required to make a valid API request are exposed (filer type, report category,
+    and election cycle).
+
+    Args:
+        start_date: Start date for data collection in YYYY-MM-DD format
+        end_date: End date for data collection in YYYY-MM-DD format
+        filer_types: Filer types to filter by. If None, all filer types will be included.
+        report_categories: Report categories to filter by. If None, all report
+            categories will be included.
+
+    Returns:
+        Dictionary with report category as key and DataFrame as value
+    """
+    session = _create_session()
+    _simulate_form_interaction(session)
+
+    if filer_types is None:
+        filer_types = get_all_available_filer_types(session)
     else:
-        base_page = get_base_page_code(page)
-        agg_df = scrape_wrapper(base_page, start_year, end_year)
-        entities = agg_df["EntityID"]
-
-        return detailed_scrape_wrapper(entities, page, start_year, end_year)
-
-
-def get_base_page_code(page: int) -> int:
-    """Get the base page code from a seethemoney.az.gov DetailedTable page code
-
-    Args:
-        page: 2-digit seethemoney GetNEWDetailedPageData page
-
-    Returns: an integer representing the parent page
-    """
-    if page not in AZ_valid_detailed_pages:
-        raise ValueError("not a valid detailed page number")
-    return int(str(page)[0]) - 1
-
-
-def scrape_wrapper(page: int, start_year: int, end_year: int) -> pd.DataFrame:
-    """Create parameters and scrape an aggregate table
-
-    This function is called by az_wrapper() to create the parameters and
-    call the basic scraper for a certain basic page. To scrape the detailed
-    pages, use detailed_scrape_wrapper() instead.
-
-    Args:
-        page: the one-digit number representing one of the eight
-            basic pages in the arizona dataset, such as Candidates, PAC,
-            Individual Contributions, etc. Refer to AZ_pages_dict
-        start_year: earliest year to include scraped data, inclusive
-        end_year: last year to include scraped data, inclusive
-
-    Returns: a pandas dataframe containing the table data for
-    the selected timeframe
-    """
-    if page < BASIC_TYPE_PAGE:
-        raise ValueError(f"Page should be less than 10, was {page}")
-    params = parametrize(page, start_year, end_year)
-    res = scrape(BASE_ENDPOINT, params)
-    results = res.json()
-    raw_table = pd.DataFrame(data=results["data"])
-    raw_table = raw_table.reset_index().drop(columns={"index"})
-
-    return raw_table
-
-
-def get_keys_from_value(d: dict, val: Any) -> str:  # noqa ANN401
-    """Returns first key from dict with value 'val'"""
-    return [k for k, v in d.items() if v == val][0]
-
-
-def detailed_scrape_wrapper(
-    entities: pd.core.series.Series, page: int, start_year: int, end_year: int
-) -> pd.DataFrame:
-    """Create parameters and scrape an aggregate table
-
-    This function is called by az_wrapper() to create the parameters and
-    call the detailed scraper for a certain detailed page. To scrape the
-    basic pages, use scrape_wrapper() instead.
-
-    Args: page: the two-digit number representing a sub-page of
-    one of the eight basic pages, such as Candidates/Income,
-    PAC/All Transactions, etc. Refer to AZ_pages_dict
-    start_year: earliest year to include scraped data, inclusive
-    end_year: last year to include scraped data, inclusive
-
-    Returns: 2 pandas dataframes with transaction information and filer information
-    """
-    max_per_entity_type = 10
-    entities = entities[:max_per_entity_type]
-    entity_detail_params = []
-    info_params = []
-
-    for entity in entities:
-        entity_detailed_parameters = detailed_parametrize(
-            entity, page, start_year, end_year
-        )
-        name_details = detailed_parametrize(
-            entity, NAME_INFO_PAGE, start_year, end_year
-        )
-
-        entity_detail_params.append(entity_detailed_parameters)
-        info_params.append(name_details)
-
-    detail_dfs = []
-    info_dfs = []
-
-    entity_type_code = int(str(page)[0]) - 1
-
-    entity_type = get_keys_from_value(AZ_pages_dict, entity_type_code)
-
-    for d_param, entity in zip(entity_detail_params, entities):
-        res = scrape(DETAILED_ENDPOINT, d_param)
-        results = res.json()
-
-        detail_df = pd.DataFrame(data=results["data"])
-        detail_df["retrieved_id"] = entity
-        detail_df["entity_type"] = entity_type
-
-        detail_dfs.append(detail_df)
-    for info_param in info_params:
-        info = scrape(INFO_ENDPOINT, info_param)
-        info_table = info.json()
-        if info_table == "":
-            continue
-        info_dfs.append(pd.DataFrame(data=info_table)[["ReportFilerInfo"]])
-
-    info_complete = info_process(
-        pd.concat(info_dfs).reset_index().drop(columns={"index"})
-    )
-    info_complete["retrieved_id"] = entities
-    info_complete["entity_type"] = entity_type
-    return (
-        pd.concat(detail_dfs).reset_index().drop(columns={"index"}),
-        info_complete,
-    )
-
-
-def scrape(
-    endpoint: str, params: dict, headers: dict = None, data: dict = None
-) -> requests.models.Response:
-    """Scrape a table from the main arizona site
-
-    This function takes in the header and base provided
-    elsewhere, and parameters generated by parametrize(),
-    to locate and scrape data from one of the eight
-    aggregate tables on the Arizona database.
-
-    Args:
-        endpoint: which of the seethemoney endpoints to call
-            (either GetNEWTableData or GetNEWDetailedTableData)
-        params: created from parametrize(), containing
-            the page, start and end years, table page, and table length.
-            Note that 'page' encodes the page to be scraped, such as
-            Candidates, IndividualContributions, etc. Refer to the
-            attached Pages dictionary for details.
-        headers: headers for https post, standard defaults provided
-        data: data for https post, defaults defined as constant
-
-    returns: request response containing aggregate information
-    """
-    if headers is None:
-        headers = AZ_HEADER
-    if data is None:
-        data = AZ_SEARCH_DATA
-
-    return requests.post(
-        f"{BASE_URL}/{endpoint}",
-        params=params,
-        headers=headers,
-        data=data,
-        timeout=MAX_TIMEOUT,
-    )
-
-
-def parametrize(
-    page: int = 1,
-    start_year: int = 2023,
-    end_year: int = 2025,
-    table_page: int = 1,
-    table_length: int = 500000,
-) -> dict:
-    """Input parameters for scrape and return as dict
-
-    This function takes in parameters to scrape a
-    given section of the arizona database, and turns
-    them into a dictionary to be fed into scrape() as params
-
-    Args:
-        page: encodes the page to be scraped, such as
-            Candidates, Individual Contributions, etc. Refer to the
-            AZ_pages_dict dictionary for details.
-        start_year: earliest year to include scraped data, inclusive
-        end_year: last year to include scraped data, inclusive
-        table_page: the numbered page to be accessed. Only necessary
-            to iterate on this if accessing large quantities of Individual
-            Contributions data, as all other data will be captured whole by
-            the default table_length
-        table_length: the length of the table to be scraped. The default
-            setting should scrape the entirety of the desired data unless
-            looking at Individual Contributions
-
-    Returns: a dictionary of the parameters, to be fed into scrape()
-    """
-    return {
-        "Page": str(page),  # refers to the overall page, like candidates
-        # or individual expenditures
-        "startYear": str(start_year),
-        "endYear": str(end_year),
-        "JurisdictionId": "0|Page",
-        "TablePage": str(table_page),
-        "TableLength": str(table_length),
-        "ChartName": str(page),
-        "IsLessActive": "false",
-        "ShowOfficeHolder": "false",
-    }
-
-
-def detailed_parametrize(
-    entity_id: str,
-    page: int = 1,
-    start_year: int = 2023,
-    end_year: int = 2025,
-    table_page: int = 1,
-    table_length: int = 500000,
-) -> dict:
-    """Input parameters for detailed_scrape and return as dict
-
-    This function takes in a similar list of parameters as parametrize()
-    and creates the params dictionary used by detailed_scrape.
-
-    Args:
-        entity_id: the unique id given to eahc entity in the
-        page: encodes the page to be scraped, such as
-            Candidates, Individual Contributions, etc. Refer to the
-            AZ_pages_dict dictionary for details.
-        start_year: earliest year to include scraped data, inclusive
-        end_year: last year to include scraped data, inclusive
-        table_page: the numbered page to be accessed. Only necessary
-            to iterate on this if accessing large quantities of Individual
-            Contributions data, as all other data will be captured whole by
-            the default table_length
-        table_length: the length of the table to be scraped. The default
-            setting should scrape the entirety of the desired data unless
-            looking at Individual Contributions
-    """
-    default_parameters = parametrize(
-        page, start_year, end_year, table_page, table_length
-    )
-    default_parameters.update(
-        {
-            "CommitteeId": str(entity_id),
-            "NameId": str(entity_id),
-            "Name": "1~" + str(entity_id),  # these two get used
-            "entityId": str(entity_id),  # when scraping detailed data
+        filer_types = {
+            filer_type: FILER_TYPES[filer_type] for filer_type in filer_types
         }
-    )
-    return default_parameters
+
+    if report_categories is None:
+        report_categories = CATEGORY_TYPES
+    else:
+        report_categories = {
+            report_category: CATEGORY_TYPES[report_category]
+            for report_category in report_categories
+        }
+
+    all_data = {}
+    cycle_ids = _get_cycle_ids_in_range(start_date, end_date, session)
+
+    for category_name, category_type in report_categories.items():
+        all_category_data = []
+        for filer_type, filer_type_id in filer_types.items():
+            for cycle_id in cycle_ids:
+                print(f"Fetching {category_name} data for cycle {cycle_id}...")
+                partial_df = get_arizona_data_by_parameters(
+                    report_category=category_type,
+                    election_cycle=cycle_id,
+                    filer_type_id=filer_type_id,
+                    session=session,
+                )
+                partial_df["filer_type"] = filer_type
+                all_category_data.append(partial_df)
+                time.sleep(1)  # Avoid hitting rate limits
+
+        all_data[category_name] = pd.concat(all_category_data, ignore_index=True)
+
+    return all_data
 
 
-def info_process(info_df: pd.DataFrame) -> pd.DataFrame:
-    """Processes detailed entity information
+def get_arizona_data_by_parameters(
+    report_category: str,
+    election_cycle: str,
+    filer_type_id: str,
+    session: requests.Session,
+) -> pd.DataFrame:
+    """Collect Arizona Campaign Finance transaction data by parameters.
 
-    This function takes in the concatenated dataframes
-    of detailed entity information, processes them, and
-    returns them in a more readable and searchable form
+    Args:
+        report_category: Category type (Contributions, Expenditures, IndependentExpenditures)
+        election_cycle: Election cycle ID with date range
+        filer_type_id: ID of the filer type to filter by
+        session: Requests session to use for API calls
 
-    args: concatenation of info dataframes created from
-    the info_scrape() response
-
-    returns: reprocessed info dataframe
+    Returns:
+        DataFrame containing filtered transaction data
     """
-    l2 = []
-    for i in range(int(len(info_df) / 20)):
-        it = 20 * i
-        lst = []
+    start_date, end_date = _extract_date_range_from_cycle_id(election_cycle)
 
-        for i in range(20):
-            lst.append(info_df[it : it + 20].to_numpy()[i][0])
-        l2.append(lst)
+    all_records = []
+    start = 0
+    page_size = 1000
 
-    dat = pd.DataFrame(l2)
-    dat.columns = [
-        "candidate",
-        "candidate_email",
-        "candidate_phone",
-        "chairman",
-        "committee_address",
-        "committee_name",
-        "committee_type_name",
-        "county_name",
-        "designee",
-        "email",
-        "last_amended_date",
-        "last_filed_date",
-        "mailing_address",
-        "master_committee_id",
-        "office_name",
-        "party_name",
-        "phone_number",
-        "registration_date",
-        "status",
-        "treasurer",
-    ]
-    return dat
+    while True:
+        try:
+            response_data = _fetch_arizona_data_page(
+                category_type=report_category,
+                cycle_id=election_cycle,
+                start_date=start_date,
+                end_date=end_date,
+                filer_type_id=filer_type_id,
+                session=session,
+                start=start,
+                length=page_size,
+            )
+
+            if "data" not in response_data or not response_data["data"]:
+                break
+
+            records = response_data["data"]
+            all_records.extend(records)
+
+            # Check if we've retrieved all records
+            total_records = response_data.get("recordsTotal", 0)
+            if start + page_size >= total_records:
+                break
+
+            start += page_size
+            time.sleep(0.5)  # Rate limiting
+
+        except Exception as e:
+            print(f"Error fetching data at offset {start}: {e}")
+            break
+
+    if not all_records:
+        print("No records found")
+        return pd.DataFrame()
+
+    complete_paramater_table = pd.DataFrame(all_records)
+    print(f"Retrieved {len(complete_paramater_table)} total records")
+    return complete_paramater_table
 
 
 if __name__ == "__main__":
-    scrape_and_download_az_data(2022, 2022)
+    transactions_tables = get_arizona_transaction_data(
+        start_date="2023-01-01", end_date="2023-12-31"
+    )
+    print(f"Retrieved {len(transactions_tables)} total records")
+    for category, category_df in transactions_tables.items():
+        print(f"{category}: {len(category_df)} records")
+
+    # Save to CSV files
+    for category, category_df in transactions_tables.items():
+        filename = f"arizona_{category}_data.csv"
+        category_df.to_csv(filename, index=False)
+        print(f"Saved {filename}")
