@@ -1,5 +1,6 @@
 """Scripts to scrape Arizona Campaign Finance data"""
 
+import argparse
 import datetime
 import time
 
@@ -356,6 +357,7 @@ def get_arizona_transaction_data(
     filer_types: list[str] | None = None,
     report_categories: list[str] | None = None,
     output_dir: str | None = None,
+    override_existing_data: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """Get all Arizona Campaign Finance transaction data.
 
@@ -375,12 +377,14 @@ def get_arizona_transaction_data(
             categories will be included.
         output_dir: Directory to save the dataframes to. If None, the dataframes
             will be saved to DATA_DIR / "raw" / "AZ".
+        override_existing_data: If True, existing data will be overwritten. If False,
+            existing data will be appended to.
 
     Returns:
         Dictionary with report category as key and DataFrame as value
     """
     if output_dir is None:
-        output_dir = DATA_DIR / "raw" / "AZ"
+        output_dir = DATA_DIR / "raw" / "AZ" / "AdvancedSearch"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     session = _create_session()
@@ -415,6 +419,7 @@ def get_arizona_transaction_data(
                     filer_type_id=filer_type_id,
                     session=session,
                     output_dir=output_dir,
+                    override_existing_data=override_existing_data,
                 )
                 partial_df["filer_type"] = filer_type
                 all_category_data.append(partial_df)
@@ -431,6 +436,7 @@ def get_arizona_data_by_parameters(
     filer_type_id: str,
     session: requests.Session,
     output_dir: str | None = None,
+    override_existing_data: bool = False,
 ) -> pd.DataFrame:
     """Collect Arizona Campaign Finance transaction data by parameters.
 
@@ -441,15 +447,25 @@ def get_arizona_data_by_parameters(
         session: Requests session to use for API calls
         output_dir: Directory to save the dataframes to. If None, the dataframes
             will be saved to DATA_DIR / "raw" / "AZ".
+        override_existing_data: If True, existing data will be overwritten. If False,
+            existing data will be appended to.
 
     Returns:
         DataFrame containing filtered transaction data
     """
     start_date, end_date = _extract_date_range_from_cycle_id(election_cycle)
-    output_file = output_dir / f"{report_category}.csv"
+    output_file = (
+        output_dir
+        / f"{report_category}-{filer_type_id}-{election_cycle.split('~')[0]}.csv"
+    )
+    if not override_existing_data and output_file.exists():
+        # get where to resume from
+        existing_df = pd.read_csv(output_file)
+        start = len(existing_df)
+    else:
+        start = 0
 
     all_records = []
-    start = 0
     page_size = 1000
     progress_bar = None
 
@@ -479,7 +495,8 @@ def get_arizona_data_by_parameters(
             total_records = response_data.get("recordsTotal", 0)
             if progress_bar is None and total_records > 0:
                 progress_bar = tqdm(
-                    total=total_records,
+                    total=total_records
+                    - start,  # total records - already retrieved records
                     desc=f"Fetching {report_category} data for {election_cycle} and filer type {filer_type_id}",
                     unit="records",
                 )
@@ -509,15 +526,16 @@ def get_arizona_data_by_parameters(
 
 
 if __name__ == "__main__":
-    transactions_tables = get_arizona_transaction_data(
-        start_date="2023-01-01", end_date="2023-12-31"
-    )
-    print(f"Retrieved {len(transactions_tables)} total records")
-    for category, category_df in transactions_tables.items():
-        print(f"{category}: {len(category_df)} records")
+    parser = argparse.ArgumentParser(description="Scrape Arizona Campaign Finance data")
+    parser.add_argument("--start_date", type=str, required=True)
+    parser.add_argument("--end_date", type=str, required=True)
+    parser.add_argument("--output_dir", type=str, required=False)
+    parser.add_argument("--override_existing_data", type=bool, required=False)
+    args = parser.parse_args()
 
-    # Save to CSV files
-    for category, category_df in transactions_tables.items():
-        filename = f"arizona_{category}_data.csv"
-        category_df.to_csv(filename, index=False)
-        print(f"Saved {filename}")
+    get_arizona_transaction_data(
+        start_date=args.start_date,
+        end_date=args.end_date,
+        output_dir=args.output_dir,
+        override_existing_data=args.override_existing_data,
+    )
