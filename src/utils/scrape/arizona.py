@@ -596,33 +596,69 @@ def get_arizona_transactor_data(
         batch_size: Number of transactor IDs to scrape at a time.
     """
     all_transactor_data = {}
-    for transactor_type, transactor_ids in transactor_ids_by_type.items():
-        output_file = output_dir / f"{transactor_type}.csv"
-        if override_existing_data and output_file.exists():
-            output_file.unlink()
 
-        all_transactor_data[transactor_type] = []
-        for i in range(0, len(transactor_ids), batch_size):
-            batch_transactor_ids = list(transactor_ids)[i : i + batch_size]
-            batch_results = []
-            for transactor_id in batch_transactor_ids:
-                try:
-                    single_transactor_details = _get_single_arizona_transactor_data(
-                        transactor_id, transactor_type, session
-                    )
-                    batch_results.append(single_transactor_details)
-                except (ValueError, requests.HTTPError) as e:
-                    print(f"Error fetching data for {transactor_id}: {e}")
-                    continue
+    # Calculate total number of transactor IDs across all types
+    total_transactors = sum(len(ids) for ids in transactor_ids_by_type.values())
 
-            batch_df = pd.DataFrame(batch_results)
-            batch_df.to_csv(
-                output_file,
-                index=False,
-                header=not output_file.exists(),
-                mode="a",
-            )
-            all_transactor_data[transactor_type].append(batch_df)
+    with tqdm(
+        total=total_transactors,
+        desc="Processing all transactor types",
+        unit="transactor",
+    ) as overall_pbar:
+        for transactor_type, transactor_ids in transactor_ids_by_type.items():
+            if not transactor_ids:  # Skip empty sets
+                continue
+
+            output_file = output_dir / f"{transactor_type}.csv"
+            if override_existing_data and output_file.exists():
+                output_file.unlink()
+
+            all_transactor_data[transactor_type] = []
+            transactor_ids_list = list(transactor_ids)
+
+            # Progress bar for current transactor type
+            with tqdm(
+                total=len(transactor_ids_list),
+                desc=f"Processing {transactor_type} transactors",
+                unit="transactor",
+                leave=False,
+            ) as type_pbar:
+                for i in range(0, len(transactor_ids_list), batch_size):
+                    batch_transactor_ids = transactor_ids_list[i : i + batch_size]
+                    batch_results = []
+
+                    # Progress bar for current batch
+                    with tqdm(
+                        total=len(batch_transactor_ids),
+                        desc=f"Processing batch {i // batch_size + 1}",
+                        unit="transactor",
+                        leave=False,
+                    ) as batch_pbar:
+                        for transactor_id in batch_transactor_ids:
+                            try:
+                                single_transactor_details = (
+                                    _get_single_arizona_transactor_data(
+                                        transactor_id, transactor_type, session
+                                    )
+                                )
+                                batch_results.append(single_transactor_details)
+                            except (ValueError, requests.HTTPError) as e:
+                                print(f"Error fetching data for {transactor_id}: {e}")
+                            finally:
+                                # Update all progress bars
+                                batch_pbar.update(1)
+                                type_pbar.update(1)
+                                overall_pbar.update(1)
+
+                    if batch_results:  # Only save if we have results
+                        batch_df = pd.DataFrame(batch_results)
+                        batch_df.to_csv(
+                            output_file,
+                            index=False,
+                            header=not output_file.exists(),
+                            mode="a",
+                        )
+                        all_transactor_data[transactor_type].append(batch_df)
 
     return all_transactor_data
 
