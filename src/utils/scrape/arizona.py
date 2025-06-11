@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import time
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -11,7 +12,8 @@ from tqdm import tqdm
 
 from utils.constants import DATA_DIR
 
-BASE_URL = "https://seethemoney.az.gov/Reporting/AdvancedSearch/"
+ADVANCED_SEARCH_URL = "https://seethemoney.az.gov/Reporting/AdvancedSearch/"
+TRANSACTOR_DETAILS_URL = "https://seethemoney.az.gov/Reporting/GetDetailedInformation"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0",
     "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -24,19 +26,26 @@ HEADERS = {
 }
 
 # Category mappings
-CATEGORY_TYPES = {
-    "contributions": "Income",
-    "expenditures": "Expenditures",
-    "independent_expenditures": "IndependentExpenditures",
-    "ballot_measures": "BallotMeasures",
-}
+CATEGORY_TYPES = [
+    "Income",
+    "Expenditures",
+    "IndependentExpenditures",
+    "BallotMeasures",
+]
 
 # Filer type mappings
 FILER_TYPES = {
-    "candidate": "130",
-    "committee": "131",
-    "party": "132",
-    "office_holder": "96",
+    "Candidate": "130",
+    "Committee": "131",
+    "Party": "132",
+    "Office Holder": "96",
+}
+
+TRANSACTOR_TYPES_TO_DETAILED_INFO_ID = {
+    "Candidate": 4,
+    "Committee": 3,
+    "Party": 5,
+    "Office Holder": 6,
 }
 
 TOO_MANY_REQUESTS = 429
@@ -47,7 +56,7 @@ def _create_session() -> requests.Session:
     session = requests.Session()
     session.headers.update(HEADERS)
     # Make initial GET request to establish session and get cookies
-    session.get(BASE_URL, timeout=30)
+    session.get(ADVANCED_SEARCH_URL, timeout=30)
     return session
 
 
@@ -86,7 +95,7 @@ def _simulate_form_interaction(session: requests.Session) -> None:
     }
 
     # Make a POST request to simulate form submission
-    session.post(BASE_URL, data=form_data, timeout=30)
+    session.post(ADVANCED_SEARCH_URL, data=form_data, timeout=30)
 
 
 def get_available_election_cycles(
@@ -103,7 +112,7 @@ def get_available_election_cycles(
     if session is None:
         session = _create_session()
 
-    response = session.get(BASE_URL, timeout=30)
+    response = session.get(ADVANCED_SEARCH_URL, timeout=30)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.content, "html.parser")
@@ -136,7 +145,7 @@ def get_all_available_filer_types(
     if session is None:
         session = _create_session()
 
-    response = session.get(BASE_URL, timeout=30)
+    response = session.get(ADVANCED_SEARCH_URL, timeout=30)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.content, "html.parser")
@@ -331,7 +340,7 @@ def _fetch_arizona_data_page(
         length=length,
     )
 
-    response = session.post(BASE_URL, data=form_data, timeout=30)
+    response = session.post(ADVANCED_SEARCH_URL, data=form_data, timeout=30)
 
     if response.status_code == TOO_MANY_REQUESTS:
         print("Rate limited. Retrying after delay...")
@@ -352,11 +361,12 @@ def _fetch_arizona_data_page(
 
 
 def get_arizona_transaction_data(
+    output_dir: str,
+    session: requests.Session,
     start_date: str | None = None,
     end_date: str | None = None,
     filer_types: list[str] | None = None,
     report_categories: list[str] | None = None,
-    output_dir: str | None = None,
     override_existing_data: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """Get all Arizona Campaign Finance transaction data.
@@ -370,26 +380,20 @@ def get_arizona_transaction_data(
     and election cycle).
 
     Args:
+        output_dir: Directory to save the dataframes to.
+        session: Requests session to use for API calls
         start_date: Start date for data collection in YYYY-MM-DD format
         end_date: End date for data collection in YYYY-MM-DD format
         filer_types: Filer types to filter by. If None, all filer types will be included.
         report_categories: Report categories to filter by. If None, all report
-            categories will be included.
-        output_dir: Directory to save the dataframes to. If None, the dataframes
-            will be saved to DATA_DIR / "raw" / "AZ".
+            categories will be included. Options are "Income", "Expenditures",
+            "IndependentExpenditures", and "BallotMeasures".
         override_existing_data: If True, existing data will be overwritten. If False,
             existing data will be appended to.
 
     Returns:
         Dictionary with report category as key and DataFrame as value
     """
-    if output_dir is None:
-        output_dir = DATA_DIR / "raw" / "AZ" / "AdvancedSearch"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    session = _create_session()
-    _simulate_form_interaction(session)
-
     if filer_types is None:
         filer_types = get_all_available_filer_types(session)
     else:
@@ -399,22 +403,16 @@ def get_arizona_transaction_data(
 
     if report_categories is None:
         report_categories = CATEGORY_TYPES
-    else:
-        report_categories = {
-            report_category: CATEGORY_TYPES[report_category]
-            for report_category in report_categories
-        }
 
     all_data = {}
     cycle_ids = _get_cycle_ids_in_range(start_date, end_date, session)
 
-    for category_name, category_type in report_categories.items():
+    for category_name in report_categories:
         all_category_data = []
         for filer_type, filer_type_id in filer_types.items():
             for cycle_id in cycle_ids:
-                print(f"Fetching {category_name} data for cycle {cycle_id}...")
                 partial_df = get_arizona_data_by_parameters(
-                    report_category=category_type,
+                    report_category=category_name,
                     election_cycle=cycle_id,
                     filer_type_id=filer_type_id,
                     session=session,
@@ -439,6 +437,10 @@ def get_arizona_data_by_parameters(
     override_existing_data: bool = False,
 ) -> pd.DataFrame:
     """Collect Arizona Campaign Finance transaction data by parameters.
+
+    Saves data to to output_dir with filename:
+    {report_category}-{filer_type_id}-{election_cycle.split('~')[0]}.csv after
+    each request.
 
     Args:
         report_category: Category type (Contributions, Expenditures, IndependentExpenditures)
@@ -489,7 +491,12 @@ def get_arizona_data_by_parameters(
             records = response_data["data"]
             all_records.extend(records)
             records_df = pd.DataFrame(records)
-            records_df.to_csv(output_file, index=False, mode="a")
+            records_df.to_csv(
+                output_file,
+                index=False,
+                mode="a",
+                header=not output_file.exists(),
+            )
 
             # Initialize progress bar after first successful request
             total_records = response_data.get("recordsTotal", 0)
@@ -507,6 +514,7 @@ def get_arizona_data_by_parameters(
                 break
             start += page_size
             time.sleep(0.5)  # Rate limiting
+            break
 
         except Exception as e:
             print(f"Error fetching data at offset {start}: {e}")
@@ -525,6 +533,202 @@ def get_arizona_data_by_parameters(
     return complete_paramater_table
 
 
+def _get_single_arizona_transactor_data(
+    transactor_id: str, transactor_type: str, session: requests.Session
+) -> pd.DataFrame:
+    """Get Arizona Campaign Finance transactor data by transactor ID.
+
+    Args:
+        transactor_id: ID of the transactor to get data for
+        transactor_type: Type of the transactor to get data for
+            3 - Committee
+            4 - Candidate
+            5 - Party
+            6 - Office Holder
+            7 - Ballot Measure
+            8 - Independent Expenditure
+            9 - Lobbyist
+        session: Requests session to use for API calls
+
+    Returns:
+        DataFrame containing transactor data
+    """
+    response = session.post(
+        TRANSACTOR_DETAILS_URL,
+        params={
+            "Page": 11,
+            "startYear": 2000,
+            "endYear": 2100,
+            "JurisdictionId": 0,
+            "TablePage": 1,
+            "TableLength": 10,
+            "Name": f"3~{transactor_id}",
+        },
+        headers=HEADERS,
+        timeout=30,
+    )
+    response.raise_for_status()
+    if "ReportFilerInfo" in response.json():
+        transactor_data = response.json()["ReportFilerInfo"]
+    else:
+        raise ValueError(
+            f"Unexpected response from API for {transactor_id}: {response.json()}"
+        )
+    transactor_data[f"{transactor_type}ID"] = transactor_id
+    return transactor_data
+
+
+def get_arizona_transactor_data(
+    session: requests.Session,
+    output_dir: str | Path,
+    transactor_ids_by_type: dict[str, set[str]],
+    override_existing_data: bool = False,
+    batch_size: int = 100,
+) -> dict[str, pd.DataFrame]:
+    """Get bulk Arizona Campaign Finance transactor data by transactor IDs.
+
+    Args:
+        session: Requests session to use for API calls
+        output_dir: Directory to save the dataframes to.
+        transactor_ids_by_type: Dictionary of transactor type to list of transactor IDs
+        override_existing_data: If True, existing data will be overwritten. If False,
+            existing data will be appended to.
+        batch_size: Number of transactor IDs to scrape at a time.
+    """
+    all_transactor_data = {}
+    for transactor_type, transactor_ids in transactor_ids_by_type.items():
+        output_file = output_dir / f"{transactor_type}.csv"
+        if override_existing_data and output_file.exists():
+            output_file.unlink()
+
+        all_transactor_data[transactor_type] = []
+        for i in range(0, len(transactor_ids), batch_size):
+            batch_transactor_ids = list(transactor_ids)[i : i + batch_size]
+            batch_results = []
+            for transactor_id in batch_transactor_ids:
+                try:
+                    single_transactor_details = _get_single_arizona_transactor_data(
+                        transactor_id, transactor_type, session
+                    )
+                    batch_results.append(single_transactor_details)
+                except (ValueError, requests.HTTPError) as e:
+                    print(f"Error fetching data for {transactor_id}: {e}")
+                    continue
+
+            batch_df = pd.DataFrame(batch_results)
+            batch_df.to_csv(
+                output_file,
+                index=False,
+                header=not output_file.exists(),
+                mode="a",
+            )
+            all_transactor_data[transactor_type].append(batch_df)
+
+    return all_transactor_data
+
+
+def _get_transactor_ids_in_transactions(output_dir: Path) -> dict[str, set[str]]:
+    """Get previously scraped transactor IDs from the output directory.
+
+    Args:
+        output_dir: Directory to get the previously scraped transactor IDs from.
+
+    Returns:
+        Dictionary of transactor type to set of transactor IDs
+    """
+    # it seems all data from filers is a committee
+    committee_ids = set()
+    for file in output_dir.glob("*.csv"):
+        if file.name.startswith(tuple(CATEGORY_TYPES)):
+            committee_ids.update(set(pd.read_csv(file)["CommitteeID"]))
+    return {"Committee": committee_ids}
+
+
+def _get_previously_scraped_transactor_ids(output_dir: Path) -> dict[str, set[str]]:
+    """Get previously scraped transactor IDs from the output directory.
+
+    Args:
+        output_dir: Directory to get the previously scraped transactor IDs from.
+
+    Returns:
+        Dictionary of transactor type to set of transactor IDs
+    """
+    previously_scraped_transactor_ids = {}
+    for filer_type in FILER_TYPES.keys():
+        if (output_dir / f"{filer_type}.csv").exists():
+            previously_scraped_transactor_ids[filer_type] = set(
+                pd.read_csv(output_dir / f"{filer_type}.csv")[f"{filer_type}ID"]
+            )
+    return previously_scraped_transactor_ids
+
+
+def get_all_arizona_data(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    output_dir: str | None = None,
+    override_existing_data: bool = False,
+) -> dict[str, pd.DataFrame]:
+    """Get all Arizona Campaign Finance data.
+
+    Args:
+        start_date: Start date for data collection in YYYY-MM-DD format
+        end_date: End date for data collection in YYYY-MM-DD format
+        output_dir: Directory to save the dataframes to. If None, the dataframes
+            will be saved to DATA_DIR / "raw" / "AZ".
+        override_existing_data: If True, existing data will be overwritten. If False,
+            existing data will be appended to.
+    """
+    if output_dir is None:
+        output_dir = DATA_DIR / "raw" / "AZ" / "AdvancedSearch"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    session = _create_session()
+    _simulate_form_interaction(session)
+
+    # transaction_data = get_arizona_transaction_data(
+    #     output_dir=output_dir,
+    #     session=session,
+    #     start_date=start_date,
+    #     end_date=end_date,
+    #     override_existing_data=override_existing_data,
+    # )
+    transaction_data = {
+        "Income": pd.read_csv(output_dir / "Income-130-43.csv"),
+        "Expenditures": pd.read_csv(output_dir / "Expenditures-96-43.csv"),
+        "IndependentExpenditures": pd.read_csv(
+            output_dir / "IndependentExpenditures-131-43.csv"
+        ),
+        "BallotMeasures": pd.read_csv(output_dir / "BallotMeasures-132-43.csv"),
+    }
+
+    transactors_in_transactions = _get_transactor_ids_in_transactions(
+        output_dir=output_dir
+    )
+    if override_existing_data:
+        previously_scraped_transactor_ids = {}
+    else:
+        previously_scraped_transactor_ids = _get_previously_scraped_transactor_ids(
+            output_dir=output_dir
+        )
+    transactor_ids_to_scrape = {
+        filer_type: transactors_in_transactions.get(filer_type, set())
+        - previously_scraped_transactor_ids.get(filer_type, set())
+        for filer_type in FILER_TYPES.keys()
+    }
+
+    print(
+        f"Getting transactor data for {len(transactor_ids_to_scrape['Committee'])} committees"
+    )
+    transactor_data = get_arizona_transactor_data(
+        session=session,
+        output_dir=output_dir,
+        transactor_ids_by_type=transactor_ids_to_scrape,
+        override_existing_data=override_existing_data,
+    )
+
+    return {**transaction_data, **transactor_data}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape Arizona Campaign Finance data")
     parser.add_argument("--start_date", type=str, required=True)
@@ -533,7 +737,7 @@ if __name__ == "__main__":
     parser.add_argument("--override_existing_data", type=bool, required=False)
     args = parser.parse_args()
 
-    get_arizona_transaction_data(
+    get_all_arizona_data(
         start_date=args.start_date,
         end_date=args.end_date,
         output_dir=args.output_dir,
