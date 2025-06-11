@@ -54,8 +54,10 @@ TOO_MANY_REQUESTS = 429
 class ArizonaAPI:
     """Handles all Arizona Campaign Finance API interactions."""
 
-    def __init__(self) -> None:
+    def __init__(self, wait_time: float = 0.2, timeout: float = 30) -> None:
         """Initialize the API client with a session."""
+        self.wait_time = wait_time
+        self.timeout = timeout
         self.session = self._create_session()
         self._simulate_form_interaction()
 
@@ -63,7 +65,8 @@ class ArizonaAPI:
         """Create and initialize a requests session with proper headers and cookies."""
         session = requests.Session()
         session.headers.update(HEADERS)
-        session.get(ADVANCED_SEARCH_URL, timeout=30)
+        time.sleep(self.wait_time)
+        session.get(ADVANCED_SEARCH_URL, timeout=self.timeout)
         return session
 
     def _simulate_form_interaction(self) -> None:
@@ -95,7 +98,8 @@ class ArizonaAPI:
             "LowAmount": "",
             "HighAmount": "",
         }
-        self.session.post(ADVANCED_SEARCH_URL, data=form_data, timeout=30)
+        time.sleep(self.wait_time)
+        self.session.post(ADVANCED_SEARCH_URL, data=form_data, timeout=self.timeout)
 
     def get_available_election_cycles(self) -> dict[str, dict[str, str]]:
         """Get available election cycles from the Arizona website.
@@ -103,7 +107,8 @@ class ArizonaAPI:
         Returns:
             Dictionary mapping cycle names to cycle info containing 'id' and date range
         """
-        response = self.session.get(ADVANCED_SEARCH_URL, timeout=30)
+        time.sleep(self.wait_time)
+        response = self.session.get(ADVANCED_SEARCH_URL, timeout=self.timeout)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -129,7 +134,8 @@ class ArizonaAPI:
 
     def get_available_filer_types(self) -> dict[str, str]:
         """Get all available filer types from the Arizona website."""
-        response = self.session.get(ADVANCED_SEARCH_URL, timeout=30)
+        time.sleep(self.wait_time)
+        response = self.session.get(ADVANCED_SEARCH_URL, timeout=self.timeout)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -269,11 +275,14 @@ class ArizonaAPI:
             length=length,
         )
 
-        response = self.session.post(ADVANCED_SEARCH_URL, data=form_data, timeout=30)
+        time.sleep(self.wait_time)
+        response = self.session.post(
+            ADVANCED_SEARCH_URL, data=form_data, timeout=self.timeout
+        )
 
         if response.status_code == TOO_MANY_REQUESTS:
             print("Rate limited. Retrying after delay...")
-            time.sleep(10)
+            time.sleep(self.timeout)
             return self.fetch_transaction_data_page(
                 category_type,
                 cycle_id,
@@ -297,6 +306,7 @@ class ArizonaAPI:
         Returns:
             Dictionary containing transactor data
         """
+        time.sleep(self.wait_time)
         response = self.session.post(
             TRANSACTOR_DETAILS_URL,
             params={
@@ -309,7 +319,7 @@ class ArizonaAPI:
                 "Name": f"3~{transactor_id}",
             },
             headers=HEADERS,
-            timeout=30,
+            timeout=self.timeout,
         )
         response.raise_for_status()
 
@@ -323,6 +333,346 @@ class ArizonaAPI:
         return transactor_data
 
 
+class ArizonaDataProcessor:
+    """Handles Arizona Campaign Finance data processing and file I/O operations."""
+
+    def __init__(
+        self,
+        output_path: Path | str,
+        override_existing_data: bool = False,
+        save_in_batches: bool = True,
+        batch_size: int = 1000,
+        early_stop: int | None = None,
+    ) -> None:
+        """Initialize the data processor.
+
+        Args:
+            output_path: Directory to save processed data
+            override_existing_data: If True, overwrite existing data files
+            save_in_batches: If True, save data in batches during processing
+            batch_size: Number of records per batch when save_in_batches is True
+            early_stop: If not None, stop processing for each type after this many records
+        """
+        self.output_path = Path(output_path)
+        self.override_existing_data = override_existing_data
+        self.save_in_batches = save_in_batches
+        self.batch_size = batch_size
+        self.early_stop = early_stop
+        self.output_path.mkdir(parents=True, exist_ok=True)
+
+    def _get_output_file_path(
+        self, report_category: str, filer_type_id: str, cycle_id: str
+    ) -> Path:
+        """Generate output file path for transaction data."""
+        filename = f"{report_category}-{filer_type_id}-{cycle_id.split('~')[0]}.csv"
+        return self.output_path / filename
+
+    def _get_transactor_file_path(self, transactor_type: str) -> Path:
+        """Generate output file path for transactor data."""
+        return self.output_path / f"{transactor_type}.csv"
+
+    def _get_resume_position(self, file_path: Path) -> int:
+        """Get the position to resume from based on existing data."""
+        if not self.override_existing_data and file_path.exists():
+            try:
+                existing_df = pd.read_csv(file_path)
+                return len(existing_df)
+            except Exception as e:
+                print(f"Error reading existing file {file_path}: {e}")
+                return 0
+        return 0
+
+    def _save_batch_data(self, data: list[dict], file_path: Path) -> None:
+        """Save a batch of data to file."""
+        if not data:
+            return
+
+        batch_df = pd.DataFrame(data)
+        batch_df.to_csv(
+            file_path,
+            index=False,
+            mode="a",
+            header=not file_path.exists(),
+        )
+
+    def process_transaction_data(
+        self,
+        api: ArizonaAPI,
+        report_category: str,
+        election_cycle: str,
+        filer_type_id: str,
+    ) -> pd.DataFrame:
+        """Process transaction data for given parameters.
+
+        Args:
+            api: ArizonaAPI instance for making API calls
+            report_category: Category type (Income, Expenditures, etc.)
+            election_cycle: Election cycle ID with date range
+            filer_type_id: ID of the filer type to filter by
+
+        Returns:
+            DataFrame containing processed transaction data
+        """
+        start_date, end_date = api._extract_date_range_from_cycle_id(election_cycle)
+        output_file = self._get_output_file_path(
+            report_category, filer_type_id, election_cycle
+        )
+
+        start_position = self._get_resume_position(output_file)
+        all_records = []
+        page_size = self.batch_size
+        progress_bar = None
+
+        while True:
+            try:
+                response_data = api.fetch_transaction_data_page(
+                    category_type=report_category,
+                    cycle_id=election_cycle,
+                    start_date=start_date.strftime("%Y-%m-%d"),
+                    end_date=end_date.strftime("%Y-%m-%d"),
+                    filer_type_id=filer_type_id,
+                    start=start_position,
+                    length=page_size,
+                )
+
+                if "data" not in response_data or not response_data["data"]:
+                    break
+
+                records = response_data["data"]
+                all_records.extend(records)
+
+                # Save in batches if enabled
+                if self.save_in_batches:
+                    self._save_batch_data(records, output_file)
+
+                # Initialize progress bar after first successful request
+                total_records = response_data.get("recordsTotal", 0)
+                if progress_bar is None and total_records > 0:
+                    progress_bar = tqdm(
+                        total=total_records - start_position,
+                        desc=f"Processing {report_category} data for cycle {election_cycle} and filer type {filer_type_id}",
+                        unit="records",
+                    )
+                if progress_bar:
+                    progress_bar.update(len(records))
+
+                if start_position + page_size >= total_records:
+                    break
+                start_position += page_size
+
+                if self.early_stop and len(all_records) >= self.early_stop:
+                    break
+
+            except Exception as e:
+                print(f"Error fetching data at offset {start_position}: {e}")
+                break
+
+        if progress_bar:
+            progress_bar.close()
+
+        if not all_records:
+            print("No records found")
+            return pd.DataFrame()
+
+        # Save final data if not saving in batches
+        if not self.save_in_batches:
+            self._save_batch_data(all_records, output_file)
+
+        complete_data = pd.DataFrame(all_records)
+        print(f"Retrieved {len(complete_data)} total records")
+        return complete_data
+
+    def process_transactor_data(
+        self,
+        api: ArizonaAPI,
+        transactor_ids_by_type: dict[str, set[str]],
+        transactor_batch_size: int = 100,
+    ) -> dict[str, pd.DataFrame]:
+        """Process transactor data for given transactor IDs.
+
+        Args:
+            api: ArizonaAPI instance for making API calls
+            transactor_ids_by_type: Dictionary of transactor type to set of transactor IDs
+            transactor_batch_size: Number of transactor IDs to process at a time
+
+        Returns:
+            Dictionary of transactor type to DataFrame
+        """
+        all_transactor_data = {}
+        total_transactors = sum(len(ids) for ids in transactor_ids_by_type.values())
+
+        with tqdm(
+            total=total_transactors,
+            desc="Processing all transactor types",
+            unit="transactor",
+        ) as overall_pbar:
+            for transactor_type, transactor_ids in transactor_ids_by_type.items():
+                if not transactor_ids:
+                    continue
+
+                output_file = self._get_transactor_file_path(transactor_type)
+                if self.override_existing_data and output_file.exists():
+                    output_file.unlink()
+
+                all_transactor_data[transactor_type] = []
+                transactor_ids_list = list(transactor_ids)
+
+                with tqdm(
+                    total=len(transactor_ids_list),
+                    desc=f"Processing {transactor_type} transactors",
+                    unit="transactor",
+                    leave=False,
+                ) as type_pbar:
+                    for i in range(0, len(transactor_ids_list), transactor_batch_size):
+                        batch_transactor_ids = transactor_ids_list[
+                            i : i + transactor_batch_size
+                        ]
+                        batch_results = []
+
+                        with tqdm(
+                            total=len(batch_transactor_ids),
+                            desc=f"Processing batch {i // transactor_batch_size + 1}",
+                            unit="transactor",
+                            leave=False,
+                        ) as batch_pbar:
+                            for transactor_id in batch_transactor_ids:
+                                try:
+                                    single_transactor_details = (
+                                        api.fetch_transactor_data(
+                                            transactor_id, transactor_type
+                                        )
+                                    )
+                                    batch_results.append(single_transactor_details)
+                                except (ValueError, requests.HTTPError) as e:
+                                    print(
+                                        f"Error fetching data for {transactor_id}: {e}"
+                                    )
+                                finally:
+                                    batch_pbar.update(1)
+                                    type_pbar.update(1)
+                                    overall_pbar.update(1)
+
+                        if batch_results:
+                            if self.save_in_batches:
+                                self._save_batch_data(batch_results, output_file)
+                            all_transactor_data[transactor_type].extend(batch_results)
+
+        return all_transactor_data
+
+    def get_transactor_ids_from_transactions(self) -> dict[str, set[str]]:
+        """Get transactor IDs from existing transaction files."""
+        committee_ids = set()
+        for file in self.output_path.glob("*.csv"):
+            if file.name.startswith(tuple(CATEGORY_TYPES)):
+                try:
+                    transaction_df = pd.read_csv(file)
+                    if "CommitteeID" in transaction_df.columns:
+                        committee_ids.update(set(transaction_df["CommitteeID"]))
+                except Exception as e:
+                    print(f"Error reading file {file}: {e}")
+        return {"Committee": committee_ids}
+
+    def get_previously_scraped_transactor_ids(self) -> dict[str, set[str]]:
+        """Get previously scraped transactor IDs from existing files."""
+        previously_scraped = {}
+        for filer_type in FILER_TYPES.keys():
+            file_path = self._get_transactor_file_path(filer_type)
+            if file_path.exists():
+                try:
+                    transactions_df = pd.read_csv(file_path)
+                    id_column = f"{filer_type}ID"
+                    if id_column in transactions_df.columns:
+                        previously_scraped[filer_type] = set(transactions_df[id_column])
+                except Exception as e:
+                    print(f"Error reading file {file_path}: {e}")
+                    previously_scraped[filer_type] = set()
+            else:
+                previously_scraped[filer_type] = set()
+        return previously_scraped
+
+    def load_existing_transaction_data(self) -> dict[str, pd.DataFrame]:
+        """Load existing transaction data from files."""
+        transaction_data = {}
+        for category in CATEGORY_TYPES:
+            for file in self.output_path.glob(f"{category}*.csv"):
+                try:
+                    transaction_data[category] = pd.read_csv(file)
+                except Exception as e:
+                    print(f"Error loading {file}: {e}")
+                    transaction_data[category] = pd.DataFrame()
+
+        return transaction_data
+
+    def get_all_transaction_data(
+        self,
+        api: ArizonaAPI,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        filer_types: list[str] | None = None,
+        report_categories: list[str] | None = None,
+    ) -> dict[str, pd.DataFrame]:
+        """Get all Arizona Campaign Finance transaction data.
+
+        Args:
+            api: ArizonaAPI instance for making API calls
+            start_date: Start date for data collection in YYYY-MM-DD format
+            end_date: End date for data collection in YYYY-MM-DD format
+            filer_types: Filer types to filter by. If None, all filer types will be included
+            report_categories: Report categories to filter by. If None, all categories included
+
+        Returns:
+            Dictionary with report category as key and DataFrame as value
+        """
+        if filer_types is None:
+            filer_types = api.get_available_filer_types()
+        else:
+            filer_types = {
+                filer_type: FILER_TYPES[filer_type] for filer_type in filer_types
+            }
+
+        if report_categories is None:
+            report_categories = CATEGORY_TYPES
+
+        all_data = {}
+        cycle_ids = self._get_cycle_ids_in_range(start_date, end_date, api)
+
+        for category_name in report_categories:
+            all_category_data = []
+            for filer_type, filer_type_id in filer_types.items():
+                for cycle_id in cycle_ids:
+                    partial_df = self.process_transaction_data(
+                        api=api,
+                        report_category=category_name,
+                        election_cycle=cycle_id,
+                        filer_type_id=filer_type_id,
+                    )
+                    partial_df["filer_type"] = filer_type
+                    all_category_data.append(partial_df)
+                    time.sleep(1)  # Avoid hitting rate limits
+
+            all_data[category_name] = pd.concat(all_category_data, ignore_index=True)
+
+        return all_data
+
+    def _get_cycle_ids_in_range(
+        self, start_date: str | None, end_date: str | None, api: ArizonaAPI
+    ) -> list[str]:
+        """Get cycle IDs in the range of start_date and end_date."""
+        if start_date is not None:
+            start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        if end_date is not None:
+            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+
+        cycles = api.get_available_election_cycles()
+        cycle_ids = []
+        for _, cycle_info in cycles.items():
+            if (start_date is None or cycle_info["start_date"] <= end_date) and (
+                end_date is None or cycle_info["end_date"] >= start_date
+            ):
+                cycle_ids.append(cycle_info["id"])
+        return cycle_ids
+
+
 def get_cycle_info_by_year(year: int, api: ArizonaAPI) -> dict[str, str] | None:
     """Get cycle information for a specific year."""
     cycles = api.get_available_election_cycles()
@@ -334,278 +684,13 @@ def get_cycle_info_by_year(year: int, api: ArizonaAPI) -> dict[str, str] | None:
     return None
 
 
-def _get_cycle_ids_in_range(
-    start_date: str | None, end_date: str | None, api: ArizonaAPI
-) -> list[str]:
-    """Get cycle IDs in the range of start_date and end_date."""
-    if start_date is not None:
-        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
-    if end_date is not None:
-        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-
-    cycles = api.get_available_election_cycles()
-    cycle_ids = []
-    for _, cycle_info in cycles.items():
-        if (start_date is None or cycle_info["start_date"] <= end_date) and (
-            end_date is None or cycle_info["end_date"] >= start_date
-        ):
-            cycle_ids.append(cycle_info["id"])
-    return cycle_ids
-
-
-def get_arizona_transaction_data(
-    output_dir: str,
-    api: ArizonaAPI,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    filer_types: list[str] | None = None,
-    report_categories: list[str] | None = None,
-    override_existing_data: bool = False,
-) -> dict[str, pd.DataFrame]:
-    """Get all Arizona Campaign Finance transaction data.
-
-    Args:
-        output_dir: Directory to save the dataframes to
-        api: ArizonaAPI instance for making API calls
-        start_date: Start date for data collection in YYYY-MM-DD format
-        end_date: End date for data collection in YYYY-MM-DD format
-        filer_types: Filer types to filter by. If None, all filer types will be included
-        report_categories: Report categories to filter by. If None, all categories included
-        override_existing_data: If True, existing data will be overwritten
-
-    Returns:
-        Dictionary with report category as key and DataFrame as value
-    """
-    if filer_types is None:
-        filer_types = api.get_available_filer_types()
-    else:
-        filer_types = {
-            filer_type: FILER_TYPES[filer_type] for filer_type in filer_types
-        }
-
-    if report_categories is None:
-        report_categories = CATEGORY_TYPES
-
-    all_data = {}
-    cycle_ids = _get_cycle_ids_in_range(start_date, end_date, api)
-
-    for category_name in report_categories:
-        all_category_data = []
-        for filer_type, filer_type_id in filer_types.items():
-            for cycle_id in cycle_ids:
-                partial_df = get_arizona_data_by_parameters(
-                    report_category=category_name,
-                    election_cycle=cycle_id,
-                    filer_type_id=filer_type_id,
-                    api=api,
-                    output_dir=output_dir,
-                    override_existing_data=override_existing_data,
-                )
-                partial_df["filer_type"] = filer_type
-                all_category_data.append(partial_df)
-                time.sleep(1)  # Avoid hitting rate limits
-
-        all_data[category_name] = pd.concat(all_category_data, ignore_index=True)
-
-    return all_data
-
-
-def get_arizona_data_by_parameters(
-    report_category: str,
-    election_cycle: str,
-    filer_type_id: str,
-    api: ArizonaAPI,
-    output_dir: str | None = None,
-    override_existing_data: bool = False,
-) -> pd.DataFrame:
-    """Collect Arizona Campaign Finance transaction data by parameters.
-
-    Args:
-        report_category: Category type (Income, Expenditures, etc.)
-        election_cycle: Election cycle ID with date range
-        filer_type_id: ID of the filer type to filter by
-        api: ArizonaAPI instance for making API calls
-        output_dir: Directory to save the dataframes to
-        override_existing_data: If True, existing data will be overwritten
-
-    Returns:
-        DataFrame containing filtered transaction data
-    """
-    start_date, end_date = api._extract_date_range_from_cycle_id(election_cycle)
-    output_file = (
-        output_dir
-        / f"{report_category}-{filer_type_id}-{election_cycle.split('~')[0]}.csv"
-    )
-
-    if not override_existing_data and output_file.exists():
-        existing_df = pd.read_csv(output_file)
-        start = len(existing_df)
-    else:
-        start = 0
-
-    all_records = []
-    page_size = 1000
-    progress_bar = None
-
-    while True:
-        try:
-            response_data = api.fetch_transaction_data_page(
-                category_type=report_category,
-                cycle_id=election_cycle,
-                start_date=start_date.strftime("%Y-%m-%d"),
-                end_date=end_date.strftime("%Y-%m-%d"),
-                filer_type_id=filer_type_id,
-                start=start,
-                length=page_size,
-            )
-
-            if "data" not in response_data or not response_data["data"]:
-                break
-
-            records = response_data["data"]
-            all_records.extend(records)
-            records_df = pd.DataFrame(records)
-            records_df.to_csv(
-                output_file,
-                index=False,
-                mode="a",
-                header=not output_file.exists(),
-            )
-
-            # Initialize progress bar after first successful request
-            total_records = response_data.get("recordsTotal", 0)
-            if progress_bar is None and total_records > 0:
-                progress_bar = tqdm(
-                    total=total_records - start,
-                    desc=f"Fetching {report_category} data for {election_cycle} and filer type {filer_type_id}",
-                    unit="records",
-                )
-            if progress_bar:
-                progress_bar.update(len(records))
-
-            if start + page_size >= total_records:
-                break
-            start += page_size
-            time.sleep(0.5)  # Rate limiting
-
-        except Exception as e:
-            print(f"Error fetching data at offset {start}: {e}")
-            break
-
-    if progress_bar:
-        progress_bar.close()
-
-    if not all_records:
-        print("No records found")
-        return pd.DataFrame()
-
-    complete_parameter_table = pd.DataFrame(all_records)
-    print(f"Retrieved {len(complete_parameter_table)} total records")
-    return complete_parameter_table
-
-
-def get_arizona_transactor_data(
-    api: ArizonaAPI,
-    output_dir: str | Path,
-    transactor_ids_by_type: dict[str, set[str]],
-    override_existing_data: bool = False,
-    batch_size: int = 100,
-) -> dict[str, pd.DataFrame]:
-    """Get bulk Arizona Campaign Finance transactor data by transactor IDs.
-
-    Args:
-        api: ArizonaAPI instance for making API calls
-        output_dir: Directory to save the dataframes to
-        transactor_ids_by_type: Dictionary of transactor type to list of transactor IDs
-        override_existing_data: If True, existing data will be overwritten
-        batch_size: Number of transactor IDs to scrape at a time
-    """
-    all_transactor_data = {}
-    total_transactors = sum(len(ids) for ids in transactor_ids_by_type.values())
-
-    with tqdm(
-        total=total_transactors,
-        desc="Processing all transactor types",
-        unit="transactor",
-    ) as overall_pbar:
-        for transactor_type, transactor_ids in transactor_ids_by_type.items():
-            if not transactor_ids:
-                continue
-
-            output_file = output_dir / f"{transactor_type}.csv"
-            if override_existing_data and output_file.exists():
-                output_file.unlink()
-
-            all_transactor_data[transactor_type] = []
-            transactor_ids_list = list(transactor_ids)
-
-            with tqdm(
-                total=len(transactor_ids_list),
-                desc=f"Processing {transactor_type} transactors",
-                unit="transactor",
-                leave=False,
-            ) as type_pbar:
-                for i in range(0, len(transactor_ids_list), batch_size):
-                    batch_transactor_ids = transactor_ids_list[i : i + batch_size]
-                    batch_results = []
-
-                    with tqdm(
-                        total=len(batch_transactor_ids),
-                        desc=f"Processing batch {i // batch_size + 1}",
-                        unit="transactor",
-                        leave=False,
-                    ) as batch_pbar:
-                        for transactor_id in batch_transactor_ids:
-                            try:
-                                single_transactor_details = api.fetch_transactor_data(
-                                    transactor_id, transactor_type
-                                )
-                                batch_results.append(single_transactor_details)
-                            except (ValueError, requests.HTTPError) as e:
-                                print(f"Error fetching data for {transactor_id}: {e}")
-                            finally:
-                                batch_pbar.update(1)
-                                type_pbar.update(1)
-                                overall_pbar.update(1)
-
-                    if batch_results:
-                        batch_df = pd.DataFrame(batch_results)
-                        batch_df.to_csv(
-                            output_file,
-                            index=False,
-                            header=not output_file.exists(),
-                            mode="a",
-                        )
-                        all_transactor_data[transactor_type].append(batch_df)
-
-    return all_transactor_data
-
-
-def _get_transactor_ids_in_transactions(output_dir: Path) -> dict[str, set[str]]:
-    """Get previously scraped transactor IDs from the output directory."""
-    committee_ids = set()
-    for file in output_dir.glob("*.csv"):
-        if file.name.startswith(tuple(CATEGORY_TYPES)):
-            committee_ids.update(set(pd.read_csv(file)["CommitteeID"]))
-    return {"Committee": committee_ids}
-
-
-def _get_previously_scraped_transactor_ids(output_dir: Path) -> dict[str, set[str]]:
-    """Get previously scraped transactor IDs from the output directory."""
-    previously_scraped_transactor_ids = {}
-    for filer_type in FILER_TYPES.keys():
-        if (output_dir / f"{filer_type}.csv").exists():
-            previously_scraped_transactor_ids[filer_type] = set(
-                pd.read_csv(output_dir / f"{filer_type}.csv")[f"{filer_type}ID"]
-            )
-    return previously_scraped_transactor_ids
-
-
 def get_all_arizona_data(
     start_date: str | None = None,
     end_date: str | None = None,
     output_dir: str | None = None,
     override_existing_data: bool = False,
+    save_in_batches: bool = True,
+    batch_size: int = 1000,
 ) -> dict[str, pd.DataFrame]:
     """Get all Arizona Campaign Finance data.
 
@@ -614,45 +699,34 @@ def get_all_arizona_data(
         end_date: End date for data collection in YYYY-MM-DD format
         output_dir: Directory to save the dataframes to
         override_existing_data: If True, existing data will be overwritten
+        save_in_batches: If True, save data in batches during processing
+        batch_size: Number of records per batch when save_in_batches is True
+
+    Returns:
+        Dictionary containing both transaction and transactor data
     """
     if output_dir is None:
         output_dir = DATA_DIR / "raw" / "AZ" / "AdvancedSearch"
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     api = ArizonaAPI()
+    processor = ArizonaDataProcessor(
+        output_path=output_dir,
+        override_existing_data=override_existing_data,
+        save_in_batches=save_in_batches,
+        batch_size=batch_size,
+    )
 
-    # Load existing data or scrape new data
-    transaction_data = get_arizona_transaction_data(
-        output_dir=output_dir,
+    # Get transaction data
+    transaction_data = processor.get_all_transaction_data(
         api=api,
         start_date=start_date,
         end_date=end_date,
-        override_existing_data=override_existing_data,
     )
 
-    transactors_in_transactions = _get_transactor_ids_in_transactions(output_dir)
-
-    if override_existing_data:
-        previously_scraped_transactor_ids = {}
-    else:
-        previously_scraped_transactor_ids = _get_previously_scraped_transactor_ids(
-            output_dir
-        )
-
-    transactor_ids_to_scrape = {
-        filer_type: transactors_in_transactions.get(filer_type, set())
-        - previously_scraped_transactor_ids.get(filer_type, set())
-        for filer_type in FILER_TYPES.keys()
-    }
-
-    print(
-        f"Getting transactor data for {len(transactor_ids_to_scrape['Committee'])} committees"
-    )
-    transactor_data = get_arizona_transactor_data(
-        api=api,
-        output_dir=output_dir,
-        transactor_ids_by_type=transactor_ids_to_scrape,
-        override_existing_data=override_existing_data,
+    # Get transactor data
+    transactor_ids = processor.get_transactor_ids_from_transactions()
+    transactor_data = processor.process_transactor_data(
+        api=api, transactor_ids_by_type=transactor_ids
     )
 
     return {**transaction_data, **transactor_data}
@@ -663,7 +737,9 @@ if __name__ == "__main__":
     parser.add_argument("--start_date", type=str, required=True)
     parser.add_argument("--end_date", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=False)
-    parser.add_argument("--override_existing_data", type=bool, required=False)
+    parser.add_argument("--override_existing_data", action="store_true", default=False)
+    parser.add_argument("--save_in_batches", action="store_true", default=True)
+    parser.add_argument("--batch_size", type=int, default=1000)
     args = parser.parse_args()
 
     get_all_arizona_data(
@@ -671,4 +747,6 @@ if __name__ == "__main__":
         end_date=args.end_date,
         output_dir=args.output_dir,
         override_existing_data=args.override_existing_data,
+        save_in_batches=args.save_in_batches,
+        batch_size=args.batch_size,
     )
