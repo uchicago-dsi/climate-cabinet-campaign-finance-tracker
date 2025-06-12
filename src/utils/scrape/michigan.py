@@ -1,160 +1,149 @@
-"""This modules provides functions to scrape Pennsylvannia campaign finance data"""
+"""This module provides functions to scrape Michigan campaign finance data.
 
-import datetime
-import shutil
+Data is retireved form the Legacy Downloads provided by the Michigan Secretary of State.
+It is accessed from the following URL:
+https://www.michigan.gov/sos/elections/disclosure/cfr/committee-search/intro/welcome-to-the-michigan-campaign-finance-searchable-database
+
+For full historical data, you can search here:
+https://mi-boe.entellitrak.com/etk-mi-boe-prod/page.request.do?page=page.miboeContributionPublicSearch.
+
+This has known issues and does not allow for large downloads at this time. Michigan SOS
+is working on it with status being updated here:
+https://www.michigan.gov/sos/elections/disclosure/mitn-information
+
+Previously data was available here:
+https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/
+
+This is no longer available without a login.
+"""
+
+import argparse
+import io
+import re
 from http import HTTPStatus
-from io import BytesIO
 from pathlib import Path
-from zipfile import ZipFile
+from urllib.parse import urljoin
 
+import py7zr
 import requests
 from bs4 import BeautifulSoup
 
 from utils.constants import DATA_DIR
 
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    "(KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-)
-HEADERS = {"User-Agent": USER_AGENT}
-MAX_TIMEOUT = 10
 
+def download_MI_data(output_directory: Path = None) -> None:
+    """Downloads Michigan legacy campaign finance datasets to a local directory
 
-MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
-
-
-def scrape_and_download_mi_data() -> None:
-    """Scrapes and Downloads MI data
-
-    Web scraper that navigates to the MI Secretary of State page and downloads
-    the contribution and expenditure data and README
+    Args:
+        output_directory: desired output location. Defaults to 'data/raw/MI'
+    Modifies:
+        Saves extracted files from michigan.gov to output_directory with a separate
+        directory for each year's files.
     """
-    create_directory()
-    year_lst = get_year_range()
-    contribution_urls, expenditure_urls = capture_data(year_lst)
+    if output_directory is None:
+        output_directory = DATA_DIR / "raw" / "MI" / "LegacyDownloads"
+    else:
+        output_directory = Path(output_directory).resolve()
 
-    for url in contribution_urls:
-        make_request(url)
-    print("Michigan Campaign Contribution Data Downloaded")
+    base_url = "https://www.michigan.gov"
+    search_url = (
+        "https://www.michigan.gov/sos/elections/disclosure/cfr/committee-search/"
+        "intro/welcome-to-the-michigan-campaign-finance-searchable-database"
+    )
 
-    for url in expenditure_urls:
-        make_request(url)
-    print("Michigan Campaign Expenditure Data Downloaded")
+    cookies = {
+        "shell#lang": "en",
+        "sxa_site": "sos",
+        "browserChecked": "True",
+        "sos#lang": "en",
+    }
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Referer": "https://www.michigan.gov/en/sos/elections/Disclosure/cfr/committee-search",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "DNT": "1",
+        "Sec-GPC": "1",
+    }
 
-def get_year_range() -> list:
-    """Returns year range for webscraper
+    try:
+        # Get the page containing legacy data links
+        response = requests.get(
+            search_url, cookies=cookies, headers=headers, timeout=30
+        )
+        if response.status_code != HTTPStatus.OK:
+            print(f"Failed to retrieve page: {response.status_code} {response.reason}")
+            return
 
-    Inputs: None
+        # Parse HTML to find legacy data links
+        soup = BeautifulSoup(response.text, "html.parser")
+        legacy_links = []
 
-    Returns: year_range (lst): Range of years to pull
-    """
-    current_year = datetime.datetime.now().year
-    year_range = list(range(2018, current_year + 1))
+        # Find all links that contain 'Legacy-Data' and end with '.7z'
+        for link in soup.find_all("a", href=True):
+            href = link["href"]
+            if "Legacy-Data" in href and ".7z" in href:
+                # Extract year from filename using regex
+                year_match = re.search(r"(\d{4})_mi_cfr\.7z", href)
+                if year_match:
+                    year = year_match.group(1)
+                    full_url = urljoin(base_url, href)
+                    legacy_links.append((year, full_url))
 
-    return year_range
+        if not legacy_links:
+            print("No legacy data links found on the page")
+            return
 
+        print(f"Found {len(legacy_links)} legacy data files")
 
-def capture_data(year_lst: list) -> tuple[list, list]:
-    """Makes a request and saves the urls directly to the MI  data
+        # Download and extract each file
+        for year, url in sorted(legacy_links):
+            print(f"Processing Michigan data for {year}...")
 
-    Inputs: year_lst: list of years to capture data from
+            try:
+                # Download the 7z file
+                file_response = requests.get(url, timeout=60, headers=headers)
+                if file_response.status_code != HTTPStatus.OK:
+                    print(f"Michigan data from {year} returned {file_response.reason}")
+                    continue
 
-    Returns: (contribution_urls, expenditure_urls) (tuple): tuple with two
-            lists of urls to MI data
-    """
-    contribution_urls = []
-    expenditure_urls = []
+                # Create year directory
+                year_directory = output_directory / year
+                year_directory.mkdir(exist_ok=True, parents=True)
 
-    response = requests.get(MI_SOS_URL, headers=HEADERS, timeout=MAX_TIMEOUT)
-    if response.status_code == HTTPStatus.OK:
-        # create beautiful soup object to parse the table for contributions
-        soup = BeautifulSoup(response.content, "html.parser")
+                # Extract 7z archive directly from memory
+                with py7zr.SevenZipFile(
+                    io.BytesIO(file_response.content), mode="r"
+                ) as archive:
+                    archive.extractall(path=year_directory)
 
-        table = soup.find("table")
+                print(f"Successfully extracted Michigan data for {year}")
 
-        for anchor in table.find_all("a"):
-            anchor_text = anchor.get_text(strip=True)
-            if "contributions" in anchor_text and any(
-                str(year) in anchor_text for year in year_lst
-            ):
-                href = MI_SOS_URL + anchor["href"]
-                contribution_urls.append(href)
-            elif "expenditures" in anchor_text.lower() and any(
-                str(year) in anchor_text for year in year_lst
-            ):
-                href = MI_SOS_URL + anchor["href"]
-                expenditure_urls.append(href)
-            else:
+            except Exception as e:
+                print(f"Error processing {year} data: {e}")
                 continue
 
-    else:
-        # print the status code if the response failed to retrive the page
-        print(f"Failed to retrieve page. Status code: {response.status_code}")
-    return (contribution_urls, expenditure_urls)
+        print(f"Michigan data download completed. Files saved to {output_directory}")
 
-
-def make_request(url: str) -> None:
-    """Make a request and download the campaign contributions zip files
-
-    Inputs: url (str): URL to the MI campaign zip file
-
-    Returns: zip_file (io.BytesIO): An in-memory ZIP file as a BytesIO stream
-    """
-    response = requests.get(url, headers=HEADERS, timeout=MAX_TIMEOUT)
-
-    if response.status_code == HTTPStatus.OK and "contribution" in url:
-        zip_file = BytesIO(response.content)
-        unzip_file(zip_file, DATA_DIR / "raw" / "MI" / "contributions")
-    elif response.status_code == HTTPStatus.OK and "expenditure" in url:
-        zip_file = BytesIO(response.content)
-        unzip_file(zip_file, DATA_DIR / "raw" / "MI" / "expenditures")
-
-    else:
-        print(f"Failed to retrieve page. Status code: {response.status_code}")
-
-
-def unzip_file(zip_file: BytesIO, directory: str) -> None:
-    """Unzips the zip file and reads the file into the directory
-
-    Inputs: zipfile (io.BytesIO): An in-memory ZIP file as a BytesIO stream
-            directory (str): directory for the files to be saved
-
-    Returns: None
-    """
-    with ZipFile(zip_file, "r") as zip_reference:
-        file_name = zip_reference.namelist()[0]
-        with zip_reference.open(file_name) as target_zip_file:
-            content = target_zip_file.read()
-            target_zip_file_path = Path(directory) / file_name
-            with target_zip_file_path.open("wb") as f:
-                f.write(content)
-
-    print(f"Extracted and saved: {file_name}")
-
-
-def create_directory() -> None:
-    """Creates the directory for the MI contributions data
-
-    Inputs: FILEPATH (str): filepath to the directory
-    """
-    FILEPATHS = [
-        DATA_DIR / "raw" / "MI" / "contributions",
-        DATA_DIR / "raw" / "MI" / "expenditures",
-    ]
-
-    for path in FILEPATHS:
-        if path.exists():
-            # remove existing MI campaign data
-            shutil.rmtree(path)
-            print(f"Deleted existing directory: {path}")
-
-            path.mkdir(parents=True)
-            print(f"Created directory: {path}")
-        else:
-            path.mkdir(parents=True)
-            print(f"Created directory: {path}")
+    except requests.RequestException as e:
+        print(f"Network error occurred: {e}")
+    except Exception as e:
+        print(f"Unexpected error occurred: {e}")
 
 
 if __name__ == "__main__":
-    scrape_and_download_mi_data()
+    parser = argparse.ArgumentParser(
+        description="Download Michigan campaign finance legacy data"
+    )
+    parser.add_argument(
+        "--output_directory",
+        type=str,
+        default=None,
+        help="Output directory for downloaded data. Defaults to DATA_DIR/raw/MI",
+    )
+    args = parser.parse_args()
+
+    download_MI_data(args.output_directory)
