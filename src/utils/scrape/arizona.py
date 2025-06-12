@@ -1,4 +1,12 @@
-"""Scripts to scrape Arizona Campaign Finance data"""
+"""Scripts to scrape Arizona Campaign Finance data
+
+Data is retrieved from the Arizona Campaign Finance website.
+https://seethemoney.az.gov/Reporting/AdvancedSearch/
+
+For bulk data, a Microsoft Access database is available for purchase from
+the Arizona Secretary of State: https://azsos.nextrequest.com/requests/new
+
+"""
 
 import argparse
 import datetime
