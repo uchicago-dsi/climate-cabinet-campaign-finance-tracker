@@ -7,7 +7,7 @@ from pathlib import Path
 
 import requests
 
-from utils.constants import BASE_FILEPATH
+from utils.constants import DATA_DIR
 
 
 def download_PA_data(
@@ -24,7 +24,7 @@ def download_PA_data(
         for each year's files.
     """
     if output_directory is None:
-        output_directory = BASE_FILEPATH / "data" / "raw" / "PA"
+        output_directory = DATA_DIR / "raw" / "PA"
 
     else:
         output_directory = Path(output_directory).resolve()
@@ -50,4 +50,17 @@ def download_PA_data(
 
 
 if __name__ == "__main__":
-    download_PA_data(2024, 2024)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start_year", type=int, default=2015, help="Start year YYYY")
+    parser.add_argument("--end_year", type=int, default=2025, help="End year YYYY")
+    parser.add_argument(
+        "--output_directory",
+        type=str,
+        default=None,
+        help="Output directory for downloaded data. Defaults to DATA_DIR/raw/PA",
+    )
+    args = parser.parse_args()
+
+    download_PA_data(args.start_year, args.end_year, args.output_directory)
