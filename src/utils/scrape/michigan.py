@@ -10,8 +10,15 @@ from zipfile import ZipFile
 import requests
 from bs4 import BeautifulSoup
 
-from utils.scrape.constants import HEADERS, MAX_TIMEOUT
-from utils.transform.constants import MI_CON_FILEPATH, MI_EXP_FILEPATH
+from utils.constants import DATA_DIR
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    "(KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
+)
+HEADERS = {"User-Agent": USER_AGENT}
+MAX_TIMEOUT = 10
+
 
 MI_SOS_URL = "https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/"
 
@@ -42,7 +49,7 @@ def get_year_range() -> list:
 
     Returns: year_range (lst): Range of years to pull
     """
-    current_year = datetime.now().year
+    current_year = datetime.datetime.now().year
     year_range = list(range(2018, current_year + 1))
 
     return year_range
@@ -98,10 +105,10 @@ def make_request(url: str) -> None:
 
     if response.status_code == HTTPStatus.OK and "contribution" in url:
         zip_file = BytesIO(response.content)
-        unzip_file(zip_file, MI_CON_FILEPATH)
+        unzip_file(zip_file, DATA_DIR / "raw" / "MI" / "contributions")
     elif response.status_code == HTTPStatus.OK and "expenditure" in url:
         zip_file = BytesIO(response.content)
-        unzip_file(zip_file, MI_EXP_FILEPATH)
+        unzip_file(zip_file, DATA_DIR / "raw" / "MI" / "expenditures")
 
     else:
         print(f"Failed to retrieve page. Status code: {response.status_code}")
@@ -131,7 +138,10 @@ def create_directory() -> None:
 
     Inputs: FILEPATH (str): filepath to the directory
     """
-    FILEPATHS = [MI_CON_FILEPATH, MI_EXP_FILEPATH]
+    FILEPATHS = [
+        DATA_DIR / "raw" / "MI" / "contributions",
+        DATA_DIR / "raw" / "MI" / "expenditures",
+    ]
 
     for path in FILEPATHS:
         if path.exists():
