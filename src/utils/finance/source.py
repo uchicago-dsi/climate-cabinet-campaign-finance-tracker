@@ -211,7 +211,7 @@ class DataStandardizer:
         """Rename entity type columns"""
         for column_name, column_enum_map in self.enum_mapper.items():
             if column_name not in standard_schema_table.columns:
-                raise ValueError(f"Provided enum: {column_name} not in table")
+                continue
             # map each value in the table's column according to the provided enum mapper
             standard_schema_table[column_name] = standard_schema_table[column_name].map(
                 column_enum_map
