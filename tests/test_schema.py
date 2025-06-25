@@ -13,10 +13,11 @@ def sample_schemas():
         "complete": yaml.safe_load("""
             Person:
               attributes: ["id", "name", "age", "gender", "phone"]
-              reverse_relations:
-                address: "Address"
-              reverse_relation_names:
-                address: "person_id"
+              relations:
+                - prefix: address
+                  table: "Address"
+                  direction: reverse
+                  reverse_relation_name: "person_id"
               enum_columns:
                 gender: ["Male", "Female", "Other"]
               required_attributes: ["id", "name"]
@@ -31,20 +32,26 @@ def sample_schemas():
               parent_table: "Person"
               enum_columns:
                 grade: ["Freshman", "Sophomore", "Junior", "Senior"]
-              forward_relations:
-                homeroom: Class
+              relations:
+                - prefix: homeroom
+                  table: Class
+                  direction: forward
 
             Address:
               attributes: ["line_1", "line_2", "city", "state", "zipcode", "person_id"]
               required_attributes: ["person_id"]
-              forward_relations:
-                person: "Person"
+              relations:
+                - prefix: person
+                  table: "Person"
+                  direction: forward
 
             Class:
               required_attributes: ["id"]
               attributes: ["id", "subject", "teacher_id"]
-              forward_relations:
-                teacher: Teacher
+              relations:
+                - prefix: teacher
+                  table: Teacher
+                  direction: forward
         """),
         "missing_attribute_key": yaml.safe_load("""
             Person:
@@ -63,18 +70,24 @@ def sample_schemas():
         "missing_forward_relation": yaml.safe_load("""
             Person:
               attributes: ["id", "homeroom_id", "name"]
-              forward_relations:
-                homeroom_id: Class
+              relations:
+                - prefix: homeroom
+                  table: Class
+                  direction: forward
         """),
         "missing_reverse_relation_name": yaml.safe_load("""
             Person:
               attributes: ["id", "name"]
-              reverse_relations:
-                address: "Address"
+              relations:
+                - prefix: address
+                  table: "Address"
+                  direction: reverse
             Address:
               attributes: ["city", "state", "person_id"]
-              forward_relations:
-                person_id: "Person"
+              relations:
+                - prefix: person
+                  table: "Person"
+                  direction: forward
         """),
     }
 
@@ -279,7 +292,7 @@ def test_missing_parent(sample_schemas, schema_key, expected_error, tmp_path):
     [
         (
             "missing_forward_relation",
-            "Error in Person: forward_relation value 'Class' must be a valid table.",
+            "Error in Person: relation table 'Class' must be a valid table.",
         ),
     ],
 )
@@ -317,4 +330,6 @@ def test_missing_reverse_relation_name(sample_schemas, tmp_path):
     with pytest.raises(ValueError) as excinfo:
         DataSchema(schema_file)
 
-    assert "reverse relation column 'address' does not have an entry in 'reverse_relation_names'", excinfo
+    assert "reverse relation 'address' must have 'reverse_relation_name' field" in str(
+        excinfo.value
+    )

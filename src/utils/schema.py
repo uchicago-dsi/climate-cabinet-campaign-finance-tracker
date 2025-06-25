@@ -9,7 +9,6 @@ from functools import cached_property
 from pathlib import Path
 
 import yaml
-from typing_extensions import Self
 
 UNNORMALIZED_FLAG = 0
 FIRST_NORMAL_FORM_FLAG = 1
@@ -39,23 +38,52 @@ class TableSchema:
         return re.compile("|".join(self.attributes))
 
     @cached_property
-    def reverse_relations(self) -> dict[str, Self]:
+    def relations_data(self) -> list[dict]:
+        """Raw relations data from the schema"""
+        return self._fill_properties_list("relations")
+
+    @cached_property
+    def reverse_relations(self) -> dict[str, str]:
         """Columns that may have multiple values for an instance of the entity type
 
         For example, an individual may have multiple addresses or employers
         """
-        reverse_relations = self._fill_properties_dict("reverse_relations")
-        if self.inheritance_strategy == "single table inheritance":
-            reverse_relations = self._postprocess_relations(reverse_relations)
+        reverse_relations = {}
+        for relation in self.relations_data:
+            if relation.get("direction") == "reverse":
+                prefix = relation["prefix"]
+                table = relation["table"]
+                if self.inheritance_strategy == "single table inheritance":
+                    table = self._postprocess_relation_table(table)
+                reverse_relations[prefix] = table
         return reverse_relations
 
     @cached_property
-    def reverse_relation_names(self) -> dict[str, Self]:
+    def reverse_relation_names(self) -> dict[str, str]:
         """For each reverse relation, the name of the backlink to this table"""
-        return self._fill_properties_dict("reverse_relation_names")
+        reverse_relation_names = {}
+        for relation in self.relations_data:
+            if relation.get("direction") == "reverse":
+                prefix = relation["prefix"]
+                reverse_relation_name = relation["reverse_relation_name"]
+                reverse_relation_names[prefix] = reverse_relation_name
+        return reverse_relation_names
 
     @cached_property
-    def relations(self) -> dict[str, Self]:
+    def forward_relations(self) -> dict[str, str]:
+        """Many-to-one relationships that are an attribute of the entity type"""
+        forward_relations = {}
+        for relation in self.relations_data:
+            if relation.get("direction") == "forward":
+                prefix = relation["prefix"]
+                table = relation["table"]
+                if self.inheritance_strategy == "single table inheritance":
+                    table = self._postprocess_relation_table(table)
+                forward_relations[prefix] = table
+        return forward_relations
+
+    @cached_property
+    def relations(self) -> dict[str, str]:
         """List of columns that are either forward or reverse relations"""
         return {**self.reverse_relations, **self.forward_relations}
 
@@ -71,14 +99,6 @@ class TableSchema:
         possible_attributes = [f"^{attribute}$" for attribute in attribute_list]
         possible_attributes += [unmatchable]
         return re.compile("|".join(possible_attributes))
-
-    @cached_property
-    def forward_relations(self) -> dict[str, Self]:
-        """Many-to-one relationships that are an attribute of the entity type"""
-        forward_relations = self._fill_properties_dict("forward_relations")
-        if self.inheritance_strategy == "single table inheritance":
-            forward_relations = self._postprocess_relations(forward_relations)
-        return forward_relations
 
     @cached_property
     def forward_relations_regex(self) -> re.Pattern:
@@ -175,16 +195,17 @@ class TableSchema:
             property_value.extend(self.data_schema[related_type].get(property_name, []))
         return property_value
 
+    def _postprocess_relation_table(self, table_name: str) -> str:
+        """For single table inheritance, replace relation tables with their parents"""
+        if self.data_schema[table_name].get("parent_table", None):
+            return self.data_schema[table_name]["parent_table"]
+        return table_name
+
     def _postprocess_relations(self, property_values: dict) -> dict[str, str]:
         """For single table inheritance, replace relation tables with their parents"""
         updated_values = {}
         for key, related_table_name in property_values.items():
-            if self.data_schema[related_table_name].get("parent_table", None):
-                updated_values[key] = self.data_schema[related_table_name][
-                    "parent_table"
-                ]
-            else:
-                updated_values[key] = related_table_name
+            updated_values[key] = self._postprocess_relation_table(related_table_name)
         return updated_values
 
 
@@ -236,17 +257,12 @@ class DataSchema:
 
             # Validate different aspects of the schema
             errors.extend(
-                self._validate_forward_relations(
-                    table_name, table_def, attributes, table_names
-                )
+                self._validate_relations(table_name, table_def, attributes, table_names)
             )
             errors.extend(
                 self._validate_parent_child_relationships(
                     table_name, table_def, table_names
                 )
-            )
-            errors.extend(
-                self._validate_reverse_relations(table_name, table_def, table_names)
             )
             errors.extend(
                 self._validate_attribute_consistency(table_name, table_def, attributes)
@@ -256,21 +272,46 @@ class DataSchema:
             error_message = "\n".join(errors)
             raise ValueError(f"Schema validation failed:\n{error_message}")
 
-    def _validate_forward_relations(
+    def _validate_relations(
         self, table_name: str, table_def: dict, attributes: set, table_names: set
     ) -> list[str]:
-        """Ensures all forward relations keys exist in attributes and values point to valid tables"""
+        """Ensures all relations are properly defined and point to valid tables"""
         errors = []
-        forward_relations = table_def.get("forward_relations", {})
+        relations = table_def.get("relations", [])
 
-        for relation_key, relation_value in forward_relations.items():
-            if f"{relation_key}_id" not in attributes:
+        for relation in relations:
+            prefix = relation.get("prefix")
+            table = relation.get("table")
+            direction = relation.get("direction")
+
+            if not prefix:
                 errors.append(
-                    f"Error in {table_name}: forward_relation key '{relation_key}' must be an attribute."
+                    f"Error in {table_name}: relation missing required 'prefix' field."
                 )
-            if relation_value not in table_names:
+            if not table:
                 errors.append(
-                    f"Error in {table_name}: forward_relation value '{relation_value}' must be a valid table."
+                    f"Error in {table_name}: relation missing required 'table' field."
+                )
+            if direction not in ["forward", "reverse"]:
+                errors.append(
+                    f"Error in {table_name}: relation direction must be 'forward' or 'reverse', got '{direction}'."
+                )
+
+            if table and table not in table_names:
+                errors.append(
+                    f"Error in {table_name}: relation table '{table}' must be a valid table."
+                )
+
+            # For forward relations, ensure the corresponding _id attribute exists
+            if direction == "forward" and prefix and f"{prefix}_id" not in attributes:
+                errors.append(
+                    f"Error in {table_name}: forward relation prefix '{prefix}' must have corresponding '{prefix}_id' attribute."
+                )
+
+            # For reverse relations, ensure reverse_relation_name is provided
+            if direction == "reverse" and "reverse_relation_name" not in relation:
+                errors.append(
+                    f"Error in {table_name}: reverse relation '{prefix}' must have 'reverse_relation_name' field."
                 )
 
         return errors
@@ -296,27 +337,6 @@ class DataSchema:
             elif table_name not in self.raw_data_schema[child].get("parent_table", []):
                 errors.append(
                     f"Error: {child} lists {table_name} as a child, but {table_name} does not list {child} as a parent."
-                )
-
-        return errors
-
-    def _validate_reverse_relations(
-        self, table_name: str, table_def: dict, table_names: set
-    ) -> list[str]:
-        """Ensures all reverse_relations values point to existing tables"""
-        errors = []
-        reverse_relations = table_def.get("reverse_relations", {})
-
-        for column, related_table in reverse_relations.items():
-            if related_table not in table_names:
-                errors.append(
-                    f"Error in {table_name}: reverse relation column '{column}' points to '{related_table}', which does not exist."
-                )
-            if column not in table_def.get("reverse_relation_names", {}):
-                errors.append(
-                    f"Error in {table_name}: reverse relation column '{column}' does "
-                    "not have an entry in 'reverse_relation_names'. This is needed to "
-                    "detect which column refers back to this table when normalizing"
                 )
 
         return errors
