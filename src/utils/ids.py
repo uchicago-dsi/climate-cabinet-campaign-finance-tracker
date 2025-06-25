@@ -37,8 +37,8 @@ def normalize_id_to_string(value: int | float | str | None) -> str:
     return str(value)
 
 
-def add_uuids_to_table(table: pd.DataFrame, id_column: str) -> None:
-    """Ensure every row in table has a UUID in the given column.
+def replace_null_ids_with_uuids(table: pd.DataFrame, id_column: str) -> None:
+    """For each null value in id_column, replace it with a new UUID
 
     Args:
         table: DataFrame where each row requires a UUID.
@@ -188,7 +188,7 @@ def handle_id_column(
     if id_column not in table.columns:
         table[id_column] = None
 
-    add_uuids_to_table(table, id_column)
+    replace_null_ids_with_uuids(table, id_column)
     handle_existing_ids(table, table_name, id_mapping, id_column)
 
 
