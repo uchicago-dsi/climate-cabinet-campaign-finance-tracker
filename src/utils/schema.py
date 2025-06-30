@@ -38,9 +38,10 @@ class TableSchema:
         return re.compile("|".join(self.attributes))
 
     @cached_property
-    def relations_data(self) -> list[dict]:
+    def relations_data(self) -> dict[str, dict]:
         """Raw relations data from the schema"""
-        return self._fill_properties_list("relations")
+        relations_data = self._fill_properties_list("relations")
+        return {relation["prefix"]: relation for relation in relations_data}
 
     @cached_property
     def reverse_relations(self) -> dict[str, str]:
@@ -49,37 +50,35 @@ class TableSchema:
         For example, an individual may have multiple addresses or employers
         """
         reverse_relations = {}
-        for relation in self.relations_data:
+        for relation_prefix, relation in self.relations_data.items():
             if relation.get("direction") == "reverse":
-                prefix = relation["prefix"]
                 table = relation["table"]
                 if self.inheritance_strategy == "single table inheritance":
                     table = self._postprocess_relation_table(table)
-                reverse_relations[prefix] = table
+                reverse_relations[relation_prefix] = table
         return reverse_relations
 
     @cached_property
     def reverse_relation_names(self) -> dict[str, str]:
         """For each reverse relation, the name of the backlink to this table"""
         reverse_relation_names = {}
-        for relation in self.relations_data:
+        for relation_prefix, relation in self.relations_data.items():
             if relation.get("direction") == "reverse":
-                prefix = relation["prefix"]
-                reverse_relation_name = relation["reverse_relation_name"]
-                reverse_relation_names[prefix] = reverse_relation_name
+                reverse_relation_names[relation_prefix] = relation[
+                    "reverse_relation_name"
+                ]
         return reverse_relation_names
 
     @cached_property
     def forward_relations(self) -> dict[str, str]:
         """Many-to-one relationships that are an attribute of the entity type"""
         forward_relations = {}
-        for relation in self.relations_data:
+        for relation_prefix, relation in self.relations_data.items():
             if relation.get("direction") == "forward":
-                prefix = relation["prefix"]
                 table = relation["table"]
                 if self.inheritance_strategy == "single table inheritance":
                     table = self._postprocess_relation_table(table)
-                forward_relations[prefix] = table
+                forward_relations[relation_prefix] = table
         return forward_relations
 
     @cached_property
