@@ -229,14 +229,32 @@ class DataStandardizer:
                 be standard)
         """
         for date_column, date_format in self.column_to_date_format.items():
-            na_mask = standard_schema_table[date_column].isna()
+            na_mask = standard_schema_table.loc[:, date_column].isna()
             temp_column = f"tmp-{date_column}"
             standard_schema_table[temp_column] = pd.NA
-            standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
-                standard_schema_table.loc[~na_mask, date_column],
-                format=date_format,
-                errors="coerce",
-            ).dt.date
+
+            # handle unix timestamp
+            if "%unix_ms" in date_format:
+                # Create regex pattern from date_format by replacing %unix_ms with (\d+)
+                regex_pattern = re.escape(date_format).replace(r"%unix_ms", r"(\d+)")
+                unix_ms_series = (
+                    standard_schema_table.loc[~na_mask, date_column]
+                    .str.extract(regex_pattern)[0]
+                    .astype(float)
+                )
+                # Convert milliseconds to seconds and then to datetime
+                unix_s_series = unix_ms_series / 1000
+                standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
+                    unix_s_series, unit="s", errors="coerce"
+                ).dt.date
+            # Handle regular date formats
+            else:
+                standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
+                    standard_schema_table.loc[~na_mask, date_column],
+                    format=date_format,
+                    errors="coerce",
+                ).dt.date
+
             standard_schema_table = standard_schema_table.drop(columns=date_column)
             standard_schema_table = standard_schema_table.rename(
                 columns={temp_column: date_column}
