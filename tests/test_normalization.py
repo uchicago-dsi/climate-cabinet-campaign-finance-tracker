@@ -138,9 +138,12 @@ def test_3NF_from_1NF(database_fixture, determined_uuids):
 
 
 @pytest.fixture
-def schema_fixture(tmp_path):
-    """Creates the schema from the docstring examples."""
-    schema_data = yaml.safe_load("""
+def schema_fixture(request, tmp_path):
+    """Dynamic schema fixture that creates the appropriate schema based on the test parameter."""
+    schema_type = request.param
+    if schema_type == "simple_schema_fixture":
+        # Create the simple schema
+        schema_data = yaml.safe_load("""
         Transaction:
           required_attributes:
             - amount
@@ -210,14 +213,22 @@ def schema_fixture(tmp_path):
               table: Transactor
               direction: forward
     """)
-
-    schema_file = tmp_path / "schema.yaml"
-    schema_file.write_text(yaml.dump(schema_data))
-    return schema_file
+        schema_file = tmp_path / "simple_schema.yaml"
+        schema_file.write_text(yaml.dump(schema_data))
+        return schema_file
+    elif schema_type == "full_schema_fixture":
+        # Create the full schema
+        with (BASE_FILEPATH / "src" / "utils" / "table.yaml").open() as file:
+            schema_data = yaml.safe_load(file)
+        schema_file = tmp_path / "committee_schema.yaml"
+        schema_file.write_text(yaml.dump(schema_data))
+        return schema_file
+    else:
+        raise ValueError(f"Unknown schema type: {schema_type}")
 
 
 @pytest.mark.parametrize(
-    "description,input_data,table_name,relation_prefix,expected_output_data,expected_extracted_data,should_raise_error,error_message",
+    "description,input_data,table_name,relation_prefix,expected_output_data,expected_extracted_data,should_raise_error,error_message,schema_fixture",
     [
         # Simple case
         (
@@ -244,6 +255,7 @@ def schema_fixture(tmp_path):
             },
             False,
             None,
+            "simple_schema_fixture",
         ),
         # Map repeated IDs
         (
@@ -285,6 +297,7 @@ def schema_fixture(tmp_path):
             },
             False,
             None,
+            "simple_schema_fixture",
         ),
         # Missing ID matches existing ID
         (
@@ -330,6 +343,7 @@ def schema_fixture(tmp_path):
             },
             False,
             None,
+            "simple_schema_fixture",
         ),
         # Reverse relation
         (
@@ -367,6 +381,7 @@ def schema_fixture(tmp_path):
             },
             False,
             None,
+            "simple_schema_fixture",
         ),
         # Reverse relation with missing ID - should raise error
         (
@@ -385,6 +400,7 @@ def schema_fixture(tmp_path):
             None,
             True,
             "Table 'Transactor' has no id column or has NaN ids.",
+            "simple_schema_fixture",
         ),
         # Reverse relation with null values
         (
@@ -414,6 +430,7 @@ def schema_fixture(tmp_path):
             {"transactor_id": [], "city": [], "state": [], "reported_state": []},
             False,
             None,
+            "simple_schema_fixture",
         ),
         # Relation table
         (
@@ -453,8 +470,55 @@ def schema_fixture(tmp_path):
             },
             False,
             None,
+            "simple_schema_fixture",
+        ),
+        (
+            "forward-relation-with-nans",
+            {
+                "donor_id": [None, None, None],
+                "donor--full_name": ["Fake Name", "Fake Name", "Other Name"],
+                "donor--address--city": [pd.NA, pd.NA, pd.NA],
+                "donor--address--state": [pd.NA, pd.NA, pd.NA],
+                "amount": [100, 100, 2.4],
+                "recipient_id": [
+                    "708e0a88-c449-432f-b6cf-e11a0c681921",
+                    "f87748de-addb-4336-a42c-8f65f2d83990",
+                    "708e0a88-c449-432f-b6cf-e11a0c681921",
+                ],
+                "reported_state": ["CA", "CA", "CA"],
+            },
+            "Transaction",
+            "donor",
+            {
+                "donor_id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                ],
+                "amount": [100, 100, 2.4],
+                "recipient_id": [
+                    "708e0a88-c449-432f-b6cf-e11a0c681921",
+                    "f87748de-addb-4336-a42c-8f65f2d83990",
+                    "708e0a88-c449-432f-b6cf-e11a0c681921",
+                ],
+                "reported_state": ["CA", "CA", "CA"],
+            },
+            {
+                "id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                ],
+                "full_name": ["Fake Name", "Other Name"],
+                "reported_state": ["CA", "CA"],
+                "address--city": [pd.NA, pd.NA],
+                "address--state": [pd.NA, pd.NA],
+            },
+            False,
+            None,
+            "simple_schema_fixture",
         ),
     ],
+    indirect=["schema_fixture"],
 )
 def test_split_prefixed_columns(
     description,
@@ -514,6 +578,167 @@ def test_split_prefixed_columns(
         pd.testing.assert_frame_equal(
             result_extracted_table,
             expected_extracted_table,
+            check_like=True,
+            check_dtype=False,
+        )
+
+
+@pytest.mark.parametrize(
+    "description,input_data,table_name,expected_output_data,schema_fixture",
+    [
+        (
+            "relationship-table",
+            {
+                "id": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                ],
+                "full_name": ["Fake Name", "Other Name"],
+                "employer--organization--full_name": [
+                    "Fake Organization",
+                    "Other Organization",
+                ],
+                "employer--organization--phone_number": ["1234567890", "1234567890"],
+                "reported_state": ["CA", "CA"],
+            },
+            "Transactor",
+            {
+                "Transactor": {
+                    "id": [
+                        "00000000-0000-4000-8000-000000000001",
+                        "00000000-0000-4000-8000-000000000002",
+                        "00000000-0000-4000-8000-000000000003",
+                        "00000000-0000-4000-8000-000000000004",
+                    ],
+                    "full_name": ["Fake Name", "Other Name", "Fake Name", "Other Name"],
+                    "phone_number": [None, None, "1234567890", "1234567890"],
+                    "reported_state": ["CA", "CA", "CA", "CA"],
+                },
+                "Membership": {
+                    "member_id": [
+                        "00000000-0000-4000-8000-000000000001",
+                        "00000000-0000-4000-8000-000000000002",
+                    ],
+                    "organization_id": [
+                        "00000000-0000-4000-8000-000000000003",
+                        "00000000-0000-4000-8000-000000000004",
+                    ],
+                    "membership_type": ["Member", "Member"],
+                    "reported_state": ["CA", "CA"],
+                },
+                "Address": {},
+                "Transaction": {},
+            },
+            "simple_schema_fixture",
+        ),
+        (
+            "campaign-committee-complex",
+            {
+                "full_name": [None],
+                "phone_number": [None],
+                "email": [None],
+                "transactor_type_specific": ["Company"],
+                "address--full_address": [None],
+                "chairman--member--full_name": [None],
+                "treasurer--member--full_name": [None],
+                "candidate--member--full_name": [None],
+                "candidate--member--phone_number": [None],
+                "candidate--member--email": [None],
+                "designee--member--full_name": [None],
+                "candidate--member--election_result--election--office_sought": [None],
+                "party": [None],
+                "address--county": [None],
+                "id": ["00000000-0000-4000-8000-000000000001"],
+                "reported_state": ["AZ"],
+                "last_name": ["ASHLEY"],
+                "first_name": [None],
+                "middle_name": [None],
+                "name_suffix": [None],
+                "address--line_1": ["8605 N 59th Ave"],
+                "address--line_2": ["Apt 1004"],
+                "address--city": ["Glendale"],
+                "address--state": ["AZ"],
+                "address--zipcode": ["85302"],
+                "employer--role": [None],
+                "employer--organization--full_name": [None],
+                "chairman--member_id": [None],
+                "treasurer--member_id": [None],
+                "candidate--member_id": [None],
+                "designee--member_id": [None],
+                "sponsor--member_id": [None],
+                "candidate--member--party": [None],
+                "candidate--member--address--county": [None],
+                "candidate--member--election_result--election--district": [None],
+            },
+            "Transactor",
+            {
+                "Transactor": {
+                    "id": ["00000000-0000-4000-8000-000000000001"],
+                    "full_name": [None],
+                    "phone_number": [None],
+                    "email": [None],
+                    "transactor_type_specific": ["Company"],
+                    "party": [None],
+                    "reported_state": ["AZ"],
+                },
+                "Address": {
+                    "transactor_id": ["00000000-0000-4000-8000-000000000001"],
+                    "full_address": [None],
+                    "line_1": ["8605 N 59th Ave"],
+                    "line_2": ["Apt 1004"],
+                    "city": ["Glendale"],
+                    "state": ["AZ"],
+                    "zipcode": ["85302"],
+                    "county": [None],
+                    "reported_state": ["AZ"],
+                },
+                "Membership": {},
+                "Transaction": {},
+                "Election": {},
+                "ElectionResult": {},
+                "Individual": {},
+                "Organization": {},
+            },
+            "full_schema_fixture",
+        ),
+    ],
+    indirect=["schema_fixture"],
+)
+def test_convert_table_to_3NF_from_1NF(
+    description,
+    input_data,
+    table_name,
+    expected_output_data,
+    schema_fixture,
+    determined_uuids,
+):
+    """Tests _convert_table_to_3NF_from_1NF based on docstring examples and table.yaml schema."""
+    database = {}
+    normalizer = Normalizer(database, schema_fixture)
+    input_table = pd.DataFrame(input_data)
+
+    # Call the method
+    result_database = normalizer._convert_table_to_3NF_from_1NF(input_table, table_name)
+
+    expected_database = {
+        name: pd.DataFrame(data) for name, data in expected_output_data.items()
+    }
+
+    assert result_database.keys() == expected_database.keys()
+
+    for name, expected_table in expected_database.items():
+        if expected_table.empty:
+            assert result_database[name].empty, f"Expected table {name} to be empty"
+            continue
+        expected_table = make_df_standard_for_testing(
+            result_database[name], expected_table.columns
+        )
+        result_table = make_df_standard_for_testing(
+            result_database[name], expected_table.columns
+        )
+        pd.testing.assert_frame_equal(
+            result_table,
+            expected_table,
             check_like=True,
             check_dtype=False,
         )

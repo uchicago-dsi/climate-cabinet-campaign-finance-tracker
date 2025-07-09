@@ -135,6 +135,7 @@ class Normalizer:
         self,
         table_name: str,
         table: pd.DataFrame,
+        relation_prefix: str,
     ) -> pd.DataFrame:
         """Drop all rows from table that cannot become complete after normalization
 
@@ -144,8 +145,11 @@ class Normalizer:
         once normalization is completed)
 
         Args:
-            table_name: TODO
-            table: list of columns in table
+            table_name: name of table to drop verifiably incomplete rows from
+            table: table to drop verifiably incomplete rows from
+            relation_prefix: prefix of columns to be split from table. prefix should be in
+                one of self.forward_relations or self.reverse_relations
+
         Returns:
             table with verifiably incomplete rows dropped
         """
@@ -171,7 +175,9 @@ class Normalizer:
             # if all columns that are properties of a given required forward relation
             # are null.
             forward_relation_columns = [
-                col for col in table.columns if col.startswith(forward_relation)
+                col
+                for col in table.columns
+                if col.startswith(f"{relation_prefix}{SPLIT}{forward_relation}")
             ]
             if forward_relation_columns == []:
                 # table has no columns for required forward relations, it is
@@ -180,7 +186,12 @@ class Normalizer:
             # drop all rows that are all na for required forward relation
             table = table.dropna(subset=forward_relation_columns, how="all")
         # now drop all rows that are na for any non forward relation columns
-        table = table.dropna(subset=required_attributes, how="any")
+        required_attribute_column_names = [
+            f"{relation_prefix}{SPLIT}{attribute}" for attribute in required_attributes
+        ]
+        if not set(required_attribute_column_names).issubset(table.columns):
+            return pd.DataFrame()
+        table = table.dropna(subset=required_attribute_column_names, how="any")
 
         # now drop all rows that na for all columns except a single required forward
         # relation and metadata columns. These are verifiably incomplete because if all
@@ -192,8 +203,9 @@ class Normalizer:
             non_metadata_columns = [
                 column
                 for column in table.columns
-                if column != "reported_state"
-                and column != f"{required_forward_relations[0]}{ID_SUFFIX}"
+                if column.startswith(f"{relation_prefix}{SPLIT}")
+                and column
+                != f"{relation_prefix}{SPLIT}{required_forward_relations[0]}{ID_SUFFIX}"
             ]
             table = table.dropna(how="all", subset=non_metadata_columns)
 
@@ -288,16 +300,40 @@ class Normalizer:
             col
             for col in table.columns
             if col.startswith(f"{relation_prefix}{SPLIT}")
-            and col != f"{relation_prefix}{SPLIT}id"
+            and col != f"{relation_prefix}{ID_SUFFIX}"
         ]
-        extracted_table_mapping = {
-            tuple(row[col.split(SPLIT)[-1]] for col in mapping_columns): row["id"]
-            for _, row in extracted_table.iterrows()
-        }
+
+        # Create mapping with normalized keys (replace NaN/NA with None)
+        extracted_table_mapping = {}
+        for _, row in extracted_table.iterrows():
+            key_values = [
+                row[col] if not pd.isna(row[col]) else None for col in mapping_columns
+            ]
+            extracted_table_mapping[tuple(key_values)] = row[
+                f"{relation_prefix}{ID_SUFFIX}"
+            ]
+
+        def get_id_by_column_values(row: pd.Series) -> str | None:
+            """Get the id of a row by its column values"""
+            key_values = [
+                row[col] if not pd.isna(row[col]) else None for col in mapping_columns
+            ]
+            return extracted_table_mapping.get(tuple(key_values))
+
         table[f"{relation_prefix}_id"] = table[mapping_columns].apply(
-            lambda row: extracted_table_mapping.get(tuple(row)), axis=1
+            get_id_by_column_values, axis=1
         )
         return table
+
+    def _get_foreign_columns(
+        self, table: pd.DataFrame, relation_prefix: str
+    ) -> list[str]:
+        """Get all columns in table that start with relation_prefix"""
+        return [
+            column
+            for column in table.columns
+            if column.startswith(f"{relation_prefix}{SPLIT}")
+        ]
 
     def _split_prefixed_columns(
         self,
@@ -329,9 +365,15 @@ class Normalizer:
                 Duplicate rows are dropped from the extracted table and get mapped to the
                 same id in the base table.
         """
-        # step 0 - handle reverse relations
-        # we deal with ids in reverse relation ids earlier because we want to
-        # deduplicate the forward relation extracted table before creating uuids
+        # step 1 - get foreign table details (name, schema, columns)
+        extracted_table_name = self.get_foreign_table_name(
+            table_name,
+            relation_prefix,
+        )
+        extracted_table_schema = self.schema.schema[extracted_table_name]
+
+        extracted_table = table.copy()
+        # step 0 - validate legal input
         if relation_prefix in self.schema.schema[table_name].reverse_relations:
             if "id" not in table.columns or table["id"].isna().any():
                 raise ValueError(
@@ -339,63 +381,43 @@ class Normalizer:
                     f"Since {relation_prefix} is a reverse relation, the base table "
                     "should have an id column with valid uuids before splitting."
                 )
-            table = self._add_relation_to_extracted_table(
-                table, table_name, self.schema, relation_prefix
+            extracted_table = self._add_relation_to_extracted_table(
+                extracted_table, table_name, self.schema, relation_prefix
             )
-            table = self._add_relationship_metadata_to_extracted_table(
-                table, table_name, relation_prefix
-            )
-
-        # step 1 - get columns to split
         if f"{relation_prefix}{SPLIT}id" in table.columns:
             raise ValueError(
                 f"Column {relation_prefix}{SPLIT}id already exists in table {table_name}"
                 "This should not happen because derivative table id columns are"
                 "supposed to be named <relation_prefix>_id in state schemas."
             )
-        if f"{relation_prefix}{ID_SUFFIX}" in table.columns:
-            table[f"{relation_prefix}{SPLIT}id"] = table[
-                f"{relation_prefix}{ID_SUFFIX}"
-            ]
-        foreign_columns_in_base_table = [
-            column
-            for column in table.columns
-            if column.startswith(f"{relation_prefix}{SPLIT}")
-        ]
-        foreign_columns_in_foreign_table = [
-            column[len(relation_prefix) + len(SPLIT) :]
-            for column in foreign_columns_in_base_table
-        ]
 
-        # step 2 - split foreign table off of old base table
-        extracted_table = table[foreign_columns_in_base_table].copy()
-        extracted_table.columns = foreign_columns_in_foreign_table
-        extracted_table["reported_state"] = table["reported_state"]
-
-        # step 3 - get foreign table name and schema
-        extracted_table_name = self.get_foreign_table_name(
-            table_name,
-            relation_prefix,
-        )
-        extracted_table_schema = self.schema.schema[extracted_table_name]
-
-        # step 4 - drop incomplete rows and duplicates
+        # step 2 - drop incomplete rows and duplicates
+        foreign_columns = self._get_foreign_columns(extracted_table, relation_prefix)
         extracted_table = self._drop_verifiably_incomplete_rows(
-            extracted_table_name, extracted_table
+            extracted_table_name, extracted_table, relation_prefix
         )
-        extracted_table = extracted_table.drop_duplicates()
+        extracted_table = extracted_table.drop_duplicates(subset=foreign_columns)
 
-        # step 5 - handle IDs
-        if relation_prefix in self.schema.schema[table_name].forward_relations:
-            # since its a forward relation, we want a link from the base table to the
-            # extracted table. We handle id column in the base table and then create
-            # / replace the id column in the extracted table.
+        # step 3 - handle ids and metadata columns
+        extracted_table[f"{relation_prefix}{SPLIT}reported_state"] = extracted_table[
+            "reported_state"
+        ]
+        # TODO: update add_relation_to_extracted_table
+        if relation_prefix in self.schema.schema[table_name].reverse_relations:
+            extracted_table = self._add_relationship_metadata_to_extracted_table(
+                extracted_table, table_name, relation_prefix
+            )
+        elif relation_prefix in self.schema.schema[table_name].forward_relations:
             handle_id_column(
                 extracted_table,
-                extracted_table_schema,
+                self.schema.schema[table_name],
+                extracted_table_name,
                 self.id_mapping,
-                "id",
+                id_column=f"{relation_prefix}{ID_SUFFIX}",
             )
+            extracted_table[f"{relation_prefix}{SPLIT}id"] = extracted_table[
+                f"{relation_prefix}{ID_SUFFIX}"
+            ]
             table = self._map_column_values_to_ids(
                 table, extracted_table, relation_prefix
             )
@@ -403,13 +425,24 @@ class Normalizer:
             # If a non-forward relation has an id column, we want to handle it
             # Does this ever happen?
             handle_id_column(
-                extracted_table, extracted_table_schema, self.id_mapping, id_column="id"
+                extracted_table,
+                extracted_table_schema,
+                extracted_table_name,
+                self.id_mapping,
+                id_column="id",
             )
-        # step 6 - drop the split columns
-        columns_to_drop = list(foreign_columns_in_base_table)
-        table = table.drop(columns=columns_to_drop, errors="ignore")
-        extracted_table = extracted_table.drop_duplicates()
 
+        # step 2 - split foreign table off of old base table
+        foreign_columns_in_base_table = self._get_foreign_columns(
+            extracted_table, relation_prefix
+        )
+        foreign_columns_in_foreign_table = [
+            column[len(relation_prefix) + len(SPLIT) :]
+            for column in foreign_columns_in_base_table
+        ]
+        extracted_table = extracted_table[foreign_columns_in_base_table]
+        extracted_table.columns = foreign_columns_in_foreign_table
+        table = table.drop(columns=foreign_columns_in_base_table, errors="ignore")
         return table, extracted_table
 
     def _find_column_prefixes_in_1NF(
@@ -445,7 +478,7 @@ class Normalizer:
         self,
         table: pd.DataFrame,
         table_name: str,
-    ) -> dict[str, list[pd.DataFrame]]:
+    ) -> dict[str, pd.DataFrame]:
         """Normalize table and any derivative tables to desired level given table schema
 
         Args:
@@ -454,7 +487,7 @@ class Normalizer:
                 table should fit
 
         Returns:
-            Dictionary mapping table_names to list of tables attaining the desired
+            Dictionary mapping table_names to tables attaining the desired
                 normalization level.
         """
         # Step 1: Figure out which columns need to be normalized
@@ -478,10 +511,17 @@ class Normalizer:
                 self.schema.schema[table_name].relations[first_column_token],
             )
             for derived_table_name in extracted_table_derived_database:
-                updated_database[derived_table_name].extend(
-                    extracted_table_derived_database[derived_table_name]
+                updated_database[derived_table_name] = pd.concat(
+                    [
+                        updated_database[derived_table_name],
+                        extracted_table_derived_database[derived_table_name],
+                    ],
+                    ignore_index=True,
                 )
-        updated_database[table_name].append(active_table)
+        updated_database[table_name] = pd.concat(
+            [updated_database[table_name], active_table],
+            ignore_index=True,
+        )
         return updated_database
 
     def convert_to_3NF_from_1NF(self) -> None:
@@ -506,10 +546,13 @@ class Normalizer:
                 table_name,
             )
             for normalized_table_name in updated_database:
-                normalized_database[normalized_table_name].extend(
-                    updated_database[normalized_table_name]
+                normalized_database[normalized_table_name] = pd.concat(
+                    [
+                        normalized_database[normalized_table_name],
+                        updated_database[normalized_table_name],
+                    ],
+                    ignore_index=True,
                 )
-        normalized_database = self._consolidate_database(normalized_database)
         self.database = normalized_database
 
     def _consolidate_database(
@@ -538,7 +581,11 @@ class Normalizer:
             # In each table, if its schema has an 'id' column, ensure each row has a
             # valid uuid, and any state-provided ids are mapped to uuids.
             handle_id_column(
-                table, self.schema.schema[table_name], self.id_mapping, id_column="id"
+                table,
+                self.schema.schema[table_name],
+                table_name,
+                self.id_mapping,
+                id_column="id",
             )
             # For each column that ends with ID_SUFFIX, ensure that each existing
             # id is mapped and replaced with a uuid. Rows with null ids are left
