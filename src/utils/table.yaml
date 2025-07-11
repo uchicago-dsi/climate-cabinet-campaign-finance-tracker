@@ -60,6 +60,8 @@ Individual:
       table: Membership
       direction: reverse
       reverse_relation_name: member_id
+      relationship_column_values:
+        membership_type: Employee
     - prefix: election_result
       table: ElectionResult
       direction: reverse
@@ -79,31 +81,31 @@ Organization:
       direction: reverse
       reverse_relation_name: organization_id
       relationship_column_values:
-        - membership_type: Candidate
+        membership_type: Candidate
     - prefix: treasurer
       table: Membership
       direction: reverse
       reverse_relation_name: organization_id
       relationship_column_values:
-        - membership_type: Treasurer
+        membership_type: Treasurer
     - prefix: chairman
       table: Membership
       direction: reverse
       reverse_relation_name: organization_id
       relationship_column_values:
-        - membership_type: Chairman
+        membership_type: Chairman
     - prefix: sponsor
       table: Membership
       direction: reverse
       reverse_relation_name: organization_id
       relationship_column_values:
-        - membership_type: Sponsor
+        membership_type: Sponsor
     - prefix: designee
       table: Membership
       direction: reverse
       reverse_relation_name: organization_id
       relationship_column_values:
-        - membership_type: Designee
+        membership_type: Designee
 
 
 Transaction:
@@ -142,8 +144,7 @@ Transaction:
 
 Election:
   required_attributes:
-    - year
-    - state
+    - office_sought
   attributes:
     - id
     - year
