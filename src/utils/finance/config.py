@@ -120,7 +120,7 @@ class ConfigHandler:
     @property
     def raw_column_order(self) -> list[str]:
         """List of columns in order in raw file"""
-        return self._raw_colum_order
+        return self._column_order
 
     @property
     def year_filter_filepath_regex(self) -> str | None:
@@ -131,6 +131,11 @@ class ConfigHandler:
     def year_column(self) -> str | None:
         """Raw column name containing year data for filtering"""
         return self._year_column
+
+    @property
+    def overloaded_columns(self) -> dict[str, dict[str, str]]:
+        """Maps column names to information about how to split them into multiple columns"""
+        return self._overloaded_columns
 
     def __init__(
         self,
@@ -171,17 +176,12 @@ class ConfigHandler:
 
         form_config = resolve_inheritance(config, form_code)
 
-        column_details = form_config.get("column_details", [])
         # default column order is the order in column_details
-        column_order = form_config.get(
-            "column_order", [col["raw_name"] for col in column_details]
-        )
-        column_details = [
-            col for col in column_details if col["raw_name"] in column_order
-        ]
 
-        self._raw_colum_order = column_order
-        self._column_details = column_details
+        self._column_details = form_config.get("column_details", [])
+        self._column_order = form_config.get(
+            "column_order", [col["raw_name"] for col in self._column_details]
+        )
         self._include_column_order = form_config.get("include_column_order", True)
         self._enum_mapper = form_config.get("enum_mapper", {})
         self._read_csv_params = form_config.get("read_csv_params", {})
@@ -193,3 +193,4 @@ class ConfigHandler:
         self._raw_data_path_pattern = form_config.get("path_pattern")
         self._year_filter_filepath_regex = form_config.get("year_filter_filepath_regex")
         self._year_column = form_config.get("year_column")
+        self._overloaded_columns = form_config.get("overloaded_columns", {})

@@ -134,6 +134,30 @@ class SchemaTransformer:
         self.new_empty_columns = config_handler.new_empty_columns
         self.state_code_columns = config_handler.state_code_columns
         self.state_code = config_handler.state_code
+        self.overloaded_columns = config_handler.overloaded_columns
+
+    def _split_overloaded_columns(
+        self, standard_data_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Split columns with multiple pieces of information into multiple columns
+
+        This can only be done if the pieces of information are separated in a standard
+        and consistent way. The DataStandardizer should not make assumptions.
+        """
+        for column_name, column_info in self.overloaded_columns.items():
+            if column_name not in standard_data_table.columns:
+                continue
+            overloaded_mask = pd.Series(False, index=standard_data_table.index)
+            for filter_column, filter_values in column_info["filter"].items():
+                mask = standard_data_table[filter_column].isin(filter_values)
+                overloaded_mask = overloaded_mask | mask
+            extracted_names = standard_data_table.loc[
+                overloaded_mask, column_name
+            ].str.extract(column_info["pattern"])
+            standard_data_table = standard_data_table.merge(
+                extracted_names, how="left", left_index=True, right_index=True
+            )
+        return standard_data_table
 
     def _rename_columns(self, standard_data_table: pd.DataFrame) -> pd.DataFrame:
         """Rename columns"""
@@ -180,6 +204,7 @@ class SchemaTransformer:
         Args:
             raw_data_table: single dataframe with raw column names
         """
+        raw_data_table = self._split_overloaded_columns(raw_data_table)
         relevant_raw_table = self._drop_unused_columns(raw_data_table)
         standard_relevant_column_table = self._rename_columns(relevant_raw_table)
         standard_relevant_column_table = self._add_state_code(

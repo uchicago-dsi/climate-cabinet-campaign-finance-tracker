@@ -237,11 +237,29 @@ def inheritance_config(tmp_path):
             "column_order": ["CHILD_COLUMN", "EXTRA_COLUMN"],
         },
         "column_subset": {"inherits": "base_form", "column_order": ["PARENT_COLUMN"]},
+        "override_form": {
+            "inherits": "base_form",
+            "column_details": [
+                {
+                    "raw_name": "EXTRA_COLUMN",
+                    "type": "str",
+                    "standard_name": "overridden_value",
+                },
+            ],
+        },
     }
     config_path = tmp_path / "config.yaml"
     with config_path.open("w") as f:
         safe_dump(config_data, f)
     return config_path
+
+
+def test_overrides(inheritance_config):
+    handler = ConfigHandler("override_form", config_file_path=inheritance_config)
+    assert (
+        handler._column_details[0]["standard_name"] == "overridden_value"
+    ), "Standard name should be overridden"
+    assert handler.dtype_dict["EXTRA_COLUMN"] == "str", "Dtype should be overridden"
 
 
 def test_inherits(inheritance_config):
@@ -280,7 +298,10 @@ def test_column_details_and_order(inheritance_config):
     ], "Base form should filter columns according to column_order"
     handler_subset = ConfigHandler("column_subset", inheritance_config)
     raw_names_subset = [col["raw_name"] for col in handler_subset._column_details]
-    assert raw_names_subset == ["PARENT_COLUMN"]
+    assert raw_names_subset == [
+        "PARENT_COLUMN",
+        "EXTRA_COLUMN",
+    ], "Both columns should be present, since column_order only subsets for table read"
 
 
 @pytest.fixture
