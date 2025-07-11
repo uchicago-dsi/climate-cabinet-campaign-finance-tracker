@@ -67,6 +67,11 @@ Both first level keys have the same set of subkeys:
         - 'filter' maps to a mapping of raw column names to values.
         - 'pattern' maps to a string regex pattern with named capture groups
     - overloaded columns is for cases where the raw data contains a column with multiple pieces of information jammed into a single column. This column must follow a consistent format. The splitting will only be attempted on those rows that contain one of the listed values for each of the listed columns. The named groups should be mapped to standard names in `column_details`.
+- null_values:
+  - map of column names to list of values that should be replaced with null.
+  - For example, states sometimes have 0 amount transactions that should be null.
+- filter:
+  - map of standard column names to 'NOT' key that maps to all the values of that column that should not be included in returned dataframe. This is required as sometimes unfiltered data will double count filer to filer transactions. 
 - path_pattern: regex describing the default location of default raw files of this type. Relative to the `data/raw/${state_code}` directory. 
 
 #### Standard Column Naming

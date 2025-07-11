@@ -194,3 +194,5 @@ class ConfigHandler:
         self._year_filter_filepath_regex = form_config.get("year_filter_filepath_regex")
         self._year_column = form_config.get("year_column")
         self._overloaded_columns = form_config.get("overloaded_columns", {})
+        self._null_values = form_config.get("null_values", {})
+        self._filter = form_config.get("filter", {})

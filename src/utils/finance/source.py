@@ -231,6 +231,8 @@ class DataStandardizer:
         """
         self.enum_mapper = config_handler.enum_mapper
         self.column_to_date_format = config_handler.column_to_date_format
+        self.null_values = config_handler._null_values
+        self.filter = config_handler._filter
 
     def _standardize_enums(self, standard_schema_table: pd.DataFrame) -> pd.DataFrame:
         """Rename entity type columns"""
@@ -284,6 +286,32 @@ class DataStandardizer:
             standard_schema_table = standard_schema_table.rename(
                 columns={temp_column: date_column}
             )
+        return standard_schema_table
+
+    def _standardize_null_values(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Replace implicit null values with actual null values"""
+        for column_name, null_values in self.null_values.items():
+            for implicit_null_value in null_values:
+                standard_schema_table[column_name] = standard_schema_table[
+                    column_name
+                ].replace(implicit_null_value, pd.NA)
+        return standard_schema_table
+
+    def _filter_data(self, standard_schema_table: pd.DataFrame) -> pd.DataFrame:
+        """Filter data based on filter configuration"""
+        for column_name, filter_values in self.filter.items():
+            if column_name not in standard_schema_table.columns:
+                continue
+            if "NOT" in filter_values:
+                standard_schema_table = standard_schema_table[
+                    ~standard_schema_table[column_name].isin(filter_values["NOT"])
+                ]
+            else:
+                standard_schema_table = standard_schema_table[
+                    standard_schema_table[column_name].isin(filter_values)
+                ]
         return standard_schema_table
 
     def standardize_data(
