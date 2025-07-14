@@ -79,7 +79,9 @@ def test_handle_id_column(sample_table):
     id_mapping = {
         ("1", 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
     }
-    handle_id_column(sample_table, mock_schema, id_mapping, "id")
+    handle_id_column(
+        sample_table, mock_schema, mock_schema.table_name, id_mapping, "id"
+    )
 
     assert (
         id_mapping[("1", 2023, "CA", "tableA")]

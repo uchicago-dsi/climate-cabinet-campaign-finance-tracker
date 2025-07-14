@@ -167,6 +167,7 @@ def handle_existing_ids(
 def handle_id_column(
     table: pd.DataFrame,
     table_schema: TableSchema,
+    id_table_name: str,
     id_mapping: UUIDMapping,
     id_column: str = "id",
 ) -> None:
@@ -175,6 +176,7 @@ def handle_id_column(
     Args:
         table: DataFrame with or without `id_column`.
         table_schema: Schema defining properties of table.
+        id_table_name: Name of the table that the id identifies a row of.
         id_mapping: Mapping of (raw id, year, reported_state, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
 
@@ -182,14 +184,13 @@ def handle_id_column(
         table: Creates/Updates `id_column` to have UUIDs
         id_mapping: Updates `id_mapping` with new id mappings
     """
-    table_name = table_schema.table_name
     if id_column not in table_schema.attributes:
         return None
     if id_column not in table.columns:
         table[id_column] = None
 
     replace_null_ids_with_uuids(table, id_column)
-    handle_existing_ids(table, table_name, id_mapping, id_column)
+    handle_existing_ids(table, id_table_name, id_mapping, id_column)
 
 
 def save_id_mapping(id_mapping: UUIDMapping, file_path: Path) -> None:
