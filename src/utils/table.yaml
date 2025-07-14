@@ -127,11 +127,16 @@ Transaction:
     - donor_id
     - recipient_id
     - reported_state
+    - affected_party_id
+    - influence_type
   relations:
     - prefix: donor
       table: Transactor
       direction: forward
     - prefix: recipient
+      table: Transactor
+      direction: forward
+    - prefix: affected_party
       table: Transactor
       direction: forward
     # - prefix: reported_election
@@ -140,6 +145,12 @@ Transaction:
   enum_columns:
     transaction_type:
       - contribution
+      - expenditure
+      - independent_expenditure
+    influence_type:
+      - positive
+      - negative
+      - neutral
   # TODO: what other types are there
 
 Election:
