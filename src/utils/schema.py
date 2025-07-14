@@ -8,6 +8,7 @@ import re
 from functools import cached_property
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
 UNNORMALIZED_FLAG = 0
@@ -233,9 +234,9 @@ class DataSchema:
         for table in self.schema:
             self.schema[table].inheritance_strategy = strategy
 
-    def empty_database(self) -> dict[str, list]:
+    def empty_database(self) -> dict[str, pd.DataFrame]:
         """Returns an empty database of the given schema"""
-        return {table_name: [] for table_name in self.schema.keys()}
+        return {table_name: pd.DataFrame() for table_name in self.schema.keys()}
 
     def __init__(self, path_to_data_schema: Path | str) -> None:
         """Representation of a single table"""
