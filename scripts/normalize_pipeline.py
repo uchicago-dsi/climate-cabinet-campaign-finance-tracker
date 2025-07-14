@@ -2,6 +2,7 @@
 
 import argparse
 
+from tqdm import tqdm
 from utils.constants import BASE_FILEPATH
 from utils.ids import load_id_mapping, save_id_mapping
 from utils.io import load_database, save_database
@@ -88,7 +89,7 @@ else:
     accumulated_id_mapping = load_id_mapping(id_mapping_file)
 
     first_chunk = True
-    for chunk_database in database_chunks:
+    for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
         # Create normalizer with accumulated ID mappings from previous chunks
         normalizer = Normalizer(chunk_database, schema_path, accumulated_id_mapping)
         normalized_chunk = normalizer.normalize_database()
