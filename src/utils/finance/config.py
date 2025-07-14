@@ -11,6 +11,12 @@ from utils.constants import BASE_FILEPATH
 def resolve_inheritance(config: dict, form_code: str) -> dict:
     """Recursively resolves inheritance from parent form_configs
 
+    If the a key exists in both a child and parent config:
+    - For most cases, the child value will override the parent value
+    - If the value is 'column_details', the child value will 'update' the parent
+      value. (i.e. the child value will be used in duplicate 'raw_name' keys, all
+      keys not present in the child will be used from the parent)
+
     Args:
         config: dictionary contents of a state config
         form_code: key in config
@@ -21,20 +27,43 @@ def resolve_inheritance(config: dict, form_code: str) -> dict:
             Note that more complex cases of recusrion are not caught by
             this.
     """
-    base_config = config.get(form_code, {}).copy()
-    parent_form_code = base_config.get("inherits")
-    if parent_form_code:
-        if parent_form_code not in config:
-            raise KeyError(
-                "{inherits} not in config file. Avaialbe options are:"
-                f" {', '.join(base_config.keys())}"
+    child_config = config.get(form_code, {}).copy()
+    parent_form_code = child_config.get("inherits")
+    if not parent_form_code:
+        return child_config
+    if parent_form_code not in config:
+        raise KeyError(
+            "{inherits} not in config file. Avaialbe options are:"
+            f" {', '.join(child_config.keys())}"
+        )
+    if parent_form_code == form_code:
+        raise RecursionError(f"Configuration {form_code} inherits from itself")
+    parent_config = resolve_inheritance(config, parent_form_code)
+    for key, value in child_config.items():
+        if key in parent_config and key == "column_details":
+            parent_column_details_dict = {
+                column_detail["raw_name"]: column_detail
+                for column_detail in parent_config["column_details"]
+            }
+            child_column_details_dict = {
+                column_detail["raw_name"]: column_detail for column_detail in value
+            }
+            used_raw_names = set()
+            result_list = []
+            for raw_name, column_detail in parent_column_details_dict.items():
+                if raw_name in child_column_details_dict:
+                    result_list.append(child_column_details_dict[raw_name])
+                else:
+                    result_list.append(column_detail)
+            result_list.extend(
+                child_column_details_dict[raw_name]
+                for raw_name in child_column_details_dict
+                if raw_name not in used_raw_names
             )
-        if parent_form_code == form_code:
-            raise RecursionError(f"Configuration {form_code} inherits from itself")
-        parent_config = resolve_inheritance(config, parent_form_code)
-        parent_config.update({k: v for k, v in base_config.items() if v is not None})
-        return parent_config
-    return base_config
+            parent_config[key] = result_list
+        elif value is not None:
+            parent_config[key] = value
+    return parent_config
 
 
 class ConfigHandler:
