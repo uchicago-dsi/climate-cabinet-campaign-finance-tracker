@@ -182,7 +182,7 @@ class Normalizer:
             if forward_relation_columns == []:
                 # table has no columns for required forward relations, it is
                 # verifiably incomplete
-                return pd.DataFrame()
+                return pd.DataFrame(columns=table.columns)
             # drop all rows that are all na for required forward relation
             table = table.dropna(subset=forward_relation_columns, how="all")
         # now drop all rows that are na for any non forward relation columns
@@ -190,9 +190,16 @@ class Normalizer:
             f"{relation_prefix}{SPLIT}{attribute}" for attribute in required_attributes
         ]
         if not set(required_attribute_column_names).issubset(table.columns):
-            return pd.DataFrame()
+            return pd.DataFrame(columns=table.columns)
         table = table.dropna(subset=required_attribute_column_names, how="any")
 
+        # drop all rows that are na for all columns that start with relation_prefix
+        extracted_table_columns = [
+            column
+            for column in table.columns
+            if column.startswith(f"{relation_prefix}{SPLIT}")
+        ]
+        table = table.dropna(how="all", subset=extracted_table_columns)
         # now drop all rows that na for all columns except a single required forward
         # relation and metadata columns. These are verifiably incomplete because if all
         # else is null, the forward relation is linking to nothing.
@@ -200,14 +207,14 @@ class Normalizer:
             len(table_schema.required_attributes) == 1
             and len(required_forward_relations) == 1
         ):
-            non_metadata_columns = [
-                column
-                for column in table.columns
-                if column.startswith(f"{relation_prefix}{SPLIT}")
-                and column
-                != f"{relation_prefix}{SPLIT}{required_forward_relations[0]}{ID_SUFFIX}"
-            ]
-            table = table.dropna(how="all", subset=non_metadata_columns)
+            if (
+                f"{relation_prefix}{SPLIT}{required_forward_relations[0]}{ID_SUFFIX}"
+                in extracted_table_columns
+            ):
+                extracted_table_columns.remove(
+                    f"{relation_prefix}{SPLIT}{required_forward_relations[0]}{ID_SUFFIX}"
+                )
+            table = table.dropna(how="all", subset=extracted_table_columns)
 
         return table
 
