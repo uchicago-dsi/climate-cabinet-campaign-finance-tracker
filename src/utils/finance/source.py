@@ -147,10 +147,10 @@ class SchemaTransformer:
         for column_name, column_info in self.overloaded_columns.items():
             if column_name not in standard_data_table.columns:
                 continue
-            overloaded_mask = pd.Series(False, index=standard_data_table.index)
-            for filter_column, filter_values in column_info["filter"].items():
+            overloaded_mask = pd.Series(True, index=standard_data_table.index)
+            for filter_column, filter_values in column_info.get("filter", {}).items():
                 mask = standard_data_table[filter_column].isin(filter_values)
-                overloaded_mask = overloaded_mask | mask
+                overloaded_mask = overloaded_mask & mask
             extracted_names = standard_data_table.loc[
                 overloaded_mask, column_name
             ].str.extract(column_info["pattern"])
