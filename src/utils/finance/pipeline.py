@@ -49,7 +49,7 @@ def standardize_states(
                 database[source.table_name] = pd.DataFrame()
 
             database[source.table_name] = pd.concat(
-                [database[source.table_name], standardized_source_table]
+                [database[source.table_name], standardized_source_table],
             )
 
     return database
