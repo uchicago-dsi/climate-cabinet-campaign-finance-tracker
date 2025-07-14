@@ -53,6 +53,7 @@ def resolve_inheritance(config: dict, form_code: str) -> dict:
             for raw_name, column_detail in parent_column_details_dict.items():
                 if raw_name in child_column_details_dict:
                     result_list.append(child_column_details_dict[raw_name])
+                    used_raw_names.add(raw_name)
                 else:
                     result_list.append(column_detail)
             result_list.extend(

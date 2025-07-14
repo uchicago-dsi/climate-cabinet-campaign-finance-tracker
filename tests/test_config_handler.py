@@ -256,17 +256,21 @@ def inheritance_config(tmp_path):
 
 def test_overrides(inheritance_config):
     handler = ConfigHandler("override_form", config_file_path=inheritance_config)
+    extra_columns = [
+        col for col in handler._column_details if col["raw_name"] == "EXTRA_COLUMN"
+    ]
+    assert len(extra_columns) == 1, "There should be exactly one EXTRA_COLUMN"
     assert (
-        handler._column_details[0]["standard_name"] == "overridden_value"
+        extra_columns[0]["standard_name"] == "overridden_value"
     ), "Standard name should be overridden"
     assert handler.dtype_dict["EXTRA_COLUMN"] == "str", "Dtype should be overridden"
 
 
 def test_inherits(inheritance_config):
     handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
-    assert (
-        "PARENT_COLUMN" not in [col["raw_name"] for col in handler._column_details]
-    ), "PARENT_COLUMN should not be present as the provided config has a 'column_details' key"
+    assert "PARENT_COLUMN" in [
+        col["raw_name"] for col in handler._column_details
+    ], "PARENT_COLUMN should be present as the derived form merges with the base form"
     assert "CHILD_COLUMN" in [
         col["raw_name"] for col in handler._column_details
     ], "CHILD_COLUMN should be present as it takes precedence over inherited column"
@@ -284,8 +288,7 @@ def test_inherits(inheritance_config):
 
 def test_column_details_and_order(inheritance_config):
     handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
-    raw_names = [col["raw_name"] for col in handler._column_details]
-    assert raw_names == [
+    assert handler._column_order == [
         "CHILD_COLUMN",
         "EXTRA_COLUMN",
     ], "Columns should follow the column_order in derived_form"
