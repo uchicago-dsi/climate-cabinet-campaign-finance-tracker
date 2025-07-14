@@ -12,6 +12,7 @@ parser.add_argument(
     "-s",
     "--states",
     default=None,
+    nargs="+",
     help="State abbreviations of all states to run pipeline on",
 )
 parser.add_argument(
