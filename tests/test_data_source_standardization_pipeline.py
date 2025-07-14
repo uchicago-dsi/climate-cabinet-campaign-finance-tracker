@@ -62,6 +62,8 @@ def mock_config_handler():
     mock.column_to_date_format = {"date": "%m/%d/%Y"}
     mock.year_filter_filepath_regex = None
     mock.year_column = None
+    mock._null_values = {}
+    mock._filter = {}
     return mock
 
 
