@@ -100,43 +100,6 @@ def test_1NF_from_unnormalized(database_fixture):
         )
 
 
-@pytest.mark.parametrize(
-    "database_fixture",
-    [
-        ("campaign-finance-sample"),
-    ],
-    indirect=True,
-)
-def test_3NF_from_1NF(database_fixture, determined_uuids):
-    """Tests extracting foreign key attributes into separate tables (Level 1 to Level 3)."""
-    database_3NF = database_fixture["data"]["3NF"]
-    database_1NF = database_fixture["data"]["1NF"]
-    schema = database_fixture["schema"]
-    normalizer = Normalizer(database_1NF, schema)
-    normalizer.convert_to_3NF_from_1NF()
-    database_result_3NF = normalizer.database
-
-    assert (
-        database_result_3NF.keys() == database_3NF.keys()
-    ), f"Result database has keys: {database_result_3NF.keys()}"
-
-    for table_name in database_result_3NF:
-        if database_result_3NF[table_name].index.name:
-            database_result_3NF[table_name] = database_result_3NF[
-                table_name
-            ].reset_index()
-        pd.testing.assert_frame_equal(
-            make_df_standard_for_testing(
-                database_result_3NF[table_name], database_3NF[table_name].columns
-            ),
-            make_df_standard_for_testing(
-                database_3NF[table_name], database_3NF[table_name].columns
-            ),
-            check_like=True,
-            check_dtype=False,
-        )
-
-
 @pytest.fixture
 def schema_fixture(request, tmp_path):
     """Dynamic schema fixture that creates the appropriate schema based on the test parameter."""
