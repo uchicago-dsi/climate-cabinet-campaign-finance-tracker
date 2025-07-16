@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+from tqdm import tqdm
 
 from utils.constants import RAW_DATA_DIRECTORY
 from utils.finance.config import ConfigHandler
@@ -333,6 +334,8 @@ class DataStandardizer:
                 raw values in the enum column to their standard values
             column_to_date_format: dict mapping column names to their date format
         """
+        standard_schema_table = self._filter_data(standard_schema_table)
+        standard_schema_table = self._standardize_null_values(standard_schema_table)
         if enum_mapper is not None:
             self.enum_mapper = enum_mapper
         if column_to_date_format is not None:
@@ -431,11 +434,23 @@ class DataSourceStandardizationPipeline:
         standardized_tables = []
         if raw_data_file_paths == []:
             return pd.DataFrame()
-        for data_path in raw_data_file_paths:
+
+        progress_bar = tqdm(
+            raw_data_file_paths,
+            desc="Processing files",
+            unit="file",
+            total=len(raw_data_file_paths),
+            dynamic_ncols=True,
+            leave=True,
+        )
+
+        for data_path in progress_bar:
+            # Update progress bar description to show current file
+            progress_bar.set_description(f"Processing: {data_path.name}")
+
             raw_data_table = self.data_reader.read_tabular_data(
                 data_path, start_year, end_year
             )
-            # Skip empty tables (files that didn't match year filter)
             if raw_data_table.empty:
                 continue
 
@@ -446,6 +461,10 @@ class DataSourceStandardizationPipeline:
                 standard_schema_table
             )
             standardized_tables.append(standard_data_table)
+
+        # Clear the description when done
+        progress_bar.set_description("Processing complete")
+        progress_bar.close()
 
         if standardized_tables:
             return pd.concat(standardized_tables, ignore_index=True)
