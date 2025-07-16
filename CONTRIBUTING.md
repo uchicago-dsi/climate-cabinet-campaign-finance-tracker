@@ -46,6 +46,7 @@ transactors:
 
 Both first level keys have the same set of subkeys:
 - state_code: two letter state code
+- meta: True if this block is only an abstract or meta class that is used by other forms.
 - read_csv_params: keyword arguments to be passed to pandas [read_csv](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html) method.
 - include_column_order: boolean. If True, 'names' is passed as a read_csv param with the column_order. If False, column order will be inferred from header row (either provided in `read_csv_params` or 0)
 - column_details: list of column properties where each may have the following keys:
