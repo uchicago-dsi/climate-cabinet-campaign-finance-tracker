@@ -1,4 +1,5 @@
 base:
+  meta: True
   state_code: PA
   read_csv_params:
     sep: ","
