@@ -30,6 +30,7 @@ Transactor:
       - Non-profit
       - Committee
       - Party
+      - Caucus
     party:
       - Republican
       - Democrat
@@ -73,6 +74,7 @@ Organization:
     - naics
     - sic
     - stock_symbol
+    - ein
   # forward_relations:
   #   parent_org: Organization
   relations:
