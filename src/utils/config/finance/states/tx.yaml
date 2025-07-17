@@ -12,7 +12,6 @@ base:
 
 contributions:
   path_pattern: ^contribs_\d{2}\.csv$
-  meta: True
   duplicate_columns:
     recipient--transactor_type:
       - recipient--transactor_type_specific
