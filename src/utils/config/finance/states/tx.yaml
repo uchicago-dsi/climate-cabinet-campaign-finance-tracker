@@ -12,12 +12,17 @@ base:
 
 contributions:
   path_pattern: ^contribs_\d{2}\.csv$
+  meta: True
+  duplicate_columns:
+    recipient--transactor_type:
+      - recipient--transactor_type_specific
   enum_mapper:
     donor--transactor_type:
       INDIVIDUAL: Individual
       ENTITY: Organization
 
-    recipient--transactor_type:
+
+    recipient--transactor_type_specific:
       # https://www.ethics.state.tx.us/data/search/cf/TX_ERF13_7.pdf
       MPAC: Committee # Monthly Filing Gen Purp Comm
       COH: Individual # Candidate/Office Holder
@@ -25,6 +30,14 @@ contributions:
       JCOH: Individual # Judicial Candidate/Office Holder
       SPAC: Committee # Specific Purpose Committee
       GPAC: Committee # General Purpose Committee
+
+    recipient--transactor_type:
+      MPAC: Organization
+      COH: Individual
+      PTYCORP: Organization
+      JCOH: Individual
+      SPAC: Organization
+      GPAC: Organization
 
 
   inherits: base
@@ -71,7 +84,7 @@ contributions:
     - raw_name: contributionDt
       type: str
       standard_name: contribution_date
-      format: "%Y-%m-%d"
+      format: "%Y%m%d"
 
     - raw_name: contributionAmount
       type: Float32
@@ -213,21 +226,40 @@ expenditures:
   inherits: contributions
   table_name: Transaction
   path_pattern: ^expend_\d{2}\.csv$
+  duplicate_columns:
+    donor--transactor_type_specific:
+      - donor--transactor_type
 
   enum_mapper:
     recipient--transactor_type:
       INDIVIDUAL: Individual
       ENTITY: Organization
+    
+    donor--transactor_type_specific:
+      COH: Candidate  # Candidate/Office Holder
+      GPAC: Committee # General Purpose Committee
+      JCOH: Candidate # Judicial Candidate/Office Holder
+      SPAC: Committee # Specific Purpose Committee
+      MPAC: Committee # Monthly Filing Gen Purp Comm
+      PTYCORP: Party # Political Party Report of Corporate/Labor Contributions
+      SCC: Committee # State County Chair Committee
+      ASIFSPAC: Committee # As If Special Purpose Committee
+      CEC: Committee  # County Exuctive Committee
+      JSPC: Committee # Judicial Special Purpose Committee
+      LEG: Caucus # Legislative Caucus
+      SPK: Candidate # Speaker of the House Candidates
+      # https://www.ethics.state.tx.us/data/forms/other/SPK_ins.pdf
+      SCPC: Committee # Specific Purpose Committee
+      MCEC: Committee # Monthly Filing County Executive Committee
 
   column_details:
     - raw_name: expendInfoId
       type: str
-      standard_name: id
 
     - raw_name: expendDt
       type: str
       standard_name: date
-      date_format: "%Y-%m-%d"
+      date_format: "%Y%m%d"
 
     - raw_name: expendAmount
       type: Float32
@@ -243,7 +275,6 @@ expenditures:
 
     - raw_name: expendCatDescr
       type: str
-      standard_name: description
 
     - raw_name: reportInfoIdent
       type: str
