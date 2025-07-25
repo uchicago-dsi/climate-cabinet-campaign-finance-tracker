@@ -49,7 +49,8 @@ legacy_download_contributions_or_receipts:
       description: "Page number"
     - raw_name: "contribution_id"
       type: Int32
-      #TODO
+      # TODO: Unsure what this is. It doesn't appear unique for contributions or contributors. 
+      # Reached out to MDOS for clarification.
     - raw_name: "cont_detail_id"
       type: Int32
     - raw_name: "doc_stmnt_year"
@@ -226,7 +227,7 @@ legacy_download_expenditures:
   - purpose
   - extra_desc
   - f_name
-  - lname_or_org
+  - l_name_or_org
   - address
   - city
   - state
@@ -236,7 +237,7 @@ legacy_download_expenditures:
   - state_loc
   - supp_opp
   - can_or_ballot
-  - Unnamed: 28
+  - "Unnamed: 28"
   - county
   - debt_payment
   - vend_name
