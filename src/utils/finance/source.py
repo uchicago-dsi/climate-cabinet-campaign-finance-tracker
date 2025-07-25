@@ -142,6 +142,10 @@ class SchemaTransformer:
     ) -> pd.DataFrame:
         """Split columns with multiple pieces of information into multiple columns
 
+        This uses the 'filter' key from the state config to determine which rows to
+        include and uses the 'pattern' key separate columns into named regex capture
+        groups (which appear in column_details). See CONTRIBUTING.md for more details.
+
         This can only be done if the pieces of information are separated in a standard
         and consistent way. The DataStandardizer should not make assumptions.
         """
