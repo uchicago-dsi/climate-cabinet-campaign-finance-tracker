@@ -521,6 +521,8 @@ class ArizonaDataProcessor:
                 output_file = self._get_transactor_file_path(transactor_type)
                 if self.override_existing_data and output_file.exists():
                     output_file.unlink()
+                elif not self.override_existing_data and output_file.exists():
+                    print("Appending results to existing file")
 
                 all_transactor_data[transactor_type] = []
                 transactor_ids_list = list(transactor_ids)
@@ -674,8 +676,8 @@ class ArizonaDataProcessor:
         cycles = api.get_available_election_cycles()
         cycle_ids = []
         for _, cycle_info in cycles.items():
-            if (start_date is None or cycle_info["start_date"] <= end_date) and (
-                end_date is None or cycle_info["end_date"] >= start_date
+            if (end_date is None or cycle_info["start_date"] <= end_date) and (
+                start_date is None or cycle_info["end_date"] >= start_date
             ):
                 cycle_ids.append(cycle_info["id"])
         return cycle_ids

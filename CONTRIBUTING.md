@@ -67,7 +67,7 @@ Both first level keys have the same set of subkeys:
     - map of raw column names to two maps 'filter' and 'pattern'. 
         - 'filter' maps to a mapping of raw column names to values.
         - 'pattern' maps to a string regex pattern with named capture groups
-    - overloaded columns is for cases where the raw data contains a column with multiple pieces of information jammed into a single column. This column must follow a consistent format. The splitting will only be attempted on those rows that contain one of the listed values for each of the listed columns. The named groups should be mapped to standard names in `column_details`.
+    - overloaded columns is for cases where the raw data contains a column with multiple pieces of information jammed into a single column. This column must follow a consistent format. The splitting will only be attempted on those rows that contain one of the listed values for each of the listed columns. The named groups should be mapped to standard names in `column_details`. If the pattern is not a match, the new columns will be filled with NaNs.
 - null_values:
   - map of column names to list of values that should be replaced with null.
   - For example, states sometimes have 0 amount transactions that should be null.

@@ -141,9 +141,6 @@ Transaction:
     - prefix: affected_party
       table: Transactor
       direction: forward
-    # - prefix: reported_election
-    #   table: Election
-    #   direction: forward
   enum_columns:
     transaction_type:
       - contribution

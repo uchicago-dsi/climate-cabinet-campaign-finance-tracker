@@ -304,10 +304,7 @@ class Normalizer:
             relation_prefix: prefix of the foreign key column
         """
         mapping_columns = [
-            col
-            for col in table.columns
-            if col.startswith(f"{relation_prefix}{SPLIT}")
-            and col != f"{relation_prefix}{ID_SUFFIX}"
+            col for col in table.columns if col.startswith(f"{relation_prefix}{SPLIT}")
         ]
 
         # Create mapping with normalized keys (replace NaN/NA with None)
@@ -372,7 +369,7 @@ class Normalizer:
                 Duplicate rows are dropped from the extracted table and get mapped to the
                 same id in the base table.
         """
-        # step 1 - get foreign table details (name, schema, columns)
+        # step 0 - get foreign table details (name, schema, columns)
         extracted_table_name = self.get_foreign_table_name(
             table_name,
             relation_prefix,
@@ -380,7 +377,7 @@ class Normalizer:
         extracted_table_schema = self.schema.schema[extracted_table_name]
 
         extracted_table = table.copy()
-        # step 0 - validate legal input
+        # step 1 - validate legal input
         if relation_prefix in self.schema.schema[table_name].reverse_relations:
             if "id" not in table.columns or table["id"].isna().any():
                 raise ValueError(
@@ -409,7 +406,6 @@ class Normalizer:
         extracted_table[f"{relation_prefix}{SPLIT}reported_state"] = extracted_table[
             "reported_state"
         ]
-        # TODO: update add_relation_to_extracted_table
         if relation_prefix in self.schema.schema[table_name].reverse_relations:
             extracted_table = self._add_relationship_metadata_to_extracted_table(
                 extracted_table, table_name, relation_prefix
@@ -439,7 +435,7 @@ class Normalizer:
                 id_column="id",
             )
 
-        # step 2 - split foreign table off of old base table
+        # step 4 - split foreign table off of old base table
         foreign_columns_in_base_table = self._get_foreign_columns(
             extracted_table, relation_prefix
         )
@@ -576,6 +572,16 @@ class Normalizer:
                 consolidated_table = consolidated_table.set_index("id")
             consolidated_database[table_name] = consolidated_table
         return consolidated_database
+
+    def _add_all_columns(
+        self, database: dict[str, pd.DataFrame]
+    ) -> dict[str, pd.DataFrame]:
+        """Add all columns to the database"""
+        for table_name in database:
+            for column in self.schema.schema[table_name].attributes:
+                if column not in database[table_name].columns:
+                    database[table_name][column] = None
+        return database
 
     def normalize_database(self) -> dict[str, pd.DataFrame]:
         """Bring a database to 4NF given the provided schema
