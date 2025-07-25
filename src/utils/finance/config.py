@@ -15,7 +15,10 @@ def resolve_inheritance(config: dict, form_code: str) -> dict:
     - For most cases, the child value will override the parent value
     - If the value is 'column_details', the child value will 'update' the parent
       value. (i.e. the child value will be used in duplicate 'raw_name' keys, all
-      keys not present in the child will be used from the parent)
+      keys not present in the child will be used from the parent).
+    - If there is no column_order in parent or child, the column order will be the
+      order of appearance in column_details in the parent, followed by those that only
+      appear in the child.
 
     Args:
         config: dictionary contents of a state config
@@ -48,20 +51,10 @@ def resolve_inheritance(config: dict, form_code: str) -> dict:
             child_column_details_dict = {
                 column_detail["raw_name"]: column_detail for column_detail in value
             }
-            used_raw_names = set()
-            result_list = []
-            for raw_name, column_detail in parent_column_details_dict.items():
-                if raw_name in child_column_details_dict:
-                    result_list.append(child_column_details_dict[raw_name])
-                    used_raw_names.add(raw_name)
-                else:
-                    result_list.append(column_detail)
-            result_list.extend(
-                child_column_details_dict[raw_name]
-                for raw_name in child_column_details_dict
-                if raw_name not in used_raw_names
-            )
-            parent_config[key] = result_list
+            parent_config[key] = {
+                **parent_column_details_dict,
+                **child_column_details_dict,
+            }.values()
         elif value is not None:
             parent_config[key] = value
     return parent_config
@@ -212,6 +205,7 @@ class ConfigHandler:
         self._column_order = form_config.get(
             "column_order", [col["raw_name"] for col in self._column_details]
         )
+
         self._include_column_order = form_config.get("include_column_order", True)
         self._enum_mapper = form_config.get("enum_mapper", {})
         self._read_csv_params = form_config.get("read_csv_params", {})

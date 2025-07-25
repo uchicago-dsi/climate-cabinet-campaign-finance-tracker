@@ -247,6 +247,40 @@ def inheritance_config(tmp_path):
                 },
             ],
         },
+        "base_2": {
+            "column_details": [
+                {
+                    "raw_name": "PARENT_COLUMN",
+                    "type": "str",
+                    "standard_name": "base_col_2",
+                },
+                {
+                    "raw_name": "EXTRA_COLUMN_2",
+                    "type": "str",
+                    "standard_name": "value_to_override",
+                },
+                {
+                    "raw_name": "PARENT_COLUMN_2",
+                    "type": "str",
+                    "standard_name": "base_col_2",
+                },
+            ],
+        },
+        "multi_override_form": {
+            "inherits": "base_2",
+            "column_details": [
+                {
+                    "raw_name": "EXTRA_COLUMN",
+                    "type": "str",
+                    "standard_name": "overridden_value",
+                },
+                {
+                    "raw_name": "EXTRA_COLUMN_2",
+                    "type": "str",
+                    "standard_name": "overridden_value_2",
+                },
+            ],
+        },
     }
     config_path = tmp_path / "config.yaml"
     with config_path.open("w") as f:
@@ -255,6 +289,7 @@ def inheritance_config(tmp_path):
 
 
 def test_overrides(inheritance_config):
+    """Test a raw column in parent and child configs appears only as the child value"""
     handler = ConfigHandler("override_form", config_file_path=inheritance_config)
     extra_columns = [
         col for col in handler._column_details if col["raw_name"] == "EXTRA_COLUMN"
@@ -267,6 +302,7 @@ def test_overrides(inheritance_config):
 
 
 def test_inherits(inheritance_config):
+    """Test values get properly inherited from parent config"""
     handler = ConfigHandler("derived_form", config_file_path=inheritance_config)
     assert "PARENT_COLUMN" in [
         col["raw_name"] for col in handler._column_details
@@ -284,6 +320,19 @@ def test_inherits(inheritance_config):
     assert handler.raw_data_path_pattern.fullmatch(
         "base/data.txt"
     ), "Inherited path pattern should match"
+
+
+def test_default_column_order_inheritance(inheritance_config):
+    """Consistent column order with inherited column_details and no column_order"""
+    handler = ConfigHandler("multi_override_form", config_file_path=inheritance_config)
+    print(handler._column_order)
+    print(handler._column_details)
+    assert handler._column_order == [
+        "PARENT_COLUMN",
+        "EXTRA_COLUMN_2",
+        "PARENT_COLUMN_2",
+        "EXTRA_COLUMN",
+    ]
 
 
 def test_column_details_and_order(inheritance_config):
