@@ -60,6 +60,8 @@ database = standardize_states(
     states=states,
     start_year=args.start_year,
     end_year=args.end_year,
-    data_directory=args.data_directory,
+    data_directory=Path(args.data_directory)
+    if args.data_directory is not None
+    else None,
 )
 save_database(database, output_directory, format=args.format)
