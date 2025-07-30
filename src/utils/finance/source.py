@@ -42,6 +42,7 @@ class DataReader:
         else:
             self.year_filter_filepath_regex = None
         self.year_column = config_handler.year_column
+        self.filter = config_handler._filter
 
     def _is_filepath_in_year_range(
         self,
@@ -89,6 +90,24 @@ class DataReader:
             table = table[table[self.year_column] <= end_year]
         return table
 
+    def _filter_data(self, raw_table: pd.DataFrame) -> pd.DataFrame:
+        """Filter data based on filter configuration
+
+        This uses the 'filter' key from the state config, mapping raw column names
+        to a list of values to keep or (if the value appears in the 'NOT' key) to
+        drop.
+        """
+        for column_name, filter_values in self.filter.items():
+            if column_name not in raw_table.columns:
+                continue
+            if "NOT" in filter_values:
+                raw_table = raw_table[
+                    ~raw_table[column_name].isin(filter_values["NOT"])
+                ]
+            else:
+                raw_table = raw_table[raw_table[column_name].isin(filter_values)]
+        return raw_table
+
     def read_tabular_data(
         self,
         path: str | Path,
@@ -116,7 +135,7 @@ class DataReader:
             **self.read_csv_params,
         )
         table = self._filter_dataframe_to_year_range(table, start_year, end_year)
-
+        table = self._filter_data(table)
         return table
 
 
@@ -142,9 +161,10 @@ class SchemaTransformer:
     ) -> pd.DataFrame:
         """Split columns with multiple pieces of information into multiple columns
 
-        This uses the 'filter' key from the state config to determine which rows to
-        include and uses the 'pattern' key separate columns into named regex capture
-        groups (which appear in column_details). See CONTRIBUTING.md for more details.
+        Each raw column name that appears as a key in the 'overloaded_columns' key
+        in the state config file is split into multiple columns. The only tables that
+        are split are those that match the 'filter' in 'overloaded_columns'. See
+        CONTRIBUTING.md for more details.
 
         This can only be done if the pieces of information are separated in a standard
         and consistent way. The DataStandardizer should not make assumptions.
@@ -237,7 +257,6 @@ class DataStandardizer:
         self.enum_mapper = config_handler.enum_mapper
         self.column_to_date_format = config_handler.column_to_date_format
         self.null_values = config_handler._null_values
-        self.filter = config_handler._filter
 
     def _standardize_enums(self, standard_schema_table: pd.DataFrame) -> pd.DataFrame:
         """Rename entity type columns"""
@@ -304,21 +323,6 @@ class DataStandardizer:
                 ].replace(implicit_null_value, pd.NA)
         return standard_schema_table
 
-    def _filter_data(self, standard_schema_table: pd.DataFrame) -> pd.DataFrame:
-        """Filter data based on filter configuration"""
-        for column_name, filter_values in self.filter.items():
-            if column_name not in standard_schema_table.columns:
-                continue
-            if "NOT" in filter_values:
-                standard_schema_table = standard_schema_table[
-                    ~standard_schema_table[column_name].isin(filter_values["NOT"])
-                ]
-            else:
-                standard_schema_table = standard_schema_table[
-                    standard_schema_table[column_name].isin(filter_values)
-                ]
-        return standard_schema_table
-
     def standardize_data(
         self,
         standard_schema_table: pd.DataFrame,
@@ -338,7 +342,6 @@ class DataStandardizer:
                 raw values in the enum column to their standard values
             column_to_date_format: dict mapping column names to their date format
         """
-        standard_schema_table = self._filter_data(standard_schema_table)
         standard_schema_table = self._standardize_null_values(standard_schema_table)
         if enum_mapper is not None:
             self.enum_mapper = enum_mapper
