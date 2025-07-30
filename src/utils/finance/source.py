@@ -323,6 +323,33 @@ class DataStandardizer:
                 ].replace(implicit_null_value, pd.NA)
         return standard_schema_table
 
+    def _standardize_transaction_direction(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Flip donor and recipient columns if 'transaction_direction' is 'reverse'
+
+        In state config, if a raw column is mapped to transaction_direction and
+        the enum mapper maps some values to 'reverse' those rows will switch
+        donor and recipient columns.
+        """
+        if "transaction_direction" not in standard_schema_table.columns:
+            return standard_schema_table
+        reverse_mask = standard_schema_table["transaction_direction"] == "reverse"
+        reverse_table = standard_schema_table.loc[reverse_mask, :]
+        new_reverse_table_columns = []
+        for column in standard_schema_table.columns:
+            if column.startswith("donor"):
+                new_reverse_table_columns.append(column.replace("donor", "recipient"))
+            elif column.startswith("recipient"):
+                new_reverse_table_columns.append(column.replace("recipient", "donor"))
+            else:
+                new_reverse_table_columns.append(column)
+        reverse_table.columns = new_reverse_table_columns
+        standard_direction_table = pd.concat(
+            [standard_schema_table.loc[~reverse_mask, :], reverse_table]
+        )
+        return standard_direction_table
+
     def standardize_data(
         self,
         standard_schema_table: pd.DataFrame,
@@ -349,6 +376,9 @@ class DataStandardizer:
             self.column_to_date_format = column_to_date_format
         standard_schema_table = self._standardize_enums(standard_schema_table)
         standard_data_table = self._standardize_date_format(standard_schema_table)
+        standard_data_table = self._standardize_transaction_direction(
+            standard_data_table
+        )
         return standard_data_table
 
 
