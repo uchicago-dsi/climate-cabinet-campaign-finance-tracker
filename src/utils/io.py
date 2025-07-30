@@ -96,7 +96,7 @@ def _load_database_chunked(
 ) -> Generator[dict[str, pd.DataFrame], None, None]:
     """Load database in chunks across all tables simultaneously."""
     table_files = {f.stem: f for f in _get_data_files(path, format)}
-    table_positions = {name: 0 for name in table_files}
+    table_positions = dict.fromkeys(table_files, 0)
     table_totals = {
         name: _count_rows(file_path) for name, file_path in table_files.items()
     }
@@ -125,7 +125,10 @@ def _get_data_files(path: Path, format: FileFormat) -> list[Path]:
 def _load_table(file_path: Path, format: FileFormat) -> pd.DataFrame:
     """Load a single table file."""
     if format == "csv":
-        return pd.read_csv(file_path)
+        try:
+            return pd.read_csv(file_path)
+        except pd.errors.EmptyDataError:
+            return pd.DataFrame()
     elif format == "parquet":
         return pd.read_parquet(file_path)
 
@@ -137,6 +140,8 @@ def _save_table(
     mode: Literal["overwrite", "append"],
 ) -> None:
     """Save a single table file."""
+    if df.empty:
+        return
     save_index = bool(df.index.name)
 
     if format == "csv":
