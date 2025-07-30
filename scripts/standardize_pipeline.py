@@ -1,6 +1,7 @@
 """Script for running cleaning pipeline"""
 
 import argparse
+from pathlib import Path
 
 from utils.constants import BASE_FILEPATH
 from utils.finance.pipeline import standardize_states
@@ -51,7 +52,7 @@ args = parser.parse_args()
 if args.output_directory is None:
     output_directory = BASE_FILEPATH / "data" / "standardized"
 else:
-    output_directory = args.output_directory
+    output_directory = Path(args.output_directory)
 states = args.states
 output_directory.mkdir(parents=True, exist_ok=True)
 
