@@ -8,6 +8,11 @@ base:
   state_code_columns:
     - reported_state
   year_filter_filepath_regex: ".*\\/(\\d{4})\\/[^\\/]+$"
+  null_values:
+    amount: 
+      - "0"
+      - 0
+      - "0.00"
 
 
 contributions:
