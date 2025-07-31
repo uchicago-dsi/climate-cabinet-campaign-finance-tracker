@@ -103,7 +103,7 @@ contributions:
     - raw_name: "Receipt date"
       type: str
       standard_name: date
-      date_format: "%Y-%m-%d %H:%M:%S.%f"
+      date_format: "%Y-%m-%d"
 
     - raw_name: Year
       type: Int16
@@ -280,7 +280,7 @@ expenditures:
     - raw_name: Date
       type: str
       standard_name: date
-      date_format: "%Y-%m-%d %H:%M:%S.%f"
+      date_format: "%Y-%m-%d"
 
     - raw_name: Purpose
       type: str
