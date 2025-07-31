@@ -36,6 +36,10 @@ legacy_download_contributions_or_receipts:
       DIS: Committee
       STA: Party
 
+    donor--candidate--member--election_result--election--office_sought:
+      STATE SENATE: State Senator
+      STATE REPRESENTATIVE: State Representative
+
   duplicate_columns:
     recipient--transactor_type:
       - recipient--transactor_type_specific

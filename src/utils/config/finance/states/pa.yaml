@@ -217,12 +217,12 @@ filer:
       "3": Unknown # lobbyist, could be pac or ind
 
     party:
-      DEM: Democratic Party
-      REP: Republican Party
-      CST: Constitutional Party
-      LIB: Libertarian Party
-      REF: Reform Party
-      OTH: Party Described as Other by State
+      DEM: Democrat
+      REP: Republican
+      CST: Constitution
+      LIB: Libertarian
+      REF: Reform
+      OTH: Other
 
   column_details:
     - raw_name: CampaignFinanceID
