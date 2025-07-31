@@ -108,6 +108,10 @@ class DataReader:
                 raw_table = raw_table[raw_table[column_name].isin(filter_values)]
         return raw_table
 
+    def _drop_blank_rows(self, raw_table: pd.DataFrame) -> pd.DataFrame:
+        """Drop rows with all blank values"""
+        return raw_table.dropna(how="all")
+
     def read_tabular_data(
         self,
         path: str | Path,
@@ -134,6 +138,7 @@ class DataReader:
             dtype=self.dtype_dict,
             **self.read_csv_params,
         )
+        table = self._drop_blank_rows(table)
         table = self._filter_dataframe_to_year_range(table, start_year, end_year)
         table = self._filter_data(table)
         return table
@@ -350,6 +355,28 @@ class DataStandardizer:
         )
         return standard_direction_table
 
+    def _standardize_organization_name(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Convert any specified organization names to full_name and transactor_type organization"""
+        organization_name_columns = [
+            column
+            for column in standard_schema_table.columns
+            if column.endswith("organization_name")
+        ]
+        for column in organization_name_columns:
+            column_prefix = column[: -len("organization_name")]
+            organization_name_rows = standard_schema_table[column].notna()
+            standard_schema_table.loc[
+                organization_name_rows, f"{column_prefix}full_name"
+            ] = standard_schema_table.loc[organization_name_rows, column]
+            standard_schema_table.loc[
+                organization_name_rows, f"{column_prefix}transactor_type"
+            ] = "Organization"
+            standard_schema_table = standard_schema_table.drop(columns=[column])
+
+        return standard_schema_table
+
     def standardize_data(
         self,
         standard_schema_table: pd.DataFrame,
@@ -379,6 +406,7 @@ class DataStandardizer:
         standard_data_table = self._standardize_transaction_direction(
             standard_data_table
         )
+        standard_data_table = self._standardize_organization_name(standard_data_table)
         return standard_data_table
 
 

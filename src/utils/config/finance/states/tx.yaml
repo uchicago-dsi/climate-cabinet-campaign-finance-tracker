@@ -561,7 +561,7 @@ filers:
 
     - raw_name: filerNameOrganization
       type: str
-      standard_name: full_name
+      standard_name: organization_name
 
     - raw_name: filerNameLast
       type: str
