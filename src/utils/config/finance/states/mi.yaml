@@ -131,6 +131,7 @@ legacy_download_contributions_or_receipts:
     - raw_name: "amount"
       type: str
       standard_name: amount
+      post_load_float: true
 
     - raw_name: "aggregate"
       type: Float32

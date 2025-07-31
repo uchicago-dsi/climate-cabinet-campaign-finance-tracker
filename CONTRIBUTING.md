@@ -54,6 +54,7 @@ Both first level keys have the same set of subkeys:
     - type: Pandas dtype of the column
     - standard_name: (optional) If the column is used, [standard name](#standard-column-naming). Even if the standard name is the same as the raw name, this must be included. 
     - date_format: (optional) Format of dates in the provided data according to [datetime strftime](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior). If unix time is used, use `%unix_ms` for unix ms.
+    - post_load_float: (optional) If the column should be interpreted as a float, but contains erroneous rows or ',' and '$' characters that pandas cannot handle, set the column as a string and set this value to True. 
 - column_order: list of columns in the order they appear in the data format. If not provided, will default to the order in column_properties.
 - duplicate_columns:
     - map of standard column names to list of additional columns that should be copies of them

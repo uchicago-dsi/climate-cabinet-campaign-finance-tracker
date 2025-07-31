@@ -262,6 +262,7 @@ class DataStandardizer:
         self.enum_mapper = config_handler.enum_mapper
         self.column_to_date_format = config_handler.column_to_date_format
         self.null_values = config_handler._null_values
+        self.post_load_float_columns = config_handler.post_load_float_columns
 
     def _standardize_enums(self, standard_schema_table: pd.DataFrame) -> pd.DataFrame:
         """Rename entity type columns"""
@@ -379,6 +380,19 @@ class DataStandardizer:
 
         return standard_schema_table
 
+    def _convert_strings_to_floats(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Convert strings to floats"""
+        for column in self.post_load_float_columns:
+            if column not in standard_schema_table.columns:
+                continue
+            standard_schema_table[column] = pd.to_numeric(
+                standard_schema_table[column].str.replace(",", "").str.replace("$", ""),
+                errors="coerce",
+            )
+        return standard_schema_table
+
     def standardize_data(
         self,
         standard_schema_table: pd.DataFrame,
@@ -409,6 +423,7 @@ class DataStandardizer:
             standard_data_table
         )
         standard_data_table = self._standardize_organization_name(standard_data_table)
+        standard_data_table = self._convert_strings_to_floats(standard_data_table)
         return standard_data_table
 
 

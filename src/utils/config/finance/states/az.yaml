@@ -631,6 +631,7 @@ mdb_transactions:
       type: str
       standard_name: amount
       description: "Monetary amount of the transaction"
+      post_load_float: true
 
     - raw_name: "NameID"
       type: Int64
