@@ -79,8 +79,9 @@ Both first level keys have the same set of subkeys:
 The state source standardization steps are to prepare the state code to be normalized and joined with other states. As part of this there is a specific naming pattern for columns. Standard table attributes are named in table.yaml under attributes. Provided source data, however, may not be normalized. These columns will be named with a SPLIT separator ('--') between the name of the relation and the name of the attribute in the related column. This may be nested (i.e. if in a transaction table we are given a donor's address, this would be shown as 'donor--address--line_1'). If a column is a repeated column (i.e. there are two amount columns to signify two transactions that share all other properties), it will end with '-\d' where \d is an integer. Valid column names include alphabetic characters and underscores.
 
 Special column names:
-- 'transaction_direction': this is used if a table doesn't have set 'donor' and 'recipient' columns and the direction of the transaction is specified by another column. If this exists this column should be given a standard name of 'transaction_direction' and an enum mapper that maps all values requiring a reversal mapped to 'reverse'
-- 'reported_state': this column is metadata automatically filled and propogated to all derived tables. 
+- `transaction_direction`: this is used if a table doesn't have set 'donor' and 'recipient' columns and the direction of the transaction is specified by another column. If this exists this column should be given a standard name of 'transaction_direction' and an enum mapper that maps all values requiring a reversal mapped to 'reverse'
+- `reported_state`: this column is metadata automatically filled and propogated to all derived tables. 
+- `organization_name`: This will be mapped to `full_name` and the transactor type marked as organization.
 
 #### Year Filtering Configuration
 
