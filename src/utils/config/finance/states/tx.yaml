@@ -60,7 +60,7 @@ contributions:
     - raw_name: receivedDt
       type: str
       standard_name: date
-      format: "%Y-%m-%d"
+      format: "%Y%m%d"
 
     - raw_name: infoOnlyFlag
       type: str
