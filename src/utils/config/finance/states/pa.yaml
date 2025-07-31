@@ -10,10 +10,21 @@ base:
   year_filter_filepath_regex: ".*\\/(\\d{4})\\/[^\\/]+$"
   null_values:
     amount: 
-      - "0"
-      - 0
       - 0.0
-      - "0.00"
+    amount-1: 
+      - 0.0
+    amount-2: 
+      - 0.0
+    amount-3: 
+      - 0.0
+    date:
+      - 0
+    date-1:
+      - 0
+    date-2:
+      - 0
+    date-3:
+      - 0
 
 
 contributions:
