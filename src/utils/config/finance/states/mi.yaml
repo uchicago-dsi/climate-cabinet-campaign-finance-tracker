@@ -177,6 +177,10 @@ legacy_download_expenditures:
       standard_name: description
     - raw_name: "extra_desc"
       type: str
+    - raw_name: "exp_date"
+      type: str
+      date_format: "%m/%d/%Y"
+      standard_name: date
     - raw_name: "state_loc"
       type: str
     - raw_name: "supp_opp"
