@@ -322,6 +322,8 @@ class DataStandardizer:
     ) -> pd.DataFrame:
         """Replace implicit null values with actual null values"""
         for column_name, null_values in self.null_values.items():
+            if column_name not in standard_schema_table.columns:
+                continue
             for implicit_null_value in null_values:
                 standard_schema_table[column_name] = standard_schema_table[
                     column_name
