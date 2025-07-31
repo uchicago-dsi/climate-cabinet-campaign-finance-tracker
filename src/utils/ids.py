@@ -74,6 +74,7 @@ def map_ids_to_uuids(
     """
     if mask is None:
         mask = pd.Series(True, index=table.index)
+    table[id_column] = table[id_column].astype(str)
     table.loc[mask, id_column] = table.loc[mask].apply(
         lambda row: id_mapping.get(
             (
