@@ -141,6 +141,19 @@ class ConfigHandler:
         }
 
     @property
+    def post_load_float_columns(self) -> list[str]:
+        """List of columns that should be converted to floats after loading
+
+        These are columns that have floats that pandas cannot accurately convert
+        to floats on read (they contain , or $).
+        """
+        return [
+            col["standard_name"]
+            for col in self._column_details
+            if col.get("post_load_float", False)
+        ]
+
+    @property
     def raw_column_order(self) -> list[str]:
         """List of columns in order in raw file"""
         return self._column_order
