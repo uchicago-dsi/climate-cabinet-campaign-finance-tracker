@@ -251,6 +251,22 @@ expenditures:
       SCPC: Committee # Specific Purpose Committee
       MCEC: Committee # Monthly Filing County Executive Committee
 
+    donor--transactor_type:
+      COH: Individual
+      GPAC: Organization
+      JCOH: Individual
+      SPAC: Organization
+      MPAC: Organization
+      PTYCORP: Organization
+      SCC: Organization
+      ASIFSPAC: Organization
+      CEC: Organization
+      JSPC: Organization
+      LEG: Organization
+      SPK: Organization
+      SCPC: Organization
+      MCEC: Organization
+
   column_details:
     - raw_name: expendInfoId
       type: str
