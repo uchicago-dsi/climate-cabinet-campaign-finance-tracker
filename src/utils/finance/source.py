@@ -270,6 +270,9 @@ class DataStandardizer:
             if column_name not in standard_schema_table.columns:
                 continue
             # map each value in the table's column according to the provided enum mapper
+            standard_schema_table[column_name] = standard_schema_table[
+                column_name
+            ].astype(str)
             standard_schema_table[column_name] = standard_schema_table[column_name].map(
                 column_enum_map
             )
