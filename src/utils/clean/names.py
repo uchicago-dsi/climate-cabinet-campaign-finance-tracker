@@ -63,12 +63,12 @@ company_name_patterns = [
     r"inc",
     r"llc",
     r"ltd",
-    r"co",
     r"corp",
     r"committee",
     r"party",
     r"foundation",
     r"union",
+    r"associat",
 ]
 
 
@@ -81,10 +81,11 @@ def _clean_name_components(
         name_components: A dictionary with keys: prefix, first_name, middle_name, last_name, suffix, nickname
 
     """
-    # remove non standard name characters (only letters, spaces, and apostrophes)
+    # remove non standard name characters
+    # (only letters, spaces, hyphens, and apostrophes)
     for key, value in name_components.items():
         if value is not None:
-            name_components[key] = re.sub(r"[^a-zA-Z\s']", "", value)
+            name_components[key] = re.sub(r"[^a-zA-Z\s'-]", "", value)
         if value == "":
             name_components[key] = None
     return name_components
@@ -241,6 +242,7 @@ def clean_individuals_names(names: pd.DataFrame) -> pd.DataFrame:
             full_name, first_name, middle_name, last_name, name_prefix,
             name_suffix, name_preferred
     """
+    names = names.copy()
     if names.empty:
         return names
     # handle misplaced last names
@@ -267,7 +269,7 @@ def clean_individuals_names(names: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in name_columns:
         if col in name_components.columns:
-            names[col] = name_components.loc[:, col]
+            names.loc[:, col] = name_components[col].to_numpy()
 
     return names
 
