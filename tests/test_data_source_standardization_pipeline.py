@@ -167,6 +167,7 @@ def mock_config_handler_with_year_filter():
     mock.raw_column_order = ["DONOR", "EYEAR", "TRANSDATE", "amount"]
     mock.year_filter_filepath_regex = "^(\\d{4})/"
     mock.year_column = "EYEAR"
+    mock._filter = {}
     return mock
 
 
