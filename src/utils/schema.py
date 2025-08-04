@@ -34,6 +34,15 @@ class TableSchema:
         return self._fill_properties_list("attributes")
 
     @cached_property
+    def types(self) -> dict:
+        """Dictionary mapping column names to their type"""
+        explicit_types = self._fill_properties_dict("types")
+        for column_name in self.attributes:
+            if column_name not in explicit_types:
+                explicit_types[column_name] = "string"
+        return explicit_types
+
+    @cached_property
     def attributes_regex(self) -> re.Pattern:
         """Full regex to match attributes"""
         return re.compile("|".join(self.attributes))
