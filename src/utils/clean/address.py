@@ -46,6 +46,8 @@ def clean_address_string(address_string: str) -> str:
     Args:
         address_string (str): An address string.
     """
+    if pd.isna(address_string):
+        return ""
     address_string = address_string.strip()
     address_string = re.sub(r"<br\s*/?>", "\n", address_string)
     address_string = re.sub(r"<[^>]*>", "", address_string)
@@ -174,5 +176,44 @@ def clean_address(address_df: pd.DataFrame) -> pd.DataFrame:
     parsed_address_columns = address_df.apply(
         parse_usaddress_simple_expand, axis=1, result_type="expand"
     )
-    address_df = pd.concat([address_df, parsed_address_columns], axis=1)
+    # column mapping
+    address_part_name_mapping = {
+        "Recipient": "recipient",
+        "BuildingName": "building_name",
+        "USPSBoxType": "usps_box_type",
+        "USPSBoxID": "usps_box_id",
+        # Don't use: "USPSBoxGroupType",  "USPSBoxGroupID"
+        # Line 1
+        "AddressNumber": "building_number",
+        "StreetName": "street_name",
+        "StreetNamePreDirectional": "street_predirectional",
+        "StreetNamePostDirectional": "street_postdirectional",
+        "StreetNamePreType": "street_pre_type",
+        "StreetNamePostType": "street_post_type",
+        # Line 2
+        "OccupancyType": "occupancy_type",
+        "OccupancyIdentifier": "occupancy_identifier",
+        # Line 3
+        "PlaceName": "city",
+        "StateName": "state",
+        "ZipCode": "zipcode",
+    }
+
+    parsed_address_columns = parsed_address_columns.drop(
+        columns=[
+            col
+            for col in parsed_address_columns.columns
+            if col not in address_part_name_mapping
+        ]
+    )
+    parsed_address_columns = parsed_address_columns.rename(
+        columns=address_part_name_mapping
+    )
+
+    # For columns in both, use parsed_address_columns value if notna, else address_df
+    for col in parsed_address_columns.columns:
+        if col in address_df.columns:
+            address_df[col] = parsed_address_columns[col].combine_first(address_df[col])
+        else:
+            address_df[col] = parsed_address_columns[col]
     return address_df
