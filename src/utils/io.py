@@ -133,6 +133,17 @@ def _load_table(file_path: Path, format: FileFormat) -> pd.DataFrame:
         return pd.read_parquet(file_path)
 
 
+def convert_string_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert all string columns to string type and replace NaNs with None"""
+    for col in df.columns:
+        if df[col].dtype == object:
+            # Check if the column contains at least one string-like value
+            if df[col].apply(lambda x: isinstance(x, str)).any():
+                # Convert column to string type and replace NaNs with None
+                df[col] = df[col].astype("string").where(df[col].notna(), None)
+    return df
+
+
 def _save_table(
     df: pd.DataFrame,
     file_path: Path,
@@ -156,7 +167,8 @@ def _save_table(
             combined_df = pd.concat([existing_df, df], ignore_index=True)
             combined_df.to_parquet(file_path, index=save_index)
         else:
-            df.to_parquet(file_path, index=save_index)
+            proper_type_df = convert_string_columns(df)
+            proper_type_df.to_parquet(file_path, index=save_index)
 
 
 def _count_rows(file_path: Path) -> int:
