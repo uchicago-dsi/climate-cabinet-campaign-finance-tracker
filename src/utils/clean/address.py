@@ -1,0 +1,178 @@
+"""Functions for cleaning and standardizing addresses"""
+
+import re
+
+import pandas as pd
+import usaddress
+from usaddress import RepeatedLabelError
+
+from utils.clean.mappings import directionals, occupancy_types, street_types
+
+
+def clean_zipcode(val: object) -> str | None:
+    """Convert zipcodes to strings of length 5"""
+    standard_zipcode_length = 5
+    if pd.isna(val):
+        return None
+    # make zipcode a string and if it is zip+4, take just zip.
+    # if it was stored as a float, take the integer part.
+    string_zipcode = str(val).split("-")[0].split(".")[0]
+    if len(string_zipcode) == standard_zipcode_length:
+        return string_zipcode
+    # zipcode+4 without a dash
+    elif len(string_zipcode) == standard_zipcode_length + 4:
+        return string_zipcode[:standard_zipcode_length]
+    # zipcode with leading 0 stripped when stored as number
+    elif len(string_zipcode) == standard_zipcode_length - 1:
+        return "0" + string_zipcode
+    # unknown zipcode format
+    else:
+        return None
+
+
+def convert_nulls(val: object | None) -> str:
+    """Convert None or NaN to empty string"""
+    if isinstance(val, (pd.Series | pd.DataFrame)):
+        raise ValueError("Cannot convert Series or DataFrame to string")
+
+    if pd.isna(val):
+        return ""
+    return str(val).strip()
+
+
+def clean_address_string(address_string: str) -> str:
+    """Remove leading/trailing whitespace, cut html tags
+
+    Args:
+        address_string (str): An address string.
+    """
+    address_string = address_string.strip()
+    address_string = re.sub(r"<br\s*/?>", "\n", address_string)
+    address_string = re.sub(r"<[^>]*>", "", address_string)
+    return address_string
+
+
+def get_address_string(address_row: pd.Series) -> str:
+    """Get a string representation of an address row.
+
+    Args:
+        address_row (pd.Series): A row from a DataFrame containing address columns.
+            Columns should include: line_1, line_2, city, state, zipcode, full_address
+
+    Returns:
+        str: A string representation of the address.
+    """
+    address_row = address_row.fillna("").astype(str)
+    if "full_address" in address_row and address_row["full_address"] != "":
+        return address_row["full_address"]
+
+    address_row = address_row.fillna("").astype(str)
+
+    line_1 = address_row["line_1"]
+    line_2 = address_row["line_2"]
+    city = address_row["city"]
+    state = address_row["state"]
+    zipcode = address_row["zipcode"]
+
+    if line_2:
+        return f"{line_1}\n{line_2}\n{city}, {state} {zipcode}".strip()
+    if line_1 and city and state and zipcode:
+        return f"{line_1}\n{city}, {state} {zipcode}".strip()
+
+    # fallback: join whatever is non-empty
+    raw_fields = [line_1, line_2, city, state, zipcode]
+    return " ".join(f for f in raw_fields if f)
+
+
+def expand_usaddress_simple(parsed_address: dict) -> dict:
+    """Expand a parsed address with simple mappings.
+
+    Args:
+        parsed_address (dict): A dictionary of parsed address components.
+    """
+    if "StreetNamePostType" in parsed_address:
+        parsed_address["StreetNamePostType"] = street_types.get(
+            parsed_address["StreetNamePostType"], parsed_address["StreetNamePostType"]
+        )
+    if "StreetNamePreType" in parsed_address:
+        parsed_address["StreetNamePreType"] = street_types.get(
+            parsed_address["StreetNamePreType"], parsed_address["StreetNamePreType"]
+        )
+    if "StreetPreDirectional" in parsed_address:
+        parsed_address["StreetPreDirectional"] = directionals.get(
+            parsed_address["StreetPreDirectional"],
+            parsed_address["StreetPreDirectional"],
+        )
+    if "StreetNamePreDirectional" in parsed_address:
+        parsed_address["StreetNamePreDirectional"] = directionals.get(
+            parsed_address["StreetNamePreDirectional"],
+            parsed_address["StreetNamePreDirectional"],
+        )
+    if "StreetNamePostDirectional" in parsed_address:
+        parsed_address["StreetNamePostDirectional"] = directionals.get(
+            parsed_address["StreetNamePostDirectional"],
+            parsed_address["StreetNamePostDirectional"],
+        )
+    if "OccupancyType" in parsed_address:
+        parsed_address["OccupancyType"] = occupancy_types.get(
+            parsed_address["OccupancyType"], parsed_address["OccupancyType"]
+        )
+    if "OccupancyIdentifier" in parsed_address:
+        parsed_address["OccupancyIdentifier"] = occupancy_types.get(
+            parsed_address["OccupancyIdentifier"], parsed_address["OccupancyIdentifier"]
+        )
+    return parsed_address
+
+
+def clean_usaddress(parsed_address: dict) -> dict:
+    """Clean a parsed address.
+
+    Args:
+        parsed_address (dict): A dictionary of parsed address components.
+    """
+    for key, value in parsed_address.items():
+        parsed_address[key] = value.lower().strip()
+        parsed_address[key] = parsed_address[key].replace(".", "")
+    return parsed_address
+
+
+def parse_usaddress_simple_expand(address_row: pd.Series) -> dict:
+    """Parse address with usaddress and expand it with simple mappings.
+
+    Args:
+        address_row (pd.Series): A row from a DataFrame containing address columns.
+            Columns should include: line_1, line_2, city, state, zipcode, full_address
+
+    Returns:
+        dict: A dictionary of parsed address components.
+    """
+    address_str = get_address_string(address_row)
+    try:
+        parsed, address_type = usaddress.tag(address_str)
+    except RepeatedLabelError:
+        return {}
+    parsed = clean_usaddress(parsed)
+    if address_type == "Street Address":
+        parsed = expand_usaddress_simple(parsed)
+    return parsed
+
+
+def clean_address(address_df: pd.DataFrame) -> pd.DataFrame:
+    """Clean an address dataframe.
+
+    Args:
+        address_df: A DataFrame containing address columns.
+            Columns should include: line_1, line_2, city, state, zipcode, full_address
+
+    Returns:
+        pd.DataFrame: A DataFrame with cleaned address components.
+    """
+    address_df["full_address"] = address_df["full_address"].apply(clean_address_string)
+    if "zipcode" in address_df.columns:
+        address_df["zipcode"] = address_df["zipcode"].apply(clean_zipcode)
+
+    parsed_address_columns = address_df.apply(
+        parse_usaddress_simple_expand, axis=1, result_type="expand"
+    )
+    address_df = pd.concat([address_df, parsed_address_columns], axis=1)
+    return address_df
