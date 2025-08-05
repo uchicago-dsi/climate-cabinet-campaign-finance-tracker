@@ -15,6 +15,8 @@ Transactor:
     - transactor_type_specific
     - transactor_type # Indivudual or Organization
     - phone_number
+    - email
+    - party
     - reported_state
   enum_columns:
     transactor_type:
@@ -28,10 +30,21 @@ Transactor:
       - Non-profit
       - Committee
       - Party
-  reverse_relations:
-    address: Address
-  reverse_relation_names:
-    address: transactor_id
+      - Caucus
+    party:
+      - Republican
+      - Democrat
+      - Independent
+      - Other
+      - Green
+      - Libertarian
+      - Constitution
+      - Reform  
+  relations:
+    - prefix: address
+      table: Address
+      direction: reverse
+      reverse_relation_name: transactor_id
 
 Individual:
   parent_table: Transactor
@@ -43,13 +56,17 @@ Individual:
     - name_title
     - name_preferred
     - occupation
-    - party
-  reverse_relations:
-    employer: Membership
-    election_result: ElectionResult
-  reverse_relation_names:
-    employer: member_id
-    election_result: candidate_id
+  relations:
+    - prefix: employer
+      table: Membership
+      direction: reverse
+      reverse_relation_name: member_id
+      relationship_column_values:
+        membership_type: Employee
+    - prefix: election_result
+      table: ElectionResult
+      direction: reverse
+      reverse_relation_name: candidate_id
 
 Organization:
   parent_table: Transactor
@@ -57,8 +74,41 @@ Organization:
     - naics
     - sic
     - stock_symbol
+    - ein
   # forward_relations:
   #   parent_org: Organization
+  relations:
+    - prefix: candidate
+      table: Membership
+      direction: reverse
+      reverse_relation_name: organization_id
+      relationship_column_values:
+        membership_type: Candidate
+    - prefix: treasurer
+      table: Membership
+      direction: reverse
+      reverse_relation_name: organization_id
+      relationship_column_values:
+        membership_type: Treasurer
+    - prefix: chairman
+      table: Membership
+      direction: reverse
+      reverse_relation_name: organization_id
+      relationship_column_values:
+        membership_type: Chairman
+    - prefix: sponsor
+      table: Membership
+      direction: reverse
+      reverse_relation_name: organization_id
+      relationship_column_values:
+        membership_type: Sponsor
+    - prefix: designee
+      table: Membership
+      direction: reverse
+      reverse_relation_name: organization_id
+      relationship_column_values:
+        membership_type: Designee
+
 
 Transaction:
   required_attributes:
@@ -79,19 +129,32 @@ Transaction:
     - donor_id
     - recipient_id
     - reported_state
-  forward_relations:
-    donor: Transactor
-    recipient: Transactor
-    # reported_election: Election
+    - affected_party_id
+    - influence_type
+  relations:
+    - prefix: donor
+      table: Transactor
+      direction: forward
+    - prefix: recipient
+      table: Transactor
+      direction: forward
+    - prefix: affected_party
+      table: Transactor
+      direction: forward
   enum_columns:
     transaction_type:
       - contribution
+      - expenditure
+      - independent_expenditure
+    influence_type:
+      - positive
+      - negative
+      - neutral
   # TODO: what other types are there
 
 Election:
   required_attributes:
-    - year
-    - state
+    - office_sought
   attributes:
     - id
     - year
@@ -99,6 +162,23 @@ Election:
     - office_sought
     - state
     - reported_state
+  enum_columns:
+    office_sought:
+      - Governor
+      - Lieutenant Governor
+      - Secretary of State
+      - Attorney General
+      - Auditor General
+      - State Treasurer
+      - State Representative
+      - State Senator
+      - Supreme Court Justice
+      - Judge
+      - Mayor
+      - District Attorney
+      - Misc. City
+      - Misc. State
+      - City Council
 
 ElectionResult:
   required_attributes:
@@ -110,9 +190,13 @@ ElectionResult:
     - candidate_id
     - election_id
     - reported_state
-  forward_relations:
-    candidate: Individual
-    election: Election
+  relations:
+    - prefix: candidate
+      table: Individual
+      direction: forward
+    - prefix: election
+      table: Election
+      direction: forward
     
 Address:
   required_attributes:
@@ -140,8 +224,10 @@ Address:
     - known_later_address
     - transactor_id
     - reported_state
-  forward_relations:
-    transactor: Transactor
+  relations:
+    - prefix: transactor
+      table: Transactor
+      direction: forward
 
 Membership:
   required_attributes:
@@ -157,6 +243,20 @@ Membership:
     - member_id
     - organization_id
     - reported_state
-  forward_relations:
-    member: Individual
-    organization: Organization
+  relations:
+    - prefix: member
+      table: Individual
+      direction: forward
+    - prefix: organization
+      table: Organization
+      direction: forward
+  enum_columns:
+    membership_type:
+      - Employee
+      - Member
+      - Treasurer
+      - Chairman
+      - Candidate
+      - Designee
+      - Sponsor
+      - Other

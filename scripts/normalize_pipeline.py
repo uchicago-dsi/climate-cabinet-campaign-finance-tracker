@@ -1,7 +1,9 @@
 """Script for running cleaning pipeline"""
 
 import argparse
+from pathlib import Path
 
+from tqdm import tqdm
 from utils.constants import BASE_FILEPATH
 from utils.ids import load_id_mapping, save_id_mapping
 from utils.io import load_database, save_database
@@ -51,11 +53,11 @@ args = parser.parse_args()
 if args.output_directory is None:
     output_directory = BASE_FILEPATH / "data" / "normalized"
 else:
-    output_directory = args.output_directory
+    output_directory = Path(args.output_directory)
 if args.input_directory is None:
     input_directory = BASE_FILEPATH / "data" / "standardized"
 else:
-    input_directory = args.input_directory
+    input_directory = Path(args.input_directory)
 input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
 
@@ -88,7 +90,7 @@ else:
     accumulated_id_mapping = load_id_mapping(id_mapping_file)
 
     first_chunk = True
-    for chunk_database in database_chunks:
+    for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
         # Create normalizer with accumulated ID mappings from previous chunks
         normalizer = Normalizer(chunk_database, schema_path, accumulated_id_mapping)
         normalized_chunk = normalizer.normalize_database()

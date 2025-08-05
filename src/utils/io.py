@@ -96,7 +96,7 @@ def _load_database_chunked(
 ) -> Generator[dict[str, pd.DataFrame], None, None]:
     """Load database in chunks across all tables simultaneously."""
     table_files = {f.stem: f for f in _get_data_files(path, format)}
-    table_positions = {name: 0 for name in table_files}
+    table_positions = dict.fromkeys(table_files, 0)
     table_totals = {
         name: _count_rows(file_path) for name, file_path in table_files.items()
     }
@@ -125,9 +125,23 @@ def _get_data_files(path: Path, format: FileFormat) -> list[Path]:
 def _load_table(file_path: Path, format: FileFormat) -> pd.DataFrame:
     """Load a single table file."""
     if format == "csv":
-        return pd.read_csv(file_path)
+        try:
+            return pd.read_csv(file_path)
+        except pd.errors.EmptyDataError:
+            return pd.DataFrame()
     elif format == "parquet":
         return pd.read_parquet(file_path)
+
+
+def convert_string_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert all string columns to string type and replace NaNs with None"""
+    for col in df.columns:
+        if df[col].dtype == object:
+            # Check if the column contains at least one string-like value
+            if df[col].apply(lambda x: isinstance(x, str)).any():
+                # Convert column to string type and replace NaNs with None
+                df[col] = df[col].astype("string").where(df[col].notna(), None)
+    return df
 
 
 def _save_table(
@@ -137,6 +151,8 @@ def _save_table(
     mode: Literal["overwrite", "append"],
 ) -> None:
     """Save a single table file."""
+    if df.empty:
+        return
     save_index = bool(df.index.name)
 
     if format == "csv":
@@ -151,7 +167,8 @@ def _save_table(
             combined_df = pd.concat([existing_df, df], ignore_index=True)
             combined_df.to_parquet(file_path, index=save_index)
         else:
-            df.to_parquet(file_path, index=save_index)
+            proper_type_df = convert_string_columns(df)
+            proper_type_df.to_parquet(file_path, index=save_index)
 
 
 def _count_rows(file_path: Path) -> int:

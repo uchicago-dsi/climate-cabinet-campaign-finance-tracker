@@ -46,13 +46,15 @@ transactors:
 
 Both first level keys have the same set of subkeys:
 - state_code: two letter state code
+- meta: True if this block is only an abstract or meta class that is used by other forms.
 - read_csv_params: keyword arguments to be passed to pandas [read_csv](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html) method.
 - include_column_order: boolean. If True, 'names' is passed as a read_csv param with the column_order. If False, column order will be inferred from header row (either provided in `read_csv_params` or 0)
 - column_details: list of column properties where each may have the following keys:
     - raw_name: the name of the column as it appears in the raw data
     - type: Pandas dtype of the column
     - standard_name: (optional) If the column is used, [standard name](#standard-column-naming). Even if the standard name is the same as the raw name, this must be included. 
-    - date_format: (optional) Format of dates in the provided data according to [datetime strftime](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior).
+    - date_format: (optional) Format of dates in the provided data according to [datetime strftime](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior). If unix time is used, use `%unix_ms` for unix ms.
+    - post_load_float: (optional) If the column should be interpreted as a float, but contains erroneous rows or ',' and '$' characters that pandas cannot handle, set the column as a string and set this value to True. 
 - column_order: list of columns in the order they appear in the data format. If not provided, will default to the order in column_properties.
 - duplicate_columns:
     - map of standard column names to list of additional columns that should be copies of them
@@ -62,10 +64,25 @@ Both first level keys have the same set of subkeys:
     - keys are names of standardized column names and map to mappings of raw values to standard values for a given enum.
     - if additional keys generated that are enums, their names should be listed here as well. 
 - table_name: type of table represented. transaction, transactor, election, election_result, address, membership.
+- overloaded_columns:
+    - map of raw column names to two maps 'filter' and 'pattern'. 
+        - 'filter' maps to a mapping of raw column names to values.
+        - 'pattern' maps to a string regex pattern with named capture groups
+    - overloaded columns is for cases where the raw data contains a column with multiple pieces of information jammed into a single column. This column must follow a consistent format. The splitting will only be attempted on those rows that contain one of the listed values for each of the listed columns. The named groups should be mapped to standard names in `column_details`. If the pattern is not a match, the new columns will be filled with NaNs.
+- null_values:
+  - map of column names to list of values that should be replaced with null.
+  - For example, states sometimes have 0 amount transactions that should be null.
+- filter:
+  - map of standard column names to 'NOT' key that maps to all the values of that column that should not be included in returned dataframe. This is required as sometimes unfiltered data will double count filer to filer transactions. 
 - path_pattern: regex describing the default location of default raw files of this type. Relative to the `data/raw/${state_code}` directory. 
 
 #### Standard Column Naming
 The state source standardization steps are to prepare the state code to be normalized and joined with other states. As part of this there is a specific naming pattern for columns. Standard table attributes are named in table.yaml under attributes. Provided source data, however, may not be normalized. These columns will be named with a SPLIT separator ('--') between the name of the relation and the name of the attribute in the related column. This may be nested (i.e. if in a transaction table we are given a donor's address, this would be shown as 'donor--address--line_1'). If a column is a repeated column (i.e. there are two amount columns to signify two transactions that share all other properties), it will end with '-\d' where \d is an integer. Valid column names include alphabetic characters and underscores.
+
+Special column names:
+- `transaction_direction`: this is used if a table doesn't have set 'donor' and 'recipient' columns and the direction of the transaction is specified by another column. If this exists this column should be given a standard name of 'transaction_direction' and an enum mapper that maps all values requiring a reversal mapped to 'reverse'
+- `reported_state`: this column is metadata automatically filled and propogated to all derived tables. 
+- `organization_name`: This will be mapped to `full_name` and the transactor type marked as organization.
 
 #### Year Filtering Configuration
 

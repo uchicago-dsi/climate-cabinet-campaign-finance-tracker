@@ -5,11 +5,11 @@ import pandas as pd
 import pytest
 from utils.ids import (  # Update this with the actual module name
     UUID4_REGEX,
-    add_uuids_to_table,
     create_new_uuid_mapping,
     get_raw_ids_mask,
     handle_id_column,
     map_ids_to_uuids,
+    replace_null_ids_with_uuids,
 )
 
 
@@ -27,7 +27,7 @@ def sample_table():
 
 def test_add_uuids_to_table(sample_table):
     """Test that missing IDs are assigned UUIDs"""
-    add_uuids_to_table(sample_table, "id")
+    replace_null_ids_with_uuids(sample_table, "id")
     assert sample_table["id"].notna().all(), "All ID values should be filled"
     assert re.match(UUID4_REGEX, sample_table.loc[3, "id"])
 
@@ -79,7 +79,9 @@ def test_handle_id_column(sample_table):
     id_mapping = {
         ("1", 2023, "CA", "tableA"): "11111111-1111-4111-8111-111111111111",
     }
-    handle_id_column(sample_table, mock_schema, id_mapping, "id")
+    handle_id_column(
+        sample_table, mock_schema, mock_schema.table_name, id_mapping, "id"
+    )
 
     assert (
         id_mapping[("1", 2023, "CA", "tableA")]

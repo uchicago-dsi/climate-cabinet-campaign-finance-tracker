@@ -138,7 +138,6 @@ venv.bak/
 
 # data files
 *.avro
-data/*.txt
-data/raw
+data/
 old/
 output/

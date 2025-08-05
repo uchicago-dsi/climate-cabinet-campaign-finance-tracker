@@ -11,6 +11,15 @@ from utils.constants import BASE_FILEPATH
 def resolve_inheritance(config: dict, form_code: str) -> dict:
     """Recursively resolves inheritance from parent form_configs
 
+    If the a key exists in both a child and parent config:
+    - For most cases, the child value will override the parent value
+    - If the value is 'column_details', the child value will 'update' the parent
+      value. (i.e. the child value will be used in duplicate 'raw_name' keys, all
+      keys not present in the child will be used from the parent).
+    - If there is no column_order in parent or child, the column order will be the
+      order of appearance in column_details in the parent, followed by those that only
+      appear in the child.
+
     Args:
         config: dictionary contents of a state config
         form_code: key in config
@@ -21,20 +30,34 @@ def resolve_inheritance(config: dict, form_code: str) -> dict:
             Note that more complex cases of recusrion are not caught by
             this.
     """
-    base_config = config.get(form_code, {}).copy()
-    parent_form_code = base_config.get("inherits")
-    if parent_form_code:
-        if parent_form_code not in config:
-            raise KeyError(
-                "{inherits} not in config file. Avaialbe options are:"
-                f" {', '.join(base_config.keys())}"
-            )
-        if parent_form_code == form_code:
-            raise RecursionError(f"Configuration {form_code} inherits from itself")
-        parent_config = resolve_inheritance(config, parent_form_code)
-        parent_config.update({k: v for k, v in base_config.items() if v is not None})
-        return parent_config
-    return base_config
+    child_config = config.get(form_code, {}).copy()
+    parent_form_code = child_config.get("inherits")
+    if not parent_form_code:
+        return child_config
+    if parent_form_code not in config:
+        raise KeyError(
+            "{inherits} not in config file. Avaialbe options are:"
+            f" {', '.join(child_config.keys())}"
+        )
+    if parent_form_code == form_code:
+        raise RecursionError(f"Configuration {form_code} inherits from itself")
+    parent_config = resolve_inheritance(config, parent_form_code)
+    for key, value in child_config.items():
+        if key in parent_config and key == "column_details":
+            parent_column_details_dict = {
+                column_detail["raw_name"]: column_detail
+                for column_detail in parent_config["column_details"]
+            }
+            child_column_details_dict = {
+                column_detail["raw_name"]: column_detail for column_detail in value
+            }
+            parent_config[key] = {
+                **parent_column_details_dict,
+                **child_column_details_dict,
+            }.values()
+        elif value is not None:
+            parent_config[key] = value
+    return parent_config
 
 
 class ConfigHandler:
@@ -118,9 +141,22 @@ class ConfigHandler:
         }
 
     @property
+    def post_load_float_columns(self) -> list[str]:
+        """List of columns that should be converted to floats after loading
+
+        These are columns that have floats that pandas cannot accurately convert
+        to floats on read (they contain , or $).
+        """
+        return [
+            col["standard_name"]
+            for col in self._column_details
+            if col.get("post_load_float", False)
+        ]
+
+    @property
     def raw_column_order(self) -> list[str]:
         """List of columns in order in raw file"""
-        return self._raw_colum_order
+        return self._column_order
 
     @property
     def year_filter_filepath_regex(self) -> str | None:
@@ -131,6 +167,11 @@ class ConfigHandler:
     def year_column(self) -> str | None:
         """Raw column name containing year data for filtering"""
         return self._year_column
+
+    @property
+    def overloaded_columns(self) -> dict[str, dict[str, str]]:
+        """Maps column names to information about how to split them into multiple columns"""
+        return self._overloaded_columns
 
     def __init__(
         self,
@@ -171,17 +212,13 @@ class ConfigHandler:
 
         form_config = resolve_inheritance(config, form_code)
 
-        column_details = form_config.get("column_details", [])
         # default column order is the order in column_details
-        column_order = form_config.get(
-            "column_order", [col["raw_name"] for col in column_details]
-        )
-        column_details = [
-            col for col in column_details if col["raw_name"] in column_order
-        ]
 
-        self._raw_colum_order = column_order
-        self._column_details = column_details
+        self._column_details = form_config.get("column_details", [])
+        self._column_order = form_config.get(
+            "column_order", [col["raw_name"] for col in self._column_details]
+        )
+
         self._include_column_order = form_config.get("include_column_order", True)
         self._enum_mapper = form_config.get("enum_mapper", {})
         self._read_csv_params = form_config.get("read_csv_params", {})
@@ -193,3 +230,6 @@ class ConfigHandler:
         self._raw_data_path_pattern = form_config.get("path_pattern")
         self._year_filter_filepath_regex = form_config.get("year_filter_filepath_regex")
         self._year_column = form_config.get("year_column")
+        self._overloaded_columns = form_config.get("overloaded_columns", {})
+        self._null_values = form_config.get("null_values", {})
+        self._filter = form_config.get("filter", {})

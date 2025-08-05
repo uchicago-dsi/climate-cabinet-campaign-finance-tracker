@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+from tqdm import tqdm
 
 from utils.constants import RAW_DATA_DIRECTORY
 from utils.finance.config import ConfigHandler
@@ -41,6 +42,7 @@ class DataReader:
         else:
             self.year_filter_filepath_regex = None
         self.year_column = config_handler.year_column
+        self.filter = config_handler._filter
 
     def _is_filepath_in_year_range(
         self,
@@ -88,6 +90,28 @@ class DataReader:
             table = table[table[self.year_column] <= end_year]
         return table
 
+    def _filter_data(self, raw_table: pd.DataFrame) -> pd.DataFrame:
+        """Filter data based on filter configuration
+
+        This uses the 'filter' key from the state config, mapping raw column names
+        to a list of values to keep or (if the value appears in the 'NOT' key) to
+        drop.
+        """
+        for column_name, filter_values in self.filter.items():
+            if column_name not in raw_table.columns:
+                continue
+            if "NOT" in filter_values:
+                raw_table = raw_table[
+                    ~raw_table[column_name].isin(filter_values["NOT"])
+                ]
+            else:
+                raw_table = raw_table[raw_table[column_name].isin(filter_values)]
+        return raw_table
+
+    def _drop_blank_rows(self, raw_table: pd.DataFrame) -> pd.DataFrame:
+        """Drop rows with all blank values"""
+        return raw_table.dropna(how="all")
+
     def read_tabular_data(
         self,
         path: str | Path,
@@ -114,8 +138,9 @@ class DataReader:
             dtype=self.dtype_dict,
             **self.read_csv_params,
         )
+        table = self._drop_blank_rows(table)
         table = self._filter_dataframe_to_year_range(table, start_year, end_year)
-
+        table = self._filter_data(table)
         return table
 
 
@@ -134,6 +159,35 @@ class SchemaTransformer:
         self.new_empty_columns = config_handler.new_empty_columns
         self.state_code_columns = config_handler.state_code_columns
         self.state_code = config_handler.state_code
+        self.overloaded_columns = config_handler.overloaded_columns
+
+    def _split_overloaded_columns(
+        self, standard_data_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Split columns with multiple pieces of information into multiple columns
+
+        Each raw column name that appears as a key in the 'overloaded_columns' key
+        in the state config file is split into multiple columns. The only tables that
+        are split are those that match the 'filter' in 'overloaded_columns'. See
+        CONTRIBUTING.md for more details.
+
+        This can only be done if the pieces of information are separated in a standard
+        and consistent way. The DataStandardizer should not make assumptions.
+        """
+        for column_name, column_info in self.overloaded_columns.items():
+            if column_name not in standard_data_table.columns:
+                continue
+            overloaded_mask = pd.Series(True, index=standard_data_table.index)
+            for filter_column, filter_values in column_info.get("filter", {}).items():
+                mask = standard_data_table[filter_column].isin(filter_values)
+                overloaded_mask = overloaded_mask & mask
+            extracted_names = standard_data_table.loc[
+                overloaded_mask, column_name
+            ].str.extract(column_info["pattern"])
+            standard_data_table = standard_data_table.merge(
+                extracted_names, how="left", left_index=True, right_index=True
+            )
+        return standard_data_table
 
     def _rename_columns(self, standard_data_table: pd.DataFrame) -> pd.DataFrame:
         """Rename columns"""
@@ -180,6 +234,7 @@ class SchemaTransformer:
         Args:
             raw_data_table: single dataframe with raw column names
         """
+        raw_data_table = self._split_overloaded_columns(raw_data_table)
         relevant_raw_table = self._drop_unused_columns(raw_data_table)
         standard_relevant_column_table = self._rename_columns(relevant_raw_table)
         standard_relevant_column_table = self._add_state_code(
@@ -206,13 +261,18 @@ class DataStandardizer:
         """
         self.enum_mapper = config_handler.enum_mapper
         self.column_to_date_format = config_handler.column_to_date_format
+        self.null_values = config_handler._null_values
+        self.post_load_float_columns = config_handler.post_load_float_columns
 
     def _standardize_enums(self, standard_schema_table: pd.DataFrame) -> pd.DataFrame:
         """Rename entity type columns"""
         for column_name, column_enum_map in self.enum_mapper.items():
             if column_name not in standard_schema_table.columns:
-                raise ValueError(f"Provided enum: {column_name} not in table")
+                continue
             # map each value in the table's column according to the provided enum mapper
+            standard_schema_table[column_name] = standard_schema_table[
+                column_name
+            ].astype(str)
             standard_schema_table[column_name] = standard_schema_table[column_name].map(
                 column_enum_map
             )
@@ -229,17 +289,110 @@ class DataStandardizer:
                 be standard)
         """
         for date_column, date_format in self.column_to_date_format.items():
-            na_mask = standard_schema_table[date_column].isna()
+            na_mask = standard_schema_table.loc[:, date_column].isna()
             temp_column = f"tmp-{date_column}"
             standard_schema_table[temp_column] = pd.NA
-            standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
-                standard_schema_table.loc[~na_mask, date_column],
-                format=date_format,
-                errors="coerce",
-            ).dt.date
+
+            # handle unix timestamp
+            if "%unix_ms" in date_format:
+                # Create regex pattern from date_format by replacing %unix_ms with (\d+)
+                regex_pattern = re.escape(date_format).replace(r"%unix_ms", r"(\d+)")
+                unix_ms_series = (
+                    standard_schema_table.loc[~na_mask, date_column]
+                    .str.extract(regex_pattern)[0]
+                    .astype(float)
+                )
+                # Convert milliseconds to seconds and then to datetime
+                unix_s_series = unix_ms_series / 1000
+                standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
+                    unix_s_series, unit="s", errors="coerce"
+                ).dt.date
+            # Handle regular date formats
+            else:
+                standard_schema_table.loc[~na_mask, temp_column] = pd.to_datetime(
+                    standard_schema_table.loc[~na_mask, date_column],
+                    format=date_format,
+                    errors="coerce",
+                ).dt.date
+
             standard_schema_table = standard_schema_table.drop(columns=date_column)
             standard_schema_table = standard_schema_table.rename(
                 columns={temp_column: date_column}
+            )
+        return standard_schema_table
+
+    def _standardize_null_values(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Replace implicit null values with actual null values"""
+        for column_name, null_values in self.null_values.items():
+            if column_name not in standard_schema_table.columns:
+                continue
+            for implicit_null_value in null_values:
+                standard_schema_table[column_name] = standard_schema_table[
+                    column_name
+                ].replace(implicit_null_value, pd.NA)
+        return standard_schema_table
+
+    def _standardize_transaction_direction(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Flip donor and recipient columns if 'transaction_direction' is 'reverse'
+
+        In state config, if a raw column is mapped to transaction_direction and
+        the enum mapper maps some values to 'reverse' those rows will switch
+        donor and recipient columns.
+        """
+        if "transaction_direction" not in standard_schema_table.columns:
+            return standard_schema_table
+        reverse_mask = standard_schema_table["transaction_direction"] == "reverse"
+        reverse_table = standard_schema_table.loc[reverse_mask, :]
+        new_reverse_table_columns = []
+        for column in standard_schema_table.columns:
+            if column.startswith("donor"):
+                new_reverse_table_columns.append(column.replace("donor", "recipient"))
+            elif column.startswith("recipient"):
+                new_reverse_table_columns.append(column.replace("recipient", "donor"))
+            else:
+                new_reverse_table_columns.append(column)
+        reverse_table.columns = new_reverse_table_columns
+        standard_direction_table = pd.concat(
+            [standard_schema_table.loc[~reverse_mask, :], reverse_table]
+        )
+        return standard_direction_table
+
+    def _standardize_organization_name(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Convert any specified organization names to full_name and transactor_type organization"""
+        organization_name_columns = [
+            column
+            for column in standard_schema_table.columns
+            if column.endswith("organization_name")
+        ]
+        for column in organization_name_columns:
+            column_prefix = column[: -len("organization_name")]
+            organization_name_rows = standard_schema_table[column].notna()
+            standard_schema_table.loc[
+                organization_name_rows, f"{column_prefix}full_name"
+            ] = standard_schema_table.loc[organization_name_rows, column]
+            standard_schema_table.loc[
+                organization_name_rows, f"{column_prefix}transactor_type"
+            ] = "Organization"
+            standard_schema_table = standard_schema_table.drop(columns=[column])
+
+        return standard_schema_table
+
+    def _convert_strings_to_floats(
+        self, standard_schema_table: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Convert strings to floats"""
+        for column in self.post_load_float_columns:
+            if column not in standard_schema_table.columns:
+                continue
+            standard_schema_table[column] = pd.to_numeric(
+                standard_schema_table[column].str.replace(",", "").str.replace("$", ""),
+                errors="coerce",
             )
         return standard_schema_table
 
@@ -262,12 +415,18 @@ class DataStandardizer:
                 raw values in the enum column to their standard values
             column_to_date_format: dict mapping column names to their date format
         """
+        standard_schema_table = self._standardize_null_values(standard_schema_table)
         if enum_mapper is not None:
             self.enum_mapper = enum_mapper
         if column_to_date_format is not None:
             self.column_to_date_format = column_to_date_format
         standard_schema_table = self._standardize_enums(standard_schema_table)
         standard_data_table = self._standardize_date_format(standard_schema_table)
+        standard_data_table = self._standardize_transaction_direction(
+            standard_data_table
+        )
+        standard_data_table = self._standardize_organization_name(standard_data_table)
+        standard_data_table = self._convert_strings_to_floats(standard_data_table)
         return standard_data_table
 
 
@@ -360,11 +519,23 @@ class DataSourceStandardizationPipeline:
         standardized_tables = []
         if raw_data_file_paths == []:
             return pd.DataFrame()
-        for data_path in raw_data_file_paths:
+
+        progress_bar = tqdm(
+            raw_data_file_paths,
+            desc="Processing files",
+            unit="file",
+            total=len(raw_data_file_paths),
+            dynamic_ncols=True,
+            leave=True,
+        )
+
+        for data_path in progress_bar:
+            # Update progress bar description to show current file
+            progress_bar.set_description(f"Processing: {data_path.name}")
+
             raw_data_table = self.data_reader.read_tabular_data(
                 data_path, start_year, end_year
             )
-            # Skip empty tables (files that didn't match year filter)
             if raw_data_table.empty:
                 continue
 
@@ -375,6 +546,10 @@ class DataSourceStandardizationPipeline:
                 standard_schema_table
             )
             standardized_tables.append(standard_data_table)
+
+        # Clear the description when done
+        progress_bar.set_description("Processing complete")
+        progress_bar.close()
 
         if standardized_tables:
             return pd.concat(standardized_tables, ignore_index=True)

@@ -6,10 +6,8 @@ import pandas as pd
 
 from utils.finance.data_source_registry import (
     get_registered_sources,
-    load_state_modules,
+    register_all_data_source_pipelines,
 )
-
-ALL_STATE_SOURCES = get_registered_sources()
 
 
 def standardize_states(
@@ -33,13 +31,12 @@ def standardize_states(
     Returns:
         dictionary mapping table name to tables of that type
     """
-    load_state_modules()
-    if states is None:
-        states = ALL_STATE_SOURCES.keys()
+    register_all_data_source_pipelines(states)
+    all_data_source_pipelines = get_registered_sources()
 
     database = {}
     for state in states:
-        for source in ALL_STATE_SOURCES[state]:
+        for source in all_data_source_pipelines[state]:
             standardized_source_table = source.load_and_standardize_data_source(
                 start_year=start_year,
                 end_year=end_year,
@@ -49,7 +46,7 @@ def standardize_states(
                 database[source.table_name] = pd.DataFrame()
 
             database[source.table_name] = pd.concat(
-                [database[source.table_name], standardized_source_table]
+                [database[source.table_name], standardized_source_table],
             )
 
     return database
