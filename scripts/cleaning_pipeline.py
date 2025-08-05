@@ -67,13 +67,23 @@ input_directory.mkdir(parents=True, exist_ok=True)
 output_directory.mkdir(parents=True, exist_ok=True)
 
 
-def clean_data(database: list[pd.DataFrame], config_file: Path) -> list[pd.DataFrame]:
-    """Clean data from normalized database"""
+def clean_data(
+    database: dict[str, pd.DataFrame], config_file: Path
+) -> dict[str, pd.DataFrame]:
+    """Clean data from normalized database
+
+    Args:
+        database: dictionary of pandas DataFrames
+        config_file: Path to a yaml file with details about the database schema.
+
+    Returns:
+        dictionary of pandas DataFrames
+    """
     database = clean_database_columns(database, config_file)
-    # clean names
-    database["Transactor"] = clean_transactors(database["Transactor"])
-    # clean addresses
-    database["Address"] = clean_address(database["Address"])
+    if "Transactor" in database:
+        database["Transactor"] = clean_transactors(database["Transactor"])
+    if "Address" in database:
+        database["Address"] = clean_address(database["Address"])
     return database
 
 
