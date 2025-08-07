@@ -29,11 +29,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from utils.constants import ID_SUFFIX, SPLIT
 from utils.ids import handle_existing_ids, handle_id_column
 from utils.schema import DataSchema
 
-SPLIT = "--"
-ID_SUFFIX = "_id"
 REPEATING_COLUMN_REGEX = r"^[A-Za-z_]+-\d+$"
 
 
