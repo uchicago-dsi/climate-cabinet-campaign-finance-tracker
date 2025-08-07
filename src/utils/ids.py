@@ -23,6 +23,8 @@ def normalize_id_to_string(value: int | float | str | None) -> str:
     Handles the case where numeric IDs might be stored as int or float,
     ensuring they always map to the same string key.
     """
+    if pd.isna(value):
+        return value
     # If it's a numeric type, convert to int first to remove decimal places
     try:
         if isinstance(value, int | float) and not pd.isna(value):
@@ -74,7 +76,7 @@ def map_ids_to_uuids(
     """
     if mask is None:
         mask = pd.Series(True, index=table.index)
-    table[id_column] = table[id_column].astype(str)
+    table[id_column] = table[id_column].astype("string")
     table.loc[mask, id_column] = table.loc[mask].apply(
         lambda row: id_mapping.get(
             (
@@ -115,7 +117,7 @@ def create_new_uuid_mapping(
     new_mappings = {}
     for _, row in table[
         (table[id_column].notna())
-        & (~table[id_column].astype(str).str.match(UUID4_REGEX, na=False))
+        & (~table[id_column].astype("string").str.match(UUID4_REGEX, na=False))
     ].iterrows():
         key = (
             normalize_id_to_string(row[id_column]),
@@ -136,8 +138,10 @@ def get_raw_ids_mask(table: pd.DataFrame, id_column: str) -> pd.Series:
         table: DataFrame with existing `id_column`.
         id_column: Name of the `id` column
     """
-    raw_ids_mask = ~table[id_column].astype(str).str.match(UUID4_REGEX, na=False)
-    return raw_ids_mask
+    # na=True because a null is *not* a raw id
+    not_raw_id_mask = table[id_column].astype("string").str.match(UUID4_REGEX, na=True)
+    # negate to get mask where all raw ids are true
+    return ~not_raw_id_mask
 
 
 def handle_existing_ids(

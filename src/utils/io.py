@@ -7,6 +7,8 @@ from typing import Literal
 import pandas as pd
 import pyarrow.parquet as pq
 
+from utils.constants import ID_SUFFIX, SPLIT
+
 FileFormat = Literal["csv", "parquet"]
 
 
@@ -144,6 +146,23 @@ def convert_string_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def convert_parquet_na_to_none(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert <NA> strings present in parquet files to None in pandas"""
+    for col in df.columns:
+        if (
+            df[col].dtype == object
+            or col.endswith(ID_SUFFIX)  # an id is going to interpreted as a string
+            or col.split(SPLIT)[-1] == "id"
+        ):
+            # Check if column contains the literal '<NA>' string
+            if df[col].astype(str).str.contains("^<NA>$", na=False).any():
+                df[col] = df[col].astype("string")
+                # Replace '<NA>' strings with proper NaN values
+                # df[col] = df[col].replace("<NA>", pd.NA)
+                # Convert to pandas nullable string type to preserve NA handling
+    return df
+
+
 def _save_table(
     df: pd.DataFrame,
     file_path: Path,
@@ -236,6 +255,7 @@ def _read_parquet_chunk(file_path: Path, start_row: int, end_row: int) -> pd.Dat
 
     # Convert to pandas and slice to exact range
     pandas_df = combined_table.to_pandas()
+    pandas_df = convert_parquet_na_to_none(pandas_df)
 
     # Calculate the offset within our read data
     first_row_group_start = 0
