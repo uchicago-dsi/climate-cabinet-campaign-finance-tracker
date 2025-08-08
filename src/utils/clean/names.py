@@ -332,6 +332,7 @@ def clean_transactors(transactors: pd.DataFrame) -> pd.DataFrame:
             full_name, first_name, middle_name, last_name, name_prefix,
             name_suffix, name_preferred, phone_number
     """
+    transactors = transactors.drop_duplicates(subset=["id"], keep="first")
     transactors = clean_names(transactors)
     transactors["phone_number"] = transactors["phone_number"].apply(clean_phone_number)
     return transactors
