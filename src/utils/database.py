@@ -1,8 +1,43 @@
 """Database utilities."""
 
+from functools import lru_cache
 from pathlib import Path
 
 import duckdb
+
+from .schema import DataSchema
+
+SCHEMA_FILE_PATH = Path(__file__).resolve().parent / "table.yaml"
+
+
+# Cache schema loading so we only parse the YAML once per interpreter session
+@lru_cache(maxsize=1)
+def _get_data_schema() -> DataSchema:
+    return DataSchema(SCHEMA_FILE_PATH)
+
+
+# Mapping from YAML type strings to DuckDB SQL types
+_TYPE_MAP: dict[str, str] = {
+    "string": "VARCHAR",
+    "str": "VARCHAR",
+    "Int8": "TINYINT",
+    "Int16": "SMALLINT",
+    "Int32": "INTEGER",
+    "Int64": "BIGINT",
+    "Float32": "REAL",
+    "Float64": "DOUBLE",
+    "bool": "BOOLEAN",
+    "datetime64[ns]": "TIMESTAMP",
+    "date": "DATE",
+}
+
+
+def _duckdb_type(schema_type: str) -> str:
+    """Convert a YAML schema type string to a DuckDB SQL type.
+
+    Unrecognised types default to VARCHAR.
+    """
+    return _TYPE_MAP.get(schema_type, "VARCHAR")
 
 
 def create_table_from_parquet_to_db(
@@ -22,6 +57,106 @@ def create_database_from_parquet(
     con = duckdb.connect(str(database_path))
     for file in database_dir.glob("*.parquet"):
         create_table_from_parquet_to_db(con, file)
+    return con
+
+
+def create_or_append_parquet_to_db(
+    con: duckdb.DuckDBPyConnection, table_path: Path
+) -> None:
+    """Create or append a table from a parquet file to a DuckDB database.
+
+    If the table with name table_path.stem, already exists, the data in
+    the parquet file located at table_path will be appended. Otherwise,
+    a new table will be created.
+
+    Args:
+        con: DuckDB connection
+        table_path: Path to the parquet file to create or append
+    Modifies:
+        DuckDB database will now have a table 'table_path.stem' containing
+        data from the parquet file.
+    """
+    print(table_path)
+    table_exists = (
+        con.execute(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
+            [table_path.stem],
+        )
+        .fetchdf()
+        .iloc[0, 0]
+        > 0
+    )
+    if table_exists:
+        # Ensure we insert columns in the same order as the existing table to avoid
+        # positional mismatches (DuckDB maps INSERT values positionally).
+        # Fetch column names from the existing DuckDB table.
+        table_columns = [
+            col[1]
+            for col in con.execute(f"PRAGMA table_info('{table_path.stem}')").fetchall()
+        ]
+
+        # Build a comma-separated column list
+        column_list = ", ".join(table_columns)
+
+        # Insert data selecting the same columns from the parquet file, allowing
+        # DuckDB to match by name rather than position.
+        con.execute(
+            f"INSERT INTO {table_path.stem} ({column_list}) "  # noqa: S608
+            f"SELECT {column_list} FROM read_parquet('{str(table_path.resolve())}')"  # noqa: S608
+        )
+    else:
+        # Create the table explicitly using the YAML schema definitions so column
+        # types are consistent regardless of the first Parquet file encountered.
+
+        data_schema = _get_data_schema()
+        try:
+            table_schema = data_schema.schema[table_path.stem]
+        except KeyError as exc:
+            raise KeyError(
+                f"Table '{table_path.stem}' not found in YAML schema located at {SCHEMA_FILE_PATH}."
+            ) from exc
+
+        # Build column definitions "name TYPE"
+        column_defs = ", ".join(
+            f"{col} {_duckdb_type(dtype)}" for col, dtype in table_schema.types.items()
+        )
+
+        # 1. Create the empty table with explicit schema
+        con.execute(f"CREATE TABLE {table_path.stem} ({column_defs})")  # noqa: S608
+
+        # 2. Insert data from the Parquet file into the table, aligning by column
+        #    names present in the YAML schema.
+        column_list = ", ".join(table_schema.types.keys())
+        con.execute(
+            f"INSERT INTO {table_path.stem} ({column_list}) "  # noqa: S608
+            f"SELECT {column_list} FROM read_parquet('{str(table_path.resolve())}')"  # noqa: S608
+        )
+
+
+def create_database_from_nested_parquet_directories(
+    database_path: Path, database_dir: Path, overwrite: bool = False
+) -> duckdb.DuckDBPyConnection:
+    """Create a DuckDB database from a nested directory of parquet files.
+
+    The database_path should be a path to a directory containing only
+    more directories, each containing parquet files whose names
+    are the tables to which they should be added.
+
+    Args:
+        database_path: Path to the DuckDB database
+        database_dir: Path to the directory containing the parquet files
+        overwrite: Whether to overwrite existing tables
+
+    Returns:
+        DuckDB connection
+    """
+    con = duckdb.connect(str(database_path))
+    if overwrite:
+        # drop all data from tables
+        con.execute("DROP TABLE IF EXISTS *")
+    for state_dir in database_dir.iterdir():
+        for file in state_dir.glob("*.parquet"):
+            create_or_append_parquet_to_db(con, file)
     return con
 
 
