@@ -264,6 +264,24 @@ base:
       "48": "Committee"  # Non-Arizona PAC
       "49": "Party"  # Non-Arizona Party
 
+    address--county:
+      "1": "Apache"
+      "2": "Cochise"
+      "3": "Coconino"
+      "4": "Gila"
+      "5": "Graham"
+      "6": "Greenlee"
+      "7": "La Paz"
+      "8": "Maricopa"
+      "9": "Mohave"
+      "10": "Navajo"
+      "11": "Pima"
+      "12": "Pinal"
+      "13": "Santa Cruz"
+      "14": "Yavapai"
+      "15": "Yuma"
+
+
 
 
 advanced_search_transactions:
@@ -594,11 +612,11 @@ advanced_search_committees:
       "State Representative - District 29": 29
       "State Representative - District 30": 30
 
-    duplicate_columns:
-      candidate--member--election_result--election--office_sought:
-        - candidate--member--election_result--election--district
-      transactor_type_specific:
-        - transactor_type
+  duplicate_columns:
+    candidate--member--election_result--election--office_sought:
+      - candidate--member--election_result--election--district
+    transactor_type_specific:
+      - transactor_type
 
 
 mdb_transactions:
@@ -947,24 +965,6 @@ mdb_names:
   duplicate_columns:
     transactor_type_specific:
       - transactor_type
-
-  enum_mapper:
-    address--county:
-      "1": "Apache"
-      "2": "Cochise"
-      "3": "Coconino"
-      "4": "Gila"
-      "5": "Graham"
-      "6": "Greenlee"
-      "7": "La Paz"
-      "8": "Maricopa"
-      "9": "Mohave"
-      "10": "Navajo"
-      "11": "Pima"
-      "12": "Pinal"
-      "13": "Santa Cruz"
-      "14": "Yavapai"
-      "15": "Yuma"
 
   column_details:
     - raw_name: "NameID"
