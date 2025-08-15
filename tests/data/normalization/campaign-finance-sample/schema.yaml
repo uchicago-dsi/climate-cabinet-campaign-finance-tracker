@@ -12,7 +12,7 @@ Transactor:
 
 Individual:
   parent_table: Transactor
-  attributes: ["first_name", "middle_name", "last_name", "name_suffix", "name_title", "name_preferred", "occupation", "party"]
+  attributes: ["first_name", "middle_name", "last_name", "name_suffix", "name_prefix", "name_preferred", "occupation", "party"]
   reverse_relations:
     employer: Membership
     election_result: ElectionResult
