@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
+from submitit import AutoExecutor
 from tqdm import tqdm
 from utils.clean.address import clean_address
 from utils.clean.columns import clean_database_columns
@@ -48,6 +49,11 @@ parser.add_argument(
     default=None,
     help="Path to a yaml file with details about the database schema. Default is 'utils/schema.yaml'",
 )
+parser.add_argument(
+    "--cluster",
+    action="store_true",
+    help="Run pipeline on cluster",
+)
 args = parser.parse_args()
 
 # Set up directory paths
@@ -87,20 +93,40 @@ def clean_data(
     return database
 
 
-if args.chunk_size is None:
-    print(input_directory)
-    normalized_database = load_database(input_directory, args.input_format)
-    cleaned_database = clean_data(normalized_database, config_file)
-    save_database(cleaned_database, output_directory, args.output_format)
-else:
-    database_chunks = load_database(
-        input_directory, args.input_format, chunk_size=args.chunk_size
-    )
-    first_chunk = True
-    for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
-        cleaned_database = clean_data(chunk_database, config_file)
-        save_mode = "overwrite" if first_chunk else "append"
-        save_database(
-            cleaned_database, output_directory, args.output_format, mode=save_mode
+def cleaning_pipeline(args: argparse.Namespace) -> None:
+    """Run cleaning pipeline"""
+    if args.chunk_size is None:
+        normalized_database = load_database(input_directory, args.input_format)
+        cleaned_database = clean_data(normalized_database, config_file)
+        save_database(cleaned_database, output_directory, args.output_format)
+    else:
+        database_chunks = load_database(
+            input_directory, args.input_format, chunk_size=args.chunk_size
         )
-        first_chunk = False
+        first_chunk = True
+        for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
+            cleaned_database = clean_data(chunk_database, config_file)
+            save_mode = "overwrite" if first_chunk else "append"
+            save_database(
+                cleaned_database, output_directory, args.output_format, mode=save_mode
+            )
+            first_chunk = False
+
+
+if __name__ == "__main__":
+    if args.cluster is None:
+        cleaning_pipeline(args)
+    else:
+        executor = AutoExecutor(folder=args.cluster)
+        executor.update_parameters(
+            slurm_time=600,
+            slurm_cpus_per_task=1,
+            slurm_mem_per_cpu=256000,
+            slurm_array_parallelism=3,
+            slurm_partition="general",
+        )
+        for state_dir in input_directory.iterdir():
+            if state_dir.is_dir():
+                args.input_directory = state_dir
+                args.output_directory = output_directory / state_dir.name
+                executor.submit(cleaning_pipeline, args)
