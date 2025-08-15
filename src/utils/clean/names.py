@@ -69,6 +69,8 @@ company_name_patterns = [
     r"foundation",
     r"union",
     r"associat",
+    r"[0-9]",
+    r"\wPAC\w",
 ]
 
 
@@ -226,6 +228,8 @@ def divide_full_name_nameparser(full_name: str) -> dict[str, str | None]:
         "name_suffix": name.suffix,
         "name_preferred": name.nickname,
     }
+    if name.first is None:
+        name_components["first_name"] = name.title
     return _clean_name_components(name_components)
 
 
@@ -283,9 +287,13 @@ def fill_in_transactor_types(names: pd.DataFrame) -> pd.DataFrame:
             name_suffix, name_preferred
     """
     probable_organization_mask = (
-        names["transactor_type"].isna()
-        & names["full_name"].notna()
+        names["full_name"].notna()
         & names["full_name"].str.contains(
+            "|".join(company_name_patterns), case=False, na=False
+        )
+    ) | (
+        names["last_name"].notna()
+        & names["last_name"].str.contains(
             "|".join(company_name_patterns), case=False, na=False
         )
     )
