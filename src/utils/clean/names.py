@@ -298,6 +298,7 @@ def fill_in_transactor_types(names: pd.DataFrame) -> pd.DataFrame:
         )
     )
     names.loc[probable_organization_mask, "transactor_type"] = "Organization"
+    names["transactor_type"] = names["transactor_type"].fillna("Unknown")
     # TODO: improve transactor_type prediction
     return names
 
