@@ -252,16 +252,24 @@ def clean_individuals_names(names: pd.DataFrame) -> pd.DataFrame:
     # handle misplaced last names
     likely_full_names = (
         names["full_name"].isna()
+        & names["first_name"].isna()
         & names["last_name"].notna()
         & names["last_name"].str.contains(",", na=False)
     )
     names.loc[likely_full_names, "full_name"] = names.loc[
         likely_full_names, "last_name"
     ]
+    # use a name parser to get components of full names where they are
+    # not already provided
+    missing_name_parts = names["full_name"].notna() & (
+        names["first_name"].isna() | names["last_name"].isna()
+    )
+
     # divide full names into components
-    name_components = names["full_name"].apply(
+    name_components = names[missing_name_parts]["full_name"].apply(
         divide_full_name_nameparser,  # result_type="expand"
     )
+
     name_components = pd.DataFrame(name_components.tolist())
     name_columns = [
         "first_name",
@@ -273,7 +281,7 @@ def clean_individuals_names(names: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in name_columns:
         if col in name_components.columns:
-            names.loc[:, col] = name_components[col].to_numpy()
+            names.loc[missing_name_parts, col] = name_components[col].to_numpy()
 
     return names
 
