@@ -17,7 +17,7 @@ def create_random_individuals_subset(con: duckdb.DuckDBPyConnection, size: int) 
     con.execute(f"""
         CREATE TEMP TABLE random_subset AS
         SELECT *
-        FROM combined_view
+        FROM transactor_detailed_view
         where transactor_type='Individual'
         USING SAMPLE {size} ROWS (RESERVOIR)
     """)  # noqa S608

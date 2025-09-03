@@ -40,6 +40,21 @@ def _duckdb_type(schema_type: str) -> str:
     return _TYPE_MAP.get(schema_type, "VARCHAR")
 
 
+def connect_duckdb(database_path: Path | str) -> duckdb.DuckDBPyConnection:
+    """Return a DuckDB connection to *database_path*.
+
+    The database file will be created if it does not already exist.
+
+    Args:
+        database_path: File path to the DuckDB database.
+
+    Returns:
+        An open :class:`duckdb.DuckDBPyConnection` instance.
+    """
+    database_path = Path(database_path)
+    return duckdb.connect(str(database_path))
+
+
 def create_table_from_parquet_to_db(
     con: duckdb.DuckDBPyConnection, table_path: Path
 ) -> None:
@@ -76,7 +91,6 @@ def create_or_append_parquet_to_db(
         DuckDB database will now have a table 'table_path.stem' containing
         data from the parquet file.
     """
-    print(table_path)
     table_exists = (
         con.execute(
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
@@ -140,7 +154,14 @@ def create_database_from_nested_parquet_directories(
 
     The database_path should be a path to a directory containing only
     more directories, each containing parquet files whose names
-    are the tables to which they should be added.
+    are the tables to which they should be added. Example:
+    database_dir/
+    ├── state1/
+    │   ├── table1.parquet
+    │   ├── table2.parquet
+    ├── state2/
+    │   ├── table3.parquet
+    │   ├── table4.parquet
 
     Args:
         database_path: Path to the DuckDB database
@@ -317,7 +338,7 @@ def create_employment_view(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(request)
 
 
-def create_combined_view(con: duckdb.DuckDBPyConnection) -> None:
+def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
     """Create a view of transactor data with both employment and address details.
 
     This view combines:
@@ -366,7 +387,7 @@ def create_combined_view(con: duckdb.DuckDBPyConnection) -> None:
     )
 
     # Drop existing view if it exists
-    view_name = "combined_view"
+    view_name = "transactor_detailed_view"
     con.execute(f"DROP VIEW IF EXISTS {view_name}")
 
     request = f"""
@@ -439,5 +460,18 @@ def create_transactor_details_view_from_parquet(
         DuckDB connection
     """
     con = create_database_from_parquet(database_path, database_dir)
-    create_combined_view(con)
+    create_transactor_detailed_view(con)
     return con
+
+
+def view_exists(con: duckdb.DuckDBPyConnection, view_name: str) -> bool:
+    """Check whether *view_name* exists in the connected database."""
+    (exists,) = con.execute(
+        """
+        SELECT COUNT(*)
+        FROM information_schema.views
+        WHERE table_name = ?
+        """,
+        [view_name],
+    ).fetchone()
+    return exists > 0
