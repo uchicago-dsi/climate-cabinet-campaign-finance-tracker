@@ -35,14 +35,14 @@ parser.add_argument(
 parser.add_argument(
     "--input-format",
     choices=["csv", "parquet"],
-    default="csv",
-    help="Input file format (csv or parquet). Default is csv",
+    default="parquet",
+    help="Input file format (csv or parquet). Default is parquet",
 )
 parser.add_argument(
     "--output-format",
     choices=["csv", "parquet"],
-    default="csv",
-    help="Output file format (csv or parquet). Default is csv",
+    default="parquet",
+    help="Output file format (csv or parquet). Default is parquet",
 )
 parser.add_argument(
     "--config-file",
@@ -93,13 +93,20 @@ def clean_data(
     return database
 
 
-def cleaning_pipeline(args: argparse.Namespace) -> None:
+def cleaning_pipeline(
+    input_directory: Path,
+    output_directory: Path,
+    input_format: str,
+    output_format: str,
+    chunk_size: int,
+) -> None:
     """Run cleaning pipeline"""
     if args.chunk_size is None:
         normalized_database = load_database(input_directory, args.input_format)
         cleaned_database = clean_data(normalized_database, config_file)
         save_database(cleaned_database, output_directory, args.output_format)
     else:
+        print("Starting database on chunks")
         database_chunks = load_database(
             input_directory, args.input_format, chunk_size=args.chunk_size
         )
@@ -114,10 +121,18 @@ def cleaning_pipeline(args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
-    if args.cluster is None:
-        cleaning_pipeline(args)
+    if not args.cluster:
+        print("Running pipeline locally")
+        cleaning_pipeline(
+            input_directory,
+            output_directory,
+            args.input_format,
+            args.output_format,
+            args.chunk_size,
+        )
     else:
-        executor = AutoExecutor(folder=args.cluster)
+        print("submitting pipeline to cluster")
+        executor = AutoExecutor(folder="logs")
         executor.update_parameters(
             slurm_time=600,
             slurm_cpus_per_task=1,
@@ -129,4 +144,11 @@ if __name__ == "__main__":
             if state_dir.is_dir():
                 args.input_directory = state_dir
                 args.output_directory = output_directory / state_dir.name
-                executor.submit(cleaning_pipeline, args)
+                executor.submit(
+                    cleaning_pipeline,
+                    input_directory=state_dir,
+                    output_directory=output_directory / state_dir.name,
+                    input_format=args.input_format,
+                    output_format=args.input_format,
+                    chunk_size=args.chunk_size,
+                )
