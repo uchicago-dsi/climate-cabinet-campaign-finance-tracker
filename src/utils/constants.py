@@ -14,3 +14,4 @@ source_metadata_directory = BASE_FILEPATH / "src" / "utils" / "static"
 
 SPLIT = "--"
 ID_SUFFIX = "_id"
+DEFAULT_SCHEMA_PATH = BASE_FILEPATH / "src" / "utils" / "table.yaml"

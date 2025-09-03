@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils.schema import TableSchema
+from utils.constants import DEFAULT_SCHEMA_PATH
+from utils.schema import DataSchema, TableSchema
 
 # Precompiled regex for UUID4 validation
 UUID4_REGEX = re.compile(
@@ -252,3 +253,27 @@ def load_id_mapping(file_path: Path) -> UUIDMapping:
         id_mapping[key] = row["uuid"]
 
     return id_mapping
+
+
+def get_all_id_references(
+    table_name: str, schema: DataSchema = None
+) -> dict[str, list[str]]:
+    """Make mapping table name to list of all columns that reference table_name's id
+
+    Args:
+        schema: DataSchema object
+        table_name: Name of the table to get all id references for
+
+    Returns:
+        Dictionary mapping table name to list of all columns that reference table_name's id
+    """
+    if schema is None:
+        schema = DataSchema(DEFAULT_SCHEMA_PATH)
+    id_references = {table_name: [] for table_name in schema.schema}
+    for table_name in schema.schema:
+        for foreign_key_column, foreign_table_name in schema.schema[
+            table_name
+        ].relations.items():
+            if foreign_table_name == table_name:
+                id_references[table_name].append(foreign_key_column)
+    return id_references
