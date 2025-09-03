@@ -177,7 +177,10 @@ def create_database_from_nested_parquet_directories(
         con.execute("DROP TABLE IF EXISTS *")
     for state_dir in database_dir.iterdir():
         for file in state_dir.glob("*.parquet"):
-            create_or_append_parquet_to_db(con, file)
+            try:
+                create_or_append_parquet_to_db(con, file)
+            except Exception as e:
+                print(f"Error creating table {state_dir.name} {file.stem}:\n {e}")
     return con
 
 
@@ -391,7 +394,7 @@ def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"DROP VIEW IF EXISTS {view_name}")
 
     request = f"""
-        CREATE VIEW {view_name} AS
+        CREATE TABLE {view_name} AS
         SELECT
             t.*,
             {membership_select_clause},
@@ -464,14 +467,14 @@ def create_transactor_details_view_from_parquet(
     return con
 
 
-def view_exists(con: duckdb.DuckDBPyConnection, view_name: str) -> bool:
-    """Check whether *view_name* exists in the connected database."""
+def table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
+    """Check whether *table_name* exists in the connected database."""
     (exists,) = con.execute(
         """
         SELECT COUNT(*)
-        FROM information_schema.views
+        FROM information_schema.tables
         WHERE table_name = ?
         """,
-        [view_name],
+        [table_name],
     ).fetchone()
     return exists > 0
