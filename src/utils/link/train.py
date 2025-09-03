@@ -89,7 +89,7 @@ def train_splink(
         training_blocking_rule_address
     )
 
-    settings = linker.misc.save_model_to_json("test-v2.json", overwrite=True)
+    settings = linker.misc.save_model_to_json(output_file, overwrite=True)
 
 
 def create_splink_visualizations(linker: Linker) -> None:
