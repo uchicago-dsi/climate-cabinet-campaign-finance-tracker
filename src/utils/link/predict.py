@@ -26,7 +26,6 @@ Examples:
 """
 
 import json
-from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 import duckdb
@@ -37,8 +36,9 @@ from utils.database import (
     connect_duckdb,
     create_transactor_detailed_view,
     create_transactor_details_view_from_parquet,
-    view_exists,
+    table_exists,
 )
+from utils.ids import get_all_id_references
 
 # ---------------------------------------------------------------------------
 # Splink helpers
@@ -149,44 +149,31 @@ def upsert_linkage_mapping(
 
 def replace_ids_with_canonical(
     con: duckdb.DuckDBPyConnection,
-    *,
+    table_name: str,
+    id_columns: list[str],
     mapping_table: str = "linkage_mapping",
-    tables: Sequence[str] | None = None,
-    id_column: str = "id",
 ) -> None:
-    """Replace *id_column* values in *tables* with their canonical counterpart.
+    """Replace *id_columns* values in *table_name* with their canonical counterpart.
 
     The update is performed in-place via SQL ``UPDATE`` statements.
 
     Args:
         con: DuckDB connection.
+        table_name: Name of the table to update.
+        id_columns: Columns to update.
         mapping_table: Name of the table produced by :func:`upsert_linkage_mapping`.
-        tables: Explicit list of tables to update. When *None*, every user table
-            that **has** *id_column* will be updated.
-        id_column: Column to update.
     """
-    if tables is None:
-        (tables,) = zip(
-            *con.execute(
-                f"""
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'main'
-                  AND table_type = 'BASE TABLE'
-                  AND table_name NOT IN ('{mapping_table}')
-                """
-            ).fetchall()
-        )
-
-    for tbl in tables:
+    cols = [
+        row[1] for row in con.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+    ]
+    for id_column in id_columns:
         # Verify column exists to avoid run-time errors
-        cols = [row[1] for row in con.execute(f"PRAGMA table_info('{tbl}')").fetchall()]
         if id_column not in cols:
             continue
 
         con.execute(
             f"""
-            UPDATE {tbl} AS t
+            UPDATE {table_name} AS t
             SET {id_column} = m.canonical_id
             FROM {mapping_table} AS m
             WHERE t.{id_column} = m.old_id
@@ -200,7 +187,6 @@ def run_linkage_pipeline(
     model_path: Path | str,
     parquet_dir: Path | str | None = None,
     threshold: float = 0.95,
-    update_tables: Iterable[str] | None = None,
 ) -> None:
     """Run the full linkage pipeline end-to-end.
 
@@ -210,9 +196,6 @@ def run_linkage_pipeline(
         parquet_dir: Optional path to a directory containing Parquet files. If provided,
             any existing tables will be overwritten by the data in the parquet files.
         threshold: Match-probability threshold used when forming clusters.
-        update_tables: Iterable of tables whose ``id`` column should be updated to
-            canonical IDs. Pass *None* to update every table that has an ``id``
-            column.
     """
     # Ensure connection to duckdb database with transactor_detailed_view
     con = connect_duckdb(duckdb_path)
@@ -220,7 +203,7 @@ def run_linkage_pipeline(
         print("Overwriting existing tables")
         con.execute("DROP TABLE IF EXISTS *")
         create_transactor_details_view_from_parquet(duckdb_path, parquet_dir)
-    elif not view_exists(con, "transactor_detailed_view"):
+    elif not table_exists(con, "transactor_detailed_view"):
         print("Creating transactor_detailed_view")
         create_transactor_detailed_view(con)
 
@@ -230,7 +213,6 @@ def run_linkage_pipeline(
 
     upsert_linkage_mapping(con, clusters)
 
-    if update_tables is not None or update_tables is None:
-        replace_ids_with_canonical(
-            con, tables=list(update_tables) if update_tables else None
-        )
+    id_references = get_all_id_references(table_name="Transactor")
+    for table_name, id_columns in id_references.items():
+        replace_ids_with_canonical(con, table_name=table_name, id_columns=id_columns)
