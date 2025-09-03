@@ -60,8 +60,8 @@ def create_table_from_parquet_to_db(
 ) -> None:
     """Load a table from a parquet file into a DuckDB database."""
     con.execute(
-        f"CREATE TABLE IF NOT EXISTS {table_path.stem} AS "  # noqa: S608
-        f"SELECT * FROM read_parquet('{str(table_path.resolve())}')"  # noqa: S608
+        f"CREATE TABLE IF NOT EXISTS {table_path.stem} AS "
+        f"SELECT * FROM read_parquet('{str(table_path.resolve())}')"
     )
 
 
@@ -115,8 +115,8 @@ def create_or_append_parquet_to_db(
         # Insert data selecting the same columns from the parquet file, allowing
         # DuckDB to match by name rather than position.
         con.execute(
-            f"INSERT INTO {table_path.stem} ({column_list}) "  # noqa: S608
-            f"SELECT {column_list} FROM read_parquet('{str(table_path.resolve())}')"  # noqa: S608
+            f"INSERT INTO {table_path.stem} ({column_list}) "
+            f"SELECT {column_list} FROM read_parquet('{str(table_path.resolve())}')"
         )
     else:
         # Create the table explicitly using the YAML schema definitions so column
@@ -136,14 +136,14 @@ def create_or_append_parquet_to_db(
         )
 
         # 1. Create the empty table with explicit schema
-        con.execute(f"CREATE TABLE {table_path.stem} ({column_defs})")  # noqa: S608
+        con.execute(f"CREATE TABLE {table_path.stem} ({column_defs})")
 
         # 2. Insert data from the Parquet file into the table, aligning by column
         #    names present in the YAML schema.
         column_list = ", ".join(table_schema.types.keys())
         con.execute(
-            f"INSERT INTO {table_path.stem} ({column_list}) "  # noqa: S608
-            f"SELECT {column_list} FROM read_parquet('{str(table_path.resolve())}')"  # noqa: S608
+            f"INSERT INTO {table_path.stem} ({column_list}) "
+            f"SELECT {column_list} FROM read_parquet('{str(table_path.resolve())}')"
         )
 
 
@@ -258,7 +258,7 @@ def create_join_view(
             GROUP BY {right_join_on_column}
         ) a
         ON t.{left_join_on_column} = a.{right_join_on_column}
-    """  # noqa: S608
+    """
 
     con.execute(request)
 
@@ -336,7 +336,7 @@ def create_employment_view(con: duckdb.DuckDBPyConnection) -> None:
             GROUP BY member_id
         ) employer_data
         ON t.id = employer_data.member_id
-    """  # noqa: S608
+    """
 
     con.execute(request)
 
@@ -445,7 +445,7 @@ def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
             GROUP BY transactor_id
         ) address_data
         ON t.id = address_data.transactor_id
-    """  # noqa: S608
+    """
 
     con.execute(request)
 

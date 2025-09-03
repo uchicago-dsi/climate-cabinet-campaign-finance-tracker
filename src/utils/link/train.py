@@ -20,7 +20,7 @@ def create_random_individuals_subset(con: duckdb.DuckDBPyConnection, size: int) 
         FROM transactor_detailed_view
         where transactor_type='Individual'
         USING SAMPLE {size} ROWS (RESERVOIR)
-    """)  # noqa S608
+    """)
 
 
 def train_splink(
@@ -109,7 +109,7 @@ def create_linker_dashboard(
     )
 
 
-def create_clustering_chard(linker: Linker, df_predictions: pd.DataFrame) -> None:
+def create_clustering_chart(linker: Linker, df_predictions: pd.DataFrame) -> None:
     """Create splink clustering chart"""
     df_clusters = linker.clustering.cluster_pairwise_predictions_at_threshold(
         df_predictions, threshold_match_probability=0.5
