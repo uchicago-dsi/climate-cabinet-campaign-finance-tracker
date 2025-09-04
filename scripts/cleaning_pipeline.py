@@ -8,7 +8,7 @@ from submitit import AutoExecutor
 from tqdm import tqdm
 from utils.clean.address import clean_address
 from utils.clean.columns import clean_database_columns
-from utils.clean.names import clean_transactors
+from utils.clean.transactor import clean_transactors
 from utils.constants import BASE_FILEPATH
 from utils.io import load_database, save_database
 

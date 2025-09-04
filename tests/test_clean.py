@@ -1,7 +1,7 @@
 """Tests for the clean module"""
 
 import pytest
-from utils.clean.names import divide_full_name_nameparser
+from utils.clean.transactor import divide_full_name_nameparser
 
 
 @pytest.mark.parametrize(
