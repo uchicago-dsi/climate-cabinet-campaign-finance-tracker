@@ -48,7 +48,7 @@ from utils.ids import get_all_id_references
 def load_linker(
     con: duckdb.DuckDBPyConnection,
     settings_path: Path | str,
-    table_name: str = "transactor_detailed_view",
+    table_name: str,
 ) -> Linker:
     """Instantiate a Splink :class:`~splink.Linker` from a saved settings JSON.
 
@@ -73,7 +73,7 @@ def cluster_transactors(
     linker: Linker,
     *,
     threshold_match_probability: float,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     """Run clustering.
 
     Args:
@@ -84,12 +84,14 @@ def cluster_transactors(
     Returns:
         A DataFrame of clusters
     """
-    df_predictions = linker.predict()
+    df_predictions = linker.inference.predict(
+        threshold_match_probability=threshold_match_probability
+    )
 
     df_clusters = linker.clustering.cluster_pairwise_predictions_at_threshold(
         df_predictions, threshold_match_probability=threshold_match_probability
     )
-    return df_clusters
+    return df_clusters.as_pandas_dataframe()
 
 
 # ---------------------------------------------------------------------------
@@ -102,24 +104,14 @@ def _create_mapping_of_old_ids_to_cluster_ids(
 ) -> pd.DataFrame:
     """Return a 2-column DataFrame mapping *old_id* ➔ *canonical_id*.
 
-    The canonical ID is chosen as the minimum record ID per cluster, ensuring a
-    deterministic and intuitive representative.
+    Args:
+        linkage_clusters: df with "cluster_id" and "id" columns.
+            Returned by Linker.clustering.cluster_pairwise_predictions_at_threshold.
+            Should have provided id column, and new 'cluster_id' which is the min
+            of all ids in the cluster. All other columns are also present.
     """
-    mapping = (
-        # get all the old unique ids for each cluster
-        linkage_clusters.groupby("cluster_id")["unique_id"]
-        .apply(
-            # choose the minimum old unique id as the canonical id
-            lambda old_ids: pd.Series(
-                {"canonical_id": old_ids.min(), "old_ids": list(old_ids)}
-            )
-        )
-        # explode the list of old unique ids into separate rows
-        .explode("old_ids")
-        .reset_index()
-        # rename columns, now each row has a single old id and a canonical id
-        .rename(columns={"old_ids": "old_id"})[["old_id", "canonical_id"]]
-    )
+    mapping = linkage_clusters.loc[:, ["cluster_id", "id"]].drop_duplicates()
+    mapping = mapping.rename(columns={"id": "old_id", "cluster_id": "canonical_id"})
     return mapping
 
 
@@ -163,11 +155,25 @@ def replace_ids_with_canonical(
         id_columns: Columns to update.
         mapping_table: Name of the table produced by :func:`upsert_linkage_mapping`.
     """
+    if (
+        con.execute(
+            """
+        SELECT COUNT(*)
+        FROM information_schema.tables
+        WHERE table_name = ?
+    """,
+            [table_name],
+        ).fetchone()[0]
+        == 0
+    ):
+        print(f"Table {table_name} does not exist. Skipping")
+        return
     cols = [
         row[1] for row in con.execute(f"PRAGMA table_info('{table_name}')").fetchall()
     ]
     for id_column in id_columns:
         # Verify column exists to avoid run-time errors
+        print(f"Replacing {id_column} in {table_name}")
         if id_column not in cols:
             continue
 
@@ -187,6 +193,7 @@ def run_linkage_pipeline(
     model_path: Path | str,
     parquet_dir: Path | str | None = None,
     threshold: float = 0.95,
+    table_name: str = "transactor_detailed_view",
 ) -> None:
     """Run the full linkage pipeline end-to-end.
 
@@ -196,6 +203,7 @@ def run_linkage_pipeline(
         parquet_dir: Optional path to a directory containing Parquet files. If provided,
             any existing tables will be overwritten by the data in the parquet files.
         threshold: Match-probability threshold used when forming clusters.
+        table_name: Table to perform linkage on. Default is transactor_detailed_view
     """
     # Ensure connection to duckdb database with transactor_detailed_view
     con = connect_duckdb(duckdb_path)
@@ -208,11 +216,11 @@ def run_linkage_pipeline(
         create_transactor_detailed_view(con)
 
     # Load linker and run prediction and clustering
-    linker = load_linker(con, model_path)
+    linker = load_linker(con, model_path, table_name)
     clusters = cluster_transactors(linker, threshold_match_probability=threshold)
 
     upsert_linkage_mapping(con, clusters)
 
-    id_references = get_all_id_references(table_name="Transactor")
+    id_references = get_all_id_references(base_table_name="Transactor")
     for table_name, id_columns in id_references.items():
         replace_ids_with_canonical(con, table_name=table_name, id_columns=id_columns)

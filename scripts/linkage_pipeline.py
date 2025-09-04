@@ -39,11 +39,13 @@ parser.add_argument(
 parser.add_argument(
     "--train",
     action="store_true",
+    default=False,
     help="Run training pipeline",
 )
 parser.add_argument(
     "--cluster",
     action="store_true",
+    default=False,
     help="Run pipeline on cluster",
 )
 parser.add_argument(
@@ -51,6 +53,12 @@ parser.add_argument(
     type=float,
     default=0.95,
     help="Threshold for linkage",
+)
+parser.add_argument(
+    "--table-name",
+    type=str,
+    default="transactor_detailed_view",
+    help="Table to perform record linkage on",
 )
 args = parser.parse_args()
 
@@ -63,29 +71,34 @@ else:
     con = connect_duckdb(args.database_path)
     if (
         con.execute("SELECT COUNT(*) FROM information_schema.tables")
-        .fetch_df()["count"]
-        .iloc[0]
+        .fetch_df()
+        .iloc[0][0]
         == 0
     ):
         raise ValueError("Database is empty. Please provide an input directory.")
 
 
 if __name__ == "__main__":
-    if args.cluster is None:
+    if not args.cluster:
+        print("Running locally")
         if args.train:
-            train_splink(con, "transactor_detailed_view", args.model_path)
+            print("Training")
+            train_splink(con, args.table_name, args.model_path)
+        print("Starting linkage pipeline")
         run_linkage_pipeline(
             duckdb_path=args.database_path,
             model_path=args.model_path,
             parquet_dir=args.input_directory,
             threshold=args.threshold,
+            table_name=args.table_name,
         )
     else:
+        print("Submitting to cluster compute nodes with submitit")
         executor = submitit.AutoExecutor(folder="logs")
         executor.update_parameters(
             slurm_time=600,
             slurm_cpus_per_task=1,
-            slurm_mem_per_cpu=256000,
+            slurm_mem_per_cpu="128G",
             slurm_array_parallelism=3,
             slurm_partition="general",
         )
@@ -95,4 +108,5 @@ if __name__ == "__main__":
             model_path=args.model_path,
             parquet_dir=args.input_directory,
             threshold=args.threshold,
+            table_name=args.table_name,
         )
