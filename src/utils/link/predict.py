@@ -1,28 +1,7 @@
-"""Predict module for running Splink inference and updating canonical IDs.
+"""Module for running Splink inference to identify possible duplicate rows
 
-This module provides a set of composable helper functions that:
-1. Connect to an existing (or new) DuckDB database.
-2. Ensure that the ``transactor_detailed_view`` view (see ``utils.database.create_transactor_detailed_view``)
-   is present – creating it on-demand when missing.
-3. Load a trained Splink model from the JSON produced by ``train.py``.
-4. Execute record-linkage inference to obtain pairwise match probabilities **and**
-   clusters.
-5. Persist a canonical ID mapping to a table called ``linkage_mapping`` inside the
-   same database.
-6. (Optionally) Update any tables so that their ``id`` column is replaced by the
-   canonical IDs.
-
-All public helpers are deliberately small, making the module easy to test and
-refactor while following the project code-quality guidelines.
-
-Examples:
->>> from pathlib import Path
->>> from utils.link.predict import run_linkage_pipeline
->>> run_linkage_pipeline(
-...     database_path=Path("data/duckdb/my_db.duckdb"),
-...     model_path=Path("models/test-v2.json"),
-...     parquet_dir=Path("data/parquet"),  # Only required if DB needs boot-strapping
-... )
+Includes functions to update a duckdb database replacing duplicate ids with shared
+ids and storing the mapping of old ids to new ids in a table called linkage_mapping.
 """
 
 import json
@@ -40,9 +19,7 @@ from utils.database import (
 )
 from utils.ids import get_all_id_references
 
-# ---------------------------------------------------------------------------
 # Splink helpers
-# ---------------------------------------------------------------------------
 
 
 def load_linker(
@@ -94,9 +71,7 @@ def cluster_transactors(
     return df_clusters.as_pandas_dataframe()
 
 
-# ---------------------------------------------------------------------------
 # ID mapping + replacement helpers
-# ---------------------------------------------------------------------------
 
 
 def _create_mapping_of_old_ids_to_cluster_ids(

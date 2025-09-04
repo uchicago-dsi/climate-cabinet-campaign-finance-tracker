@@ -1,19 +1,15 @@
 """Database utilities."""
 
-from functools import lru_cache
 from pathlib import Path
 
 import duckdb
 
-from .schema import DataSchema
+from utils.constants import DEFAULT_SCHEMA_PATH
+from utils.schema import DataSchema
 
-SCHEMA_FILE_PATH = Path(__file__).resolve().parent / "table.yaml"
 
-
-# Cache schema loading so we only parse the YAML once per interpreter session
-@lru_cache(maxsize=1)
 def _get_data_schema() -> DataSchema:
-    return DataSchema(SCHEMA_FILE_PATH)
+    return DataSchema(DEFAULT_SCHEMA_PATH)
 
 
 # Mapping from YAML type strings to DuckDB SQL types
@@ -127,7 +123,7 @@ def create_or_append_parquet_to_db(
             table_schema = data_schema.schema[table_path.stem]
         except KeyError as exc:
             raise KeyError(
-                f"Table '{table_path.stem}' not found in YAML schema located at {SCHEMA_FILE_PATH}."
+                f"Table '{table_path.stem}' not found in YAML schema located at {DEFAULT_SCHEMA_PATH}."
             ) from exc
 
         # Build column definitions "name TYPE"
@@ -135,11 +131,11 @@ def create_or_append_parquet_to_db(
             f"{col} {_duckdb_type(dtype)}" for col, dtype in table_schema.types.items()
         )
 
-        # 1. Create the empty table with explicit schema
+        # Create the empty table with explicit schema
         con.execute(f"CREATE TABLE {table_path.stem} ({column_defs})")
 
-        # 2. Insert data from the Parquet file into the table, aligning by column
-        #    names present in the YAML schema.
+        # Insert data from the Parquet file into the table, aligning by column
+        # names present in the YAML schema.
         column_list = ", ".join(table_schema.types.keys())
         con.execute(
             f"INSERT INTO {table_path.stem} ({column_list}) "
@@ -224,7 +220,7 @@ def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
         [f"employer_data.{col} AS employer_{col}" for col in membership_columns]
     )
 
-    transactor_select_clause = ",\n        ".join(
+    employer_select_clause = ",\n        ".join(
         [f"employer_data.{col} AS employer_{col}" for col in transactor_columns]
     )
 
@@ -241,11 +237,13 @@ def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
         SELECT
             t.*,
             {membership_select_clause},
-            {transactor_select_clause},
+            {employer_select_clause},
             {address_select_clause}
         FROM Transactor t
         LEFT JOIN (
             SELECT
+                -- If there are multiple membership and membership employer details for one transactor,
+                -- use the one with the highest count
                 member_id,
                 {", ".join([f"any_value({col}) FILTER (WHERE cnt = max_cnt) AS {col}" for col in membership_columns])},
                 {", ".join([f"any_value({col}) FILTER (WHERE cnt = max_cnt) AS {col}" for col in transactor_columns])}
@@ -273,6 +271,8 @@ def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
         ON t.id = employer_data.member_id
         LEFT JOIN (
             SELECT
+                -- If there are multiple address details for one transactor, keep
+                -- the one with the highest count
                 transactor_id,
                 {", ".join([f"any_value({col}) FILTER (WHERE cnt = max_cnt) AS {col}" for col in address_columns])}
             FROM (
