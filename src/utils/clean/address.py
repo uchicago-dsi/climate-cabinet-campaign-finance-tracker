@@ -92,37 +92,25 @@ def expand_usaddress_simple(parsed_address: dict) -> dict:
     Args:
         parsed_address (dict): A dictionary of parsed address components.
     """
-    if "StreetNamePostType" in parsed_address:
-        parsed_address["StreetNamePostType"] = street_types.get(
-            parsed_address["StreetNamePostType"], parsed_address["StreetNamePostType"]
-        )
-    if "StreetNamePreType" in parsed_address:
-        parsed_address["StreetNamePreType"] = street_types.get(
-            parsed_address["StreetNamePreType"], parsed_address["StreetNamePreType"]
-        )
-    if "StreetPreDirectional" in parsed_address:
-        parsed_address["StreetPreDirectional"] = directionals.get(
-            parsed_address["StreetPreDirectional"],
-            parsed_address["StreetPreDirectional"],
-        )
-    if "StreetNamePreDirectional" in parsed_address:
-        parsed_address["StreetNamePreDirectional"] = directionals.get(
-            parsed_address["StreetNamePreDirectional"],
-            parsed_address["StreetNamePreDirectional"],
-        )
-    if "StreetNamePostDirectional" in parsed_address:
-        parsed_address["StreetNamePostDirectional"] = directionals.get(
-            parsed_address["StreetNamePostDirectional"],
-            parsed_address["StreetNamePostDirectional"],
-        )
-    if "OccupancyType" in parsed_address:
-        parsed_address["OccupancyType"] = occupancy_types.get(
-            parsed_address["OccupancyType"], parsed_address["OccupancyType"]
-        )
-    if "OccupancyIdentifier" in parsed_address:
-        parsed_address["OccupancyIdentifier"] = occupancy_types.get(
-            parsed_address["OccupancyIdentifier"], parsed_address["OccupancyIdentifier"]
-        )
+    for directional_type in [
+        "StreetPreDirectional",
+        "StreetNamePreDirectional",
+        "StreetNamePostDirectional",
+    ]:
+        if directional_type in parsed_address:
+            parsed_address[directional_type] = directionals.get(
+                parsed_address[directional_type], parsed_address[directional_type]
+            )
+    for street_type in ["StreetNamePostType", "StreetNamePreType"]:
+        if street_type in parsed_address:
+            parsed_address[street_type] = street_types.get(
+                parsed_address[street_type], parsed_address[street_type]
+            )
+    for occupancy_type in ["OccupancyType", "OccupancyIdentifier"]:
+        if occupancy_type in parsed_address:
+            parsed_address[occupancy_type] = occupancy_types.get(
+                parsed_address[occupancy_type], parsed_address[occupancy_type]
+            )
     return parsed_address
 
 
