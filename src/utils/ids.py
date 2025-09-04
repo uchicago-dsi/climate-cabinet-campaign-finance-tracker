@@ -256,13 +256,13 @@ def load_id_mapping(file_path: Path) -> UUIDMapping:
 
 
 def get_all_id_references(
-    table_name: str, schema: DataSchema = None
+    base_table_name: str, schema: DataSchema = None
 ) -> dict[str, list[str]]:
     """Make mapping table name to list of all columns that reference table_name's id
 
     Args:
         schema: DataSchema object
-        table_name: Name of the table to get all id references for
+        base_table_name: Name of the table to get all id references for
 
     Returns:
         Dictionary mapping table name to list of all columns that reference table_name's id
@@ -270,10 +270,12 @@ def get_all_id_references(
     if schema is None:
         schema = DataSchema(DEFAULT_SCHEMA_PATH)
     id_references = {table_name: [] for table_name in schema.schema}
+    if "id" in schema.schema[base_table_name].attributes:
+        id_references[base_table_name].append("id")
     for table_name in schema.schema:
         for foreign_key_column, foreign_table_name in schema.schema[
             table_name
         ].relations.items():
-            if foreign_table_name == table_name:
-                id_references[table_name].append(foreign_key_column)
+            if foreign_table_name == base_table_name:
+                id_references[table_name].append(f"{foreign_key_column}_id")
     return id_references
