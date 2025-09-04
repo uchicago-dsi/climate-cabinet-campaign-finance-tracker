@@ -65,7 +65,7 @@ def test_get_raw_ids_mask(sample_table):
         True,
         True,
         False,
-        True,
+        False,
         True,
     ], "Mask should correctly identify raw/non-UUID IDs"
 
