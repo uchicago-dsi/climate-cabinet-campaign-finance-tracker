@@ -170,7 +170,10 @@ def create_database_from_nested_parquet_directories(
     con = duckdb.connect(str(database_path))
     if overwrite:
         # drop all data from tables
-        con.execute("DROP TABLE IF EXISTS *")
+        for table in con.execute(
+            "SELECT table_name FROM information_schema.tables"
+        ).fetchall():
+            con.execute(f"DROP TABLE IF EXISTS {table[0]}")
     for state_dir in database_dir.iterdir():
         for file in state_dir.glob("*.parquet"):
             try:
@@ -181,116 +184,145 @@ def create_database_from_nested_parquet_directories(
 
 
 def create_transactor_detailed_view(con: duckdb.DuckDBPyConnection) -> None:
-    """Create a view of transactor data with both employment and address details.
+    """Create or replace a persistent table of transactor data with employment and address details."""
+    from textwrap import dedent
 
-    This view combines:
-    - All transactor columns
-    - Employer columns (from employment_view)
-    - Address columns (from address view)
+    def _cols(table: str, exclude: set[str]) -> list[str]:
+        """Return column names for a DuckDB `table` excluding `exclude`."""
+        return [
+            col[1]
+            for col in con.execute(f"PRAGMA table_info('{table}')").fetchall()
+            if col[1] not in exclude
+        ]
 
-    Args:
-        con: DuckDB connection. Should have the following tables and fields:
-            - Transactor: id
-            - Membership: member_id, organization_id, membership_type
-            - Address: transactor_id
-    """
-    # Get the columns of the Membership table (excluding member_id and organization_id)
-    membership_columns = [
-        col[1]
-        for col in con.execute("PRAGMA table_info('Membership')").fetchall()
-        if col[1] not in ["member_id", "organization_id"]
-    ]
+    def _csv(cols: list[str]) -> str:
+        """Return columns joined by ', '."""
+        return ", ".join(cols)
 
-    # Get the columns of the Transactor table (excluding id)
-    transactor_columns = [
-        col[1]
-        for col in con.execute("PRAGMA table_info('Transactor')").fetchall()
-        if col[1] != "id"
-    ]
+    def _csv_prefixed(prefix: str, cols: list[str]) -> str:
+        """Return columns as 'prefix.col' joined by ', '."""
+        return ", ".join(f"{prefix}.{c}" for c in cols)
 
-    # Get the columns of the Address table (excluding transactor_id)
-    address_columns = [
-        col[1]
-        for col in con.execute("PRAGMA table_info('Address')").fetchall()
-        if col[1] != "transactor_id"
-    ]
+    def _select_with_alias(alias: str, cols: list[str], out_prefix: str) -> str:
+        """Return a multiline SELECT fragment 'alias.col AS out_prefix_col' joined by commas."""
+        return ",\n            ".join(f"{alias}.{c} AS {out_prefix}_{c}" for c in cols)
 
-    # Create select clauses with prefixes
-    membership_select_clause = ",\n        ".join(
-        [f"employer_data.{col} AS employer_{col}" for col in membership_columns]
+    def _any_value_on_max(cols: list[str]) -> str:
+        """Return aggregations 'any_value(col) FILTER (WHERE cnt = max_cnt) AS col' joined by commas."""
+        return ", ".join(
+            f"any_value({c}) FILTER (WHERE cnt = max_cnt) AS {c}" for c in cols
+        )
+
+    membership_columns = _cols("Membership", {"member_id", "organization_id"})
+    transactor_columns = _cols("Transactor", {"id"})
+    address_columns = _cols("Address", {"transactor_id"})
+
+    membership_select_clause = (
+        _select_with_alias("employer_data", membership_columns, "employer")
+        if membership_columns
+        else ""
+    )
+    employer_select_clause = (
+        _select_with_alias("employer_data", transactor_columns, "employer")
+        if transactor_columns
+        else ""
+    )
+    address_select_clause = (
+        _select_with_alias("address_data", address_columns, "address")
+        if address_columns
+        else ""
     )
 
-    employer_select_clause = ",\n        ".join(
-        [f"employer_data.{col} AS employer_{col}" for col in transactor_columns]
-    )
+    select_parts = ["t.*"]
+    if membership_select_clause:
+        select_parts.append(membership_select_clause)
+    if employer_select_clause:
+        select_parts.append(employer_select_clause)
+    if address_select_clause:
+        select_parts.append(address_select_clause)
 
-    address_select_clause = ",\n        ".join(
-        [f"address_data.{col} AS address_{col}" for col in address_columns]
-    )
+    # Employer subquery components (built safely to avoid stray commas when lists are empty)
+    employer_outer_cols = ["member_id"]
+    if membership_columns:
+        employer_outer_cols.append(_any_value_on_max(membership_columns))
+    if transactor_columns:
+        employer_outer_cols.append(_any_value_on_max(transactor_columns))
 
-    # Drop existing view if it exists
-    view_name = "transactor_detailed_view"
-    con.execute(f"DROP VIEW IF EXISTS {view_name}")
+    employer_inner_cols = ["member_id"]
+    if membership_columns:
+        employer_inner_cols.append(_csv(membership_columns))
+    if transactor_columns:
+        employer_inner_cols.append(_csv(transactor_columns))
 
-    request = f"""
-        CREATE TABLE {view_name} AS
+    employer_group_by_cols = ["member_id"]
+    if membership_columns:
+        employer_group_by_cols.append(_csv(membership_columns))
+    if transactor_columns:
+        employer_group_by_cols.append(_csv(transactor_columns))
+
+    employer_subquery = dedent(f"""
         SELECT
-            t.*,
-            {membership_select_clause},
-            {employer_select_clause},
-            {address_select_clause}
-        FROM Transactor t
-        LEFT JOIN (
+            {", ".join(employer_outer_cols)}
+        FROM (
             SELECT
-                -- If there are multiple membership and membership employer details for one transactor,
-                -- use the one with the highest count
-                member_id,
-                {", ".join([f"any_value({col}) FILTER (WHERE cnt = max_cnt) AS {col}" for col in membership_columns])},
-                {", ".join([f"any_value({col}) FILTER (WHERE cnt = max_cnt) AS {col}" for col in transactor_columns])}
+                {", ".join(employer_inner_cols)},
+                COUNT(*) AS cnt,
+                MAX(COUNT(*)) OVER (PARTITION BY member_id) AS max_cnt
             FROM (
                 SELECT
-                    member_id,
-                    {", ".join([f"{col}" for col in membership_columns])},
-                    {", ".join([f"{col}" for col in transactor_columns])},
-                    COUNT(*) AS cnt,
-                    MAX(COUNT(*)) OVER (PARTITION BY member_id) AS max_cnt
-                FROM (
-                    SELECT
-                        Membership.member_id,
-                        {", ".join([f"Membership.{col}" for col in membership_columns])},
-                        {", ".join([f"Transactor.{col}" for col in transactor_columns])}
-                    FROM Membership
-                    JOIN Transactor ON Membership.organization_id = Transactor.id
-                    WHERE Membership.membership_type = 'Employee'
-                ) joined_data
-                GROUP BY member_id, {", ".join([f"{col}" for col in membership_columns])}, {", ".join([f"{col}" for col in transactor_columns])}
-            ) subq
-            WHERE cnt = max_cnt
-            GROUP BY member_id
-        ) employer_data
-        ON t.id = employer_data.member_id
-        LEFT JOIN (
-            SELECT
-                -- If there are multiple address details for one transactor, keep
-                -- the one with the highest count
-                transactor_id,
-                {", ".join([f"any_value({col}) FILTER (WHERE cnt = max_cnt) AS {col}" for col in address_columns])}
-            FROM (
-                SELECT
-                    transactor_id,
-                    {", ".join([f"{col}" for col in address_columns])},
-                    COUNT(*) AS cnt,
-                    MAX(COUNT(*)) OVER (PARTITION BY transactor_id) AS max_cnt
-                FROM Address
-                GROUP BY transactor_id, {", ".join([f"{col}" for col in address_columns])}
-            ) subq
-            WHERE cnt = max_cnt
-            GROUP BY transactor_id
-        ) address_data
-        ON t.id = address_data.transactor_id
-    """
+                    Membership.member_id
+                    {(", " + _csv_prefixed("Membership", membership_columns)) if membership_columns else ""}
+                    {(", " + _csv_prefixed("Transactor", transactor_columns)) if transactor_columns else ""}
+                FROM Membership
+                JOIN Transactor ON Membership.organization_id = Transactor.id
+                WHERE Membership.membership_type = 'Employee'
+            ) joined_data
+            GROUP BY {", ".join(employer_group_by_cols)}
+        ) subq
+        WHERE cnt = max_cnt
+        GROUP BY member_id
+    """).strip()
 
-    con.execute(request)
+    # Address subquery
+    address_outer_cols = ["transactor_id"]
+    if address_columns:
+        address_outer_cols.append(_any_value_on_max(address_columns))
+
+    address_inner_cols = ["transactor_id"]
+    if address_columns:
+        address_inner_cols.append(_csv(address_columns))
+
+    address_group_by_cols = ["transactor_id"]
+    if address_columns:
+        address_group_by_cols.append(_csv(address_columns))
+
+    address_subquery = dedent(f"""
+        SELECT
+            {", ".join(address_outer_cols)}
+        FROM (
+            SELECT
+                {", ".join(address_inner_cols)},
+                COUNT(*) AS cnt,
+                MAX(COUNT(*)) OVER (PARTITION BY transactor_id) AS max_cnt
+            FROM Address
+            GROUP BY {", ".join(address_group_by_cols)}
+        ) subq
+        WHERE cnt = max_cnt
+        GROUP BY transactor_id
+    """).strip()
+    table_name = "transactor_detailed_view"
+    con.execute(f"DROP TABLE IF EXISTS {table_name}")
+    select_list = ",\n            ".join(select_parts)
+    sql_select = dedent(f"""
+        SELECT
+            {select_list}
+        FROM Transactor t
+        LEFT JOIN ({employer_subquery}) employer_data
+            ON t.id = employer_data.member_id
+        LEFT JOIN ({address_subquery}) address_data
+            ON t.id = address_data.transactor_id
+    """)
+    con.execute(f"CREATE TABLE {table_name} AS {sql_select}")
 
 
 def create_transactor_details_view_from_parquet(
