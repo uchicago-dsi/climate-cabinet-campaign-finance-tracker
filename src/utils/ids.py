@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils.schema import TableSchema
+from utils.constants import DEFAULT_SCHEMA_PATH
+from utils.schema import DataSchema, TableSchema
 
 # Precompiled regex for UUID4 validation
 UUID4_REGEX = re.compile(
@@ -23,6 +24,8 @@ def normalize_id_to_string(value: int | float | str | None) -> str:
     Handles the case where numeric IDs might be stored as int or float,
     ensuring they always map to the same string key.
     """
+    if pd.isna(value):
+        return value
     # If it's a numeric type, convert to int first to remove decimal places
     try:
         if isinstance(value, int | float) and not pd.isna(value):
@@ -74,7 +77,7 @@ def map_ids_to_uuids(
     """
     if mask is None:
         mask = pd.Series(True, index=table.index)
-    table[id_column] = table[id_column].astype(str)
+    table[id_column] = table[id_column].astype("string")
     table.loc[mask, id_column] = table.loc[mask].apply(
         lambda row: id_mapping.get(
             (
@@ -115,7 +118,7 @@ def create_new_uuid_mapping(
     new_mappings = {}
     for _, row in table[
         (table[id_column].notna())
-        & (~table[id_column].astype(str).str.match(UUID4_REGEX, na=False))
+        & (~table[id_column].astype("string").str.match(UUID4_REGEX, na=False))
     ].iterrows():
         key = (
             normalize_id_to_string(row[id_column]),
@@ -136,8 +139,10 @@ def get_raw_ids_mask(table: pd.DataFrame, id_column: str) -> pd.Series:
         table: DataFrame with existing `id_column`.
         id_column: Name of the `id` column
     """
-    raw_ids_mask = ~table[id_column].astype(str).str.match(UUID4_REGEX, na=False)
-    return raw_ids_mask
+    # na=True because a null is *not* a raw id
+    not_raw_id_mask = table[id_column].astype("string").str.match(UUID4_REGEX, na=True)
+    # negate to get mask where all raw ids are true
+    return ~not_raw_id_mask
 
 
 def handle_existing_ids(
@@ -248,3 +253,29 @@ def load_id_mapping(file_path: Path) -> UUIDMapping:
         id_mapping[key] = row["uuid"]
 
     return id_mapping
+
+
+def get_all_id_references(
+    base_table_name: str, schema: DataSchema = None
+) -> dict[str, list[str]]:
+    """Make mapping table name to list of all columns that reference table_name's id
+
+    Args:
+        schema: DataSchema object
+        base_table_name: Name of the table to get all id references for
+
+    Returns:
+        Dictionary mapping table name to list of all columns that reference table_name's id
+    """
+    if schema is None:
+        schema = DataSchema(DEFAULT_SCHEMA_PATH)
+    id_references = {table_name: [] for table_name in schema.schema}
+    if "id" in schema.schema[base_table_name].attributes:
+        id_references[base_table_name].append("id")
+    for table_name in schema.schema:
+        for foreign_key_column, foreign_table_name in schema.schema[
+            table_name
+        ].relations.items():
+            if foreign_table_name == base_table_name:
+                id_references[table_name].append(f"{foreign_key_column}_id")
+    return id_references

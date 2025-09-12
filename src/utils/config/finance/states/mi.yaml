@@ -18,7 +18,7 @@ legacy_download_contributions_or_receipts:
   enum_mapper:
     recipient--transactor_type:
       CAN: Organization
-      IND: Organization
+      IND: Individual
       GUB: Organization
       COU: Organization
       POL: Organization
@@ -28,7 +28,7 @@ legacy_download_contributions_or_receipts:
 
     recipient--transactor_type_specific:
       CAN: Candidate Committee
-      IND: Committee
+      IND: Individual
       GUB: Candidate Committee
       COU: Party
       POL: Committee

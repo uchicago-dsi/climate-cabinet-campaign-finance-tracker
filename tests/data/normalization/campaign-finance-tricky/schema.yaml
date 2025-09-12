@@ -12,7 +12,7 @@ Transactor:
 
 Individual:
   parent_table: Transactor
-  attributes: ["first_name", "middle_name", "last_name", "name_suffix", "name_title", "name_preferred", "occupation", "party"]
+  attributes: ["first_name", "middle_name", "last_name", "name_suffix", "name_prefix", "name_preferred", "occupation", "party"]
   reverse_relations:
     employer: Membership
     election_result: ElectionResult
@@ -51,7 +51,7 @@ Election:
   attributes: ["id", "year", "district", "office_sought", "state", "reported_state"]
 
 ElectionResult:
-  attributes: ["candidate_id", "election_id", "votes_recieved", "win", "reported_state"]
+  attributes: ["candidate_id", "election_id", "votes_received", "win", "reported_state"]
   forward_relations:
     candidate: Individual
     election: Election

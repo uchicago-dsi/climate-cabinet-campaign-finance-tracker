@@ -45,6 +45,7 @@ Transactor:
       table: Address
       direction: reverse
       reverse_relation_name: transactor_id
+    
 
 Individual:
   parent_table: Transactor
@@ -53,7 +54,7 @@ Individual:
     - middle_name
     - last_name
     - name_suffix
-    - name_title
+    - name_prefix
     - name_preferred
     - occupation
   relations:
@@ -150,7 +151,12 @@ Transaction:
       - positive
       - negative
       - neutral
-  # TODO: what other types are there
+  types:
+    amount: Float32
+    date: datetime64[ns]
+    reported_election_year: Int32
+    year: Int32
+    day: Int32
 
 Election:
   required_attributes:
@@ -179,13 +185,15 @@ Election:
       - Misc. City
       - Misc. State
       - City Council
+  types:
+    year: Int32
 
 ElectionResult:
   required_attributes:
     - candidate_id
     - election_id
   attributes:
-    - votes_recieved
+    - votes_received
     - win
     - candidate_id
     - election_id
@@ -197,18 +205,23 @@ ElectionResult:
     - prefix: election
       table: Election
       direction: forward
+  types:
+    votes_received: Int32
+    win: bool
     
 Address:
   required_attributes:
     - transactor_id
   attributes:
+    - recipient
     - full_address 
     - line_1
     - building_number
     - building_name
     - street_predirectional
+    - street_pre_type # i.e. highway, county road, etc.
     - street_name
-    - street_suffix # i.e Ave., St., Rd., ...
+    - street_post_type # i.e Ave., St., Rd., ...
     - street_postdirectional
     - po_box
     - line_2

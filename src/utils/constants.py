@@ -11,3 +11,7 @@ STATE_FINANCE_CONFIG_DIRECTORY = (
 # returns the base_path to the directory
 
 source_metadata_directory = BASE_FILEPATH / "src" / "utils" / "static"
+
+SPLIT = "--"
+ID_SUFFIX = "_id"
+DEFAULT_SCHEMA_PATH = BASE_FILEPATH / "src" / "utils" / "table.yaml"

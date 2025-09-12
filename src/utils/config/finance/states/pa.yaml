@@ -186,6 +186,7 @@ filer:
   inherits: base
   table_name: Transactor
   meta: True
+
   enum_mapper:
     # source: https://www.pa.gov/agencies/dos/resources/voting-and-elections-resources/campaign-finance-resources/technical-specifications-for-electronic-filing-of-campaign-expen.html#accordion-6a5fc1b7ea-item-8245f60064
     election_result--election--office_sought:
@@ -212,6 +213,10 @@ filer:
       PH7: Misc. City # clerk of quarter sessions, philly
 
     transactor_type:
+      "1": Individual
+      "2": Organization
+
+    transactor_type_specific:
       "1": Candidate
       "2": Committee
       "3": Unknown # lobbyist, could be pac or ind
@@ -312,6 +317,8 @@ filer:
   duplicate_columns:
     reported_state: 
       - election_result--election--state
+    transactor_type:
+      - transactor_type_specific
 
 filer_through_2022:
   inherits: filer
