@@ -13,11 +13,11 @@ from splink import DuckDBAPI, Linker
 
 from utils.database import (
     connect_duckdb,
-    create_transactor_detailed_view,
-    create_transactor_details_view_from_parquet,
     table_exists,
 )
 from utils.ids import get_all_id_references
+
+LINKAGE_MAPPING_TABLE = "linkage_mapping"
 
 # Splink helpers
 
@@ -94,7 +94,6 @@ def upsert_linkage_mapping(
     con: duckdb.DuckDBPyConnection,
     linkage_clusters: pd.DataFrame,
     *,
-    mapping_table: str = "linkage_mapping",
     replace: bool = True,
 ) -> None:
     """Persist a mapping of *old_id* ➔ *canonical_id* to *mapping_table*.
@@ -110,7 +109,7 @@ def upsert_linkage_mapping(
 
     con.register("_tmp_mapping", df_mapping)
     create_stmt = "CREATE OR REPLACE TABLE" if replace else "CREATE TABLE IF NOT EXISTS"
-    con.execute(f"{create_stmt} {mapping_table} AS SELECT * FROM _tmp_mapping")
+    con.execute(f"{create_stmt} {LINKAGE_MAPPING_TABLE} AS SELECT * FROM _tmp_mapping")
     con.unregister("_tmp_mapping")
 
 
@@ -118,7 +117,6 @@ def replace_ids_with_canonical(
     con: duckdb.DuckDBPyConnection,
     table_name: str,
     id_columns: list[str],
-    mapping_table: str = "linkage_mapping",
 ) -> None:
     """Replace *id_columns* values in *table_name* with their canonical counterpart.
 
@@ -128,7 +126,6 @@ def replace_ids_with_canonical(
         con: DuckDB connection.
         table_name: Name of the table to update.
         id_columns: Columns to update.
-        mapping_table: Name of the table produced by :func:`upsert_linkage_mapping`.
     """
     if (
         con.execute(
@@ -156,7 +153,7 @@ def replace_ids_with_canonical(
             f"""
             UPDATE {table_name} AS t
             SET {id_column} = m.canonical_id
-            FROM {mapping_table} AS m
+            FROM {LINKAGE_MAPPING_TABLE} AS m
             WHERE t.{id_column} = m.old_id
             """
         )
@@ -166,30 +163,21 @@ def run_linkage_pipeline(
     *,
     duckdb_path: Path | str,
     model_path: Path | str,
-    parquet_dir: Path | str | None = None,
     threshold: float = 0.95,
     table_name: str = "transactor_detailed_view",
 ) -> None:
     """Run the full linkage pipeline end-to-end.
 
     Args:
-        duckdb_path: DuckDB database file.
+        duckdb_path: DuckDB database file. Must have 'table_name' as a table.
         model_path: Path to the trained Splink settings JSON.
-        parquet_dir: Optional path to a directory containing Parquet files. If provided,
-            any existing tables will be overwritten by the data in the parquet files.
         threshold: Match-probability threshold used when forming clusters.
         table_name: Table to perform linkage on. Default is transactor_detailed_view
     """
     # Ensure connection to duckdb database with transactor_detailed_view
     con = connect_duckdb(duckdb_path)
-    if parquet_dir is not None:
-        print("Overwriting existing tables")
-        con.execute("DROP TABLE IF EXISTS *")
-        create_transactor_details_view_from_parquet(duckdb_path, parquet_dir)
-    elif not table_exists(con, "transactor_detailed_view"):
-        print("Creating transactor_detailed_view")
-        create_transactor_detailed_view(con)
-
+    if not table_exists(con, "transactor_detailed_view"):
+        raise ValueError("transactor_detailed_view does not exist")
     # Load linker and run prediction and clustering
     linker = load_linker(con, model_path, table_name)
     clusters = cluster_transactors(linker, threshold_match_probability=threshold)

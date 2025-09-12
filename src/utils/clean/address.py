@@ -102,15 +102,21 @@ def expand_usaddress_simple(parsed_address: dict) -> dict:
                 parsed_address[directional_type], parsed_address[directional_type]
             )
     for street_type in ["StreetNamePostType", "StreetNamePreType"]:
-        if street_type in parsed_address:
-            parsed_address[street_type] = street_types.get(
-                parsed_address[street_type], parsed_address[street_type]
-            )
+        # replace current street type with standardized version if mapping exists
+        if (
+            street_type in parsed_address
+            and parsed_address[street_type] in street_types
+        ):
+            parsed_address[street_type] = street_types[parsed_address[street_type]]
     for occupancy_type in ["OccupancyType", "OccupancyIdentifier"]:
-        if occupancy_type in parsed_address:
-            parsed_address[occupancy_type] = occupancy_types.get(
-                parsed_address[occupancy_type], parsed_address[occupancy_type]
-            )
+        # replace current occupancy type with standardized version if mapping exists
+        if (
+            occupancy_type in parsed_address
+            and parsed_address[occupancy_type] in occupancy_types
+        ):
+            parsed_address[occupancy_type] = occupancy_types[
+                parsed_address[occupancy_type]
+            ]
     return parsed_address
 
 
@@ -161,7 +167,7 @@ def clean_address(address_df: pd.DataFrame) -> pd.DataFrame:
     if "zipcode" in address_df.columns:
         address_df["zipcode"] = address_df["zipcode"].apply(clean_zipcode)
 
-    parsed_address_columns = address_df.apply(
+    expanded_addresses_df = address_df.apply(
         parse_usaddress_simple_expand, axis=1, result_type="expand"
     )
     # column mapping
@@ -187,21 +193,21 @@ def clean_address(address_df: pd.DataFrame) -> pd.DataFrame:
         "ZipCode": "zipcode",
     }
 
-    parsed_address_columns = parsed_address_columns.drop(
+    expanded_addresses_df = expanded_addresses_df.drop(
         columns=[
             col
-            for col in parsed_address_columns.columns
+            for col in expanded_addresses_df.columns
             if col not in address_part_name_mapping
         ]
     )
-    parsed_address_columns = parsed_address_columns.rename(
+    expanded_addresses_df = expanded_addresses_df.rename(
         columns=address_part_name_mapping
     )
 
     # For columns in both, use parsed_address_columns value if notna, else address_df
-    for col in parsed_address_columns.columns:
+    for col in expanded_addresses_df.columns:
         if col in address_df.columns:
-            address_df[col] = parsed_address_columns[col].combine_first(address_df[col])
+            address_df[col] = expanded_addresses_df[col].combine_first(address_df[col])
         else:
-            address_df[col] = parsed_address_columns[col]
+            address_df[col] = expanded_addresses_df[col]
     return address_df

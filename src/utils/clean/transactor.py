@@ -132,17 +132,13 @@ def fill_in_transactor_types(names: pd.DataFrame) -> pd.DataFrame:
             full_name, first_name, middle_name, last_name, name_prefix,
             name_suffix, name_preferred
     """
+    possible_org_names = names[["full_name", "last_name"]]
     probable_organization_mask = (
-        names["full_name"].notna()
-        & names["full_name"].str.contains(
+        possible_org_names.notna()
+        & possible_org_names.str.contains(
             "|".join(company_name_patterns), case=False, na=False
         )
-    ) | (
-        names["last_name"].notna()
-        & names["last_name"].str.contains(
-            "|".join(company_name_patterns), case=False, na=False
-        )
-    )
+    ).any(axis=1)
     names.loc[probable_organization_mask, "transactor_type"] = "Organization"
     names["transactor_type"] = names["transactor_type"].fillna("Unknown")
     # TODO: improve transactor_type prediction
@@ -150,7 +146,7 @@ def fill_in_transactor_types(names: pd.DataFrame) -> pd.DataFrame:
 
 
 def clean_phone_number(val: object) -> str | None:
-    """Convert phone numbers to strings of length 10"""
+    """Convert phone numbers to strings of only digits or None"""
     if pd.isna(val):
         return None
     string_phone_number = str(val)
@@ -159,22 +155,22 @@ def clean_phone_number(val: object) -> str | None:
     return string_phone_number
 
 
-def clean_names(names: pd.DataFrame) -> pd.DataFrame:
+def clean_names(transactors: pd.DataFrame) -> pd.DataFrame:
     """Clean names in a dataframe
 
     Args:
-        names: A dataframe with columns:
+        transactors: A dataframe with columns:
             full_name, first_name, middle_name, last_name, name_prefix,
             name_suffix, name_preferred
     """
-    # fill in transactor types
-    names = fill_in_transactor_types(names)
     # clean individuals names
-    individuals_names_mask = names["transactor_type"] == "Individual"
-    individuals_names = clean_individuals_names(names.loc[individuals_names_mask, :])
+    individuals_names_mask = transactors["transactor_type"] == "Individual"
+    individuals_names = clean_individuals_names(
+        transactors.loc[individuals_names_mask, :]
+    )
     # concatenate cleaned individuals names with original dataframe
     cleaned_names = pd.concat(
-        [names.loc[~individuals_names_mask, :], individuals_names]
+        [transactors.loc[~individuals_names_mask, :], individuals_names]
     )
     return cleaned_names
 
@@ -188,6 +184,8 @@ def clean_transactors(transactors: pd.DataFrame) -> pd.DataFrame:
             name_suffix, name_preferred, phone_number
     """
     transactors = transactors.drop_duplicates(subset=["id"], keep="first")
+    # fill in transactor types
+    transactors = fill_in_transactor_types(transactors)
     transactors = clean_names(transactors)
     transactors["phone_number"] = transactors["phone_number"].apply(clean_phone_number)
     return transactors
