@@ -193,7 +193,7 @@ ElectionResult:
     - candidate_id
     - election_id
   attributes:
-    - votes_recieved
+    - votes_received
     - win
     - candidate_id
     - election_id
@@ -206,7 +206,7 @@ ElectionResult:
       table: Election
       direction: forward
   types:
-    votes_recieved: Int32
+    votes_received: Int32
     win: bool
     
 Address:
