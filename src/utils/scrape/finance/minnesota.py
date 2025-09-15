@@ -6,7 +6,6 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
-
 from utils.constants import DATA_DIR
 
 

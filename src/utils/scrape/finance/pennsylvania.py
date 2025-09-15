@@ -6,7 +6,6 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
-
 from utils.constants import DATA_DIR
 
 

@@ -27,7 +27,6 @@ from urllib.parse import urljoin
 import py7zr
 import requests
 from bs4 import BeautifulSoup
-
 from utils.constants import DATA_DIR
 
 
