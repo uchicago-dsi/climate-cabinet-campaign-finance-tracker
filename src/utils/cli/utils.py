@@ -54,7 +54,7 @@ def add_common_args(
         "-f",
         "--format",
         choices=["csv", "parquet"],
-        default="csv",
+        default="parquet",
         help=(
             "Desired file format (csv or parquet). If a separate input and output"
             " format is desired, use --input-format and --output-format instead. "
@@ -64,13 +64,13 @@ def add_common_args(
     parser.add_argument(
         "--input-format",
         choices=["csv", "parquet"],
-        default="csv",
+        default="parquet",
         help="Input file format (csv or parquet). Default is parquet",
     )
     parser.add_argument(
         "--output-format",
         choices=["csv", "parquet"],
-        default="csv",
+        default="parquet",
         help="Output file format (csv or parquet). Default is parquet",
     )
     parser.add_argument(
