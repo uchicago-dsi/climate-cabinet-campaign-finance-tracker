@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from utils.finance.config import ConfigHandler
-from utils.finance.source import (
+from utils.standardize.config import ConfigHandler
+from utils.standardize.source import (
     DataReader,
     DataSourceStandardizationPipeline,
     DataStandardizer,

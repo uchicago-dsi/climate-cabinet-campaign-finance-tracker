@@ -13,7 +13,7 @@ import pkgutil
 import yaml
 
 from utils.constants import STATE_FINANCE_CONFIG_DIRECTORY
-from utils.finance.source import DataSourceStandardizationPipeline
+from utils.standardize.source import DataSourceStandardizationPipeline
 
 DATA_SOURCE_REGISTRY: dict[str, list[DataSourceStandardizationPipeline]] = {}
 
@@ -65,7 +65,7 @@ def register_all_special_data_sources(
         states: list of state abbreviations to get data sources for.
             If not provided, all available states will be included.
     """
-    package_name = "utils.finance.states"
+    package_name = "utils.standardize.finance"
     package = importlib.import_module(package_name)
     for _, module_name, _ in pkgutil.iter_modules(package.__path__):
         if states and module_name not in states:

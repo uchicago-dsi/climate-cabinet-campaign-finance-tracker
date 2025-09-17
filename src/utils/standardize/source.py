@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from utils.constants import RAW_DATA_DIRECTORY
-from utils.finance.config import ConfigHandler
+from utils.standardize.config import ConfigHandler
 
 
 class DataReader:
