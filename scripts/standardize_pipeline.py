@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 
 from utils.constants import BASE_FILEPATH
-from utils.finance.pipeline import standardize_states
 from utils.io import save_database
+from utils.standardize.pipeline import standardize_states
 
 parser = argparse.ArgumentParser()
 
