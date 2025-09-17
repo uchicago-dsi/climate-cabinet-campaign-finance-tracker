@@ -1,14 +1,91 @@
 # Climate Cabinet Campaign Finance Tracker
 
-## Process
+This package provides tools for collecting and processing state campaign finance data. Currently the package supports Arizona, Michigan, Minnesota, Pennsylvania, and Texas. To request another state, please open an issue. To add another state yourself, see [Adding a new state](./CONTRIBUTING.md#adding-a-new-state).
+
+This package was developed at the Data Science Institute at the University of Chicago in partnership with Climate Cabinet. 
+
+## Installation
+
+### Docker (recommended)
+
+For the most consistent installation, the pipeline components can be run using Docker. To install Docker, visit TODO. 
+
+### Local
+
+If you are not using Docker, it is still recommended to use a Python environment to avoid dependency conflicts. Conda is a good option. 
+
+To install in an environment:
+```bash
+pip install -r requirements
+pip install -e . 
+```
+
+## Use
+
+### Docker / Make
+
+If you have set up with Docker, the quickest way to get started is to use make to interact with Docker. 
+
+```bash
+make run-collect
+```
+To run the step of the pipeline with default options.
+
+## Configuration
+
+### DATA_DIR
+
+### Command Line Options
+These options are shared across pipeline steps. To see per-step details and available options, run `cft <step> --help`, replacing `<step>` with your desired step.
+
+#### --states
+List of states on which to run the given pipeline step. The pipeline steps except link will process each state separately. 
+
+#### --chunk-size
+Maximum number of rows to process at once. If left blank, all rows for a given state and step will be processed at once. This may not work if your computer has limited memory / RAM.
+
+#### --start-year
+Earliest year (in YYYY format) on which to process data. If none is given, the earliest available year will be included. 
+
+#### --end-year
+Latest year (in YYYY format) on which to process data. If none is given, the latest available year will be included. 
+
+
+#### --format
+
+
+#### --input-format
+
+#### --output-format
+
+
+#### --slurm
+
+
+#### --input-directory
+
+
+#### --output-directory
+
+
+
+
+## Pipeline
+
+The full pipeline is broken down into several steps:
 
 1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
 2. Standardize: Define database schema for storing transaction and entity information and standardize column names and values.
 3. Normalize: Normalize data into provided schema
-4. Classify: Label all entities as fossil fuel, clean energy, or other
-5. Graph: Construct a network graph of campaign finance contributions
-6. Analyze: Perform analysis on network data and join with other relevant dataset
+4. Clean: Use hueristics to fill in missing information and make data consistent. 
+5. Link: Perform probabilistic record linkage on cleaned data to identify duplicate records.
+6. Classify: Label all entities as fossil fuel, clean energy, or other
 
+Each step can be run as a command line tool by running `cft <step>` where `<step>` is replaced the by the desired step (ex: `cft clean`). To see a list of command line options for a particular step, run `cft <step> --help`. 
+
+## Data Storage
+
+The pipeline saves intermediate files after each step for data provenance. By default, each state's results are saved in a separate directory until the link step. File paths will be relative to DATA_DIR which can be set in a `.env` file. 
 
 ## Local Development
 
@@ -18,63 +95,10 @@
     b. Go to the [Project's Google Drive]('https://drive.google.com/file/d/1fazviLqQWOXDVkP8NR80tO522lsIu5-H/view?usp=drive_link') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
 2. Run `pip install -r requirements.txt` and `pip install -e .` if not in Docker (not recommended for development)
 
-### Docker Development
-
-The repository provides a Dockerfile and devcontainer configuration. It is recommended to develop in Docker. 
-
-
-## Usage
-
-The main components of the package are broken up into subpackages which can be imported and used in external code. To run pipelines directly you can use the scripts in the `scripts` directory. These scripts have been dockerized already and can be run simply using `make` commands.
-
-- `make run-standardize-pipeline`: This runs the pipeline to read in raw data and standardize column names and data.
-  - Expects there to be a folder for each state in a `data/raw` folder. Follow setup instructions to get data.  Outputs to `output/standardized`
-- `make run-normalize-pipeline`: This runs the pipeline to normalize data. 
-  - Expects data in `output/standardized`. Outputes to `output/normalized`
-- `make run-standardize-normalize-pipeline`. Combines both pipelines.
-
-For developing, please use either a Docker dev container or slurm computer cluster. See more details in `CONTRIBUTING.md`
-
-
-## Repository Structure
-
-### utils
-Project python code
-
-### notebooks
-Contains short, clean notebooks to demonstrate analysis.
-
-### data
-
-Contains details of acquiring all raw data used in repository. If data is small (<50MB) then it is okay to save it to the repo, making sure to clearly document how to the data is obtained.
-
-If the data is larger than 50MB than you should not add it to the repo and instead document how to get the data in the README.md file in the data directory. 
-
-This [README.md file](/data/README.md) should be kept up to date.
-
 
 ## Past Student Team Members
-
-Student Name: Nicolas Posner
-Student Email: nrposner@uchicago.edu
-
-Student Name: Alan Kagiri
-Student Email: alankagiri@uchicago.edu. 
-
-Student Name: Adil Kassim
-Student Email: adilk@uchicago.edu
-
-Student Name: Nayna Pashilkar
-Student Email: npashilkar@uchicago.edu
-
-Student Name: Yangge Xu
-Student Email: yanggexu@uchicago.edu
-
-Student Name: Bhavya Pandey    
-Student Email: bhavyapandey@uchicago.edu
-
-Student Name: Kaya Lee
-Student Email: klee2024@uchicago.edu
+Thanks to all of the students who have contributed from the Data Science Clinic, MPCS Practicum, and the DSSI TAs.
+Nicolas Posner, Alan Kagiri, Adil Kassin, Nayna Pashilkar, Bhavya Pandey, Kaya Lee, Yangge Xu.
 
 # Documentation
 
