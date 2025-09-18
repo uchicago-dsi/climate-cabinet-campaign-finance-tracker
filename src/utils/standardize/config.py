@@ -5,7 +5,7 @@ from pathlib import Path
 
 from yaml import safe_load
 
-from utils.constants import BASE_FILEPATH
+from utils.constants import STATE_FINANCE_CONFIG_DIRECTORY
 
 
 def resolve_inheritance(config: dict, form_code: str) -> dict:
@@ -66,7 +66,7 @@ class ConfigHandler:
     @property
     def default_config_folder(self) -> Path:
         """Default path to state campaign finance configuration files"""
-        return BASE_FILEPATH / "src" / "utils" / "config" / "finance" / "states"
+        return STATE_FINANCE_CONFIG_DIRECTORY
 
     @property
     def state_code(self) -> str:

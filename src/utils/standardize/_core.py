@@ -25,7 +25,8 @@ def standardize_state(
         end_year: Year to end filtering data at. If None,
             will default to the latest year in the data
         input_directory: Path to directory containing raw data. If None,
-            will default to 'data/raw'
+            will default to 'data/raw'. Will look for data in the state'
+            subdirectory of this directory (i.e. data/raw/IL)
 
     Returns:
         dictionary mapping table name to tables of that type
@@ -38,7 +39,7 @@ def standardize_state(
         standardized_source_table = source.load_and_standardize_data_source(
             start_year=start_year,
             end_year=end_year,
-            state_data_directory=input_directory,
+            state_data_directory=input_directory / state,
         )
         if source.table_name not in database:
             database[source.table_name] = pd.DataFrame()
