@@ -8,7 +8,8 @@ they will be registered by the `register_all_special_data_sources` function.
 """
 
 import importlib
-import pkgutil
+from collections.abc import Callable
+from pathlib import Path
 
 import yaml
 
@@ -65,12 +66,60 @@ def register_all_special_data_sources(
         states: list of state abbreviations to get data sources for.
             If not provided, all available states will be included.
     """
-    package_name = "utils.standardize.finance"
-    package = importlib.import_module(package_name)
-    for _, module_name, _ in pkgutil.iter_modules(package.__path__):
-        if states and module_name not in states:
+    for p in Path(__file__).parent.rglob("*.py"):
+        if p.stem not in states:
             continue
-        importlib.import_module(f"{package_name}.{module_name}")
+        importlib.import_module(f"{__name__}.{p.stem}")
+
+
+def register_special_data_source(
+    state: str,
+    *,
+    form_code: str | None = None,
+    init_kwargs: dict | None = None,
+) -> Callable[[DataSourceStandardizationPipeline], DataSourceStandardizationPipeline]:
+    """Decorator factory for special (code) pipelines.
+
+    Usage:
+        @register_special_pipeline("CA", form_code="990")
+        class CA990(DataSourceStandardizationPipeline):
+            ...
+
+    - Creates an instance of the class with:
+        state_code = <state>
+        form_code  = <form_code> (or class attr if not passed)
+        **init_kwargs (optional)
+    - Calls register_data_source(state, instance).
+    - Returns the class unchanged.
+    """
+
+    def _data_source_pipeline_decorator(
+        cls: DataSourceStandardizationPipeline,
+    ) -> DataSourceStandardizationPipeline:
+        """Decorator for data source pipelines"""
+        if not issubclass(cls, DataSourceStandardizationPipeline):
+            raise TypeError(
+                "Decorator target must subclass DataSourceStandardizationPipeline"
+            )
+
+        if form_code is None:
+            raise ValueError(
+                f"form_code must be provided either as decorator arg to {cls.__name__}"
+            )
+
+        kwargs = dict(init_kwargs or {})
+        # Defaults only if not provided by init_kwargs
+        kwargs.setdefault("state_code", state)
+        kwargs.setdefault("form_code", form_code)
+
+        # create initialized pipeline instance
+        instance = cls(**kwargs)
+        register_data_source(state, instance)
+
+        # return the class unchanged
+        return cls
+
+    return _data_source_pipeline_decorator
 
 
 def register_all_standard_data_sources(
