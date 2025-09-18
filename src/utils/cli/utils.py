@@ -314,7 +314,6 @@ def validate_args(
     Returns:
         args: Validated arguments
     """
-    print(args.states)
     if "chunk-size" in args and args.chunk_size is not None and args.chunk_size <= 0:
         raise ValueError("Chunk size must be greater than 0")
     # handle format
@@ -338,6 +337,11 @@ def validate_args(
     if args.output_directory is None:
         args.output_directory = args.data_directory / output_directory_name
     args.output_directory.mkdir(parents=True, exist_ok=True)
+    if args.states is None:
+        args.states = [state_dir.stem for state_dir in args.input_directory.iterdir()]
+        print(
+            f"States not provided, using all states in input directory: {args.states}"
+        )
 
     return args
 
@@ -397,5 +401,5 @@ def create_subparsers(
     subparsers = parser.add_subparsers(dest="command", required=True)
     step_parsers = {}
     for step in pipeline_step_details:
-        step_parsers[step] = create_parser_for_step(subparsers[step], step)
+        step_parsers[step] = create_parser_for_step(subparsers, step)
     return step_parsers
