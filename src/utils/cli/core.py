@@ -5,14 +5,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import submitit
 from tqdm import tqdm
 
 from utils.clean import clean_data
 from utils.cli.utils import (
-    create_parser_for_step,
-    pipeline_step_details,
-    validate_args,
+    create_subparsers,
+    route_pipeline_step,
 )
 from utils.database import (
     connect_duckdb,
@@ -137,11 +135,7 @@ def run_classify(args: argparse.Namespace) -> int:
 def build_complete_parser() -> argparse.ArgumentParser:
     """Build a complete parser for CLI options for all pipeline steps"""
     parser = argparse.ArgumentParser(prog="ccf", description="Campaign finance CLI")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    step_parsers = {}
-    for step in pipeline_step_details:
-        step_parsers[step] = create_parser_for_step(sub, step)
+    step_parsers = create_subparsers(parser)
 
     step_parsers["standardize"].set_defaults(
         func=route_pipeline_step, pipeline_step_func=run_standardize
@@ -175,43 +169,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-def route_pipeline_step(
-    args: argparse.Namespace,
-) -> int:
-    """Route pipeline step to either local execution or SLURM submission.
-
-    Args:
-        args: Arguments to validate. Must contain a pipeline_step_func attribute
-            that should handle saving its outputs.
-
-    Returns:
-        int: 0 if successful
-    """
-    args = validate_args(
-        args,
-        input_directory_name=args.input_directory_name,
-        output_directory_name=args.output_directory_name,
-    )
-
-    if args.slurm:
-        print("Submitting to cluster compute nodes with submitit")
-        executor = submitit.AutoExecutor(folder="logs")
-        executor.update_parameters(
-            slurm_time=600,
-            slurm_cpus_per_task=1,
-            slurm_mem_per_cpu=256000,
-            slurm_array_parallelism=3,
-            slurm_partition="general",
-        )
-        with executor.batch():
-            for state in args.states:
-                args.state = state
-                executor.submit(args.pipeline_step_func, args)
-    else:
-        for state in args.states:
-            print(f"Running pipeline step for {state}")
-            args.state = state
-            args.pipeline_step_func(args)
-    return 0
