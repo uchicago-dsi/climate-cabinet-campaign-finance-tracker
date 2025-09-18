@@ -27,13 +27,13 @@ def clean_table_columns(
 
 
 def clean_database_columns(
-    database: dict[str, pd.DataFrame], config_file: dict
+    database: dict[str, pd.DataFrame], schema_file: dict
 ) -> dict[str, pd.DataFrame]:
     """Based on config, ensure all columns are present in the correct type
 
     Args:
         database: Dictionary mapping table names to dataframes
-        config_file: Path to a yaml file with details about the database schema.
+        schema_file: Path to a yaml file with details about the database schema.
             All table names in the database should be keys in the yaml file and have
             the following attributes:
                 - 'attributes': a list of all column names
@@ -44,7 +44,7 @@ def clean_database_columns(
     Returns:
         Cleaned database with all columns present and in the correct type
     """
-    database_schema = DataSchema(config_file)
+    database_schema = DataSchema(schema_file)
     for table_name, table_data in database.items():
         database[table_name] = clean_table_columns(
             table_data, database_schema.schema[table_name]

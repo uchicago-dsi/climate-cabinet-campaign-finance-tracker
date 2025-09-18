@@ -10,18 +10,18 @@ from utils.clean.transactor import clean_transactors
 
 
 def clean_data(
-    database: dict[str, pd.DataFrame], config_file: Path
+    database: dict[str, pd.DataFrame], schema_file: Path
 ) -> dict[str, pd.DataFrame]:
     """Clean data from normalized database
 
     Args:
         database: dictionary of pandas DataFrames
-        config_file: Path to a yaml file with details about the database schema.
+        schema_file: Path to a yaml file with details about the database schema.
 
     Returns:
         dictionary of pandas DataFrames
     """
-    database = clean_database_columns(database, config_file)
+    database = clean_database_columns(database, schema_file)
     if "Transactor" in database:
         database["Transactor"] = clean_transactors(database["Transactor"])
     if "Address" in database:
