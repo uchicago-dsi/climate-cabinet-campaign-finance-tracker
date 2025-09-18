@@ -133,12 +133,11 @@ def fill_in_transactor_types(names: pd.DataFrame) -> pd.DataFrame:
             name_suffix, name_preferred
     """
     possible_org_names = names[["full_name", "last_name"]]
-    probable_organization_mask = (
-        possible_org_names.notna()
-        & possible_org_names.str.contains(
-            "|".join(company_name_patterns), case=False, na=False
-        )
-    ).any(axis=1)
+    pattern = "|".join(company_name_patterns)
+    contains_any = possible_org_names.apply(
+        lambda col: col.astype("string").str.contains(pattern, case=False, na=False)
+    )
+    probable_organization_mask = contains_any.any(axis=1)
     names.loc[probable_organization_mask, "transactor_type"] = "Organization"
     names["transactor_type"] = names["transactor_type"].fillna("Unknown")
     # TODO: improve transactor_type prediction
