@@ -16,7 +16,7 @@ import yaml
 from utils.constants import STATE_FINANCE_CONFIG_DIRECTORY
 from utils.standardize.source import DataSourceStandardizationPipeline
 
-DATA_SOURCE_REGISTRY: dict[str, list[DataSourceStandardizationPipeline]] = {}
+_FINANCE_SOURCE_REGISTRY: dict[str, list[DataSourceStandardizationPipeline]] = {}
 
 
 def register_data_source(
@@ -31,17 +31,17 @@ def register_data_source(
         state: two letter state abbreviation
         data_source: pipeline defining how to standardize data source
     """
-    if state not in DATA_SOURCE_REGISTRY:
-        DATA_SOURCE_REGISTRY[state] = []
+    if state not in _FINANCE_SOURCE_REGISTRY:
+        _FINANCE_SOURCE_REGISTRY[state] = []
     if data_source.form_code not in [
-        pipeline.form_code for pipeline in DATA_SOURCE_REGISTRY[state]
+        pipeline.form_code for pipeline in _FINANCE_SOURCE_REGISTRY[state]
     ]:
-        DATA_SOURCE_REGISTRY[state].append(data_source)
+        _FINANCE_SOURCE_REGISTRY[state].append(data_source)
 
 
 def get_registered_sources() -> dict[str, list[DataSourceStandardizationPipeline]]:
     """Retrieve dictionary mapping state abbreviations to their data source pipelines"""
-    return DATA_SOURCE_REGISTRY
+    return _FINANCE_SOURCE_REGISTRY
 
 
 def register_all_data_source_pipelines(
