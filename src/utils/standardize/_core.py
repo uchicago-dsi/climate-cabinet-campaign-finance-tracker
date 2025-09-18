@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils.standardize.data_source_registry import (
+from utils.standardize.source_standardization_registry import (
     get_registered_sources,
     register_all_data_source_pipelines,
 )
