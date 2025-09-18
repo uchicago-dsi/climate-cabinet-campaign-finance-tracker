@@ -9,7 +9,11 @@ import submitit
 from tqdm import tqdm
 
 from utils.clean import clean_data
-from utils.cli.utils import add_common_args, validate_args
+from utils.cli.utils import (
+    create_parser_for_step,
+    pipeline_step_details,
+    validate_args,
+)
 from utils.database import (
     connect_duckdb,
     create_database_from_nested_parquet_directories,
@@ -32,7 +36,11 @@ def run_standardize(args: argparse.Namespace) -> int:
     db = standardize_state(
         args.state, args.start_year, args.end_year, args.input_directory
     )
-    save_database(db, Path(args.output_directory) / args.state, format=args.format)
+    save_database(
+        db,
+        Path(args.output_directory) / args.state,
+        format=args.format,
+    )
     return 0
 
 
@@ -40,10 +48,13 @@ def run_normalize(args: argparse.Namespace) -> int:
     """Command entry point for normalizing standardized data"""
     # Process database in chunks (a chunk may be all data)
     database_chunks = load_database(
-        args.input_directory, format=args.input_format, chunk_size=args.chunk_size
+        args.input_directory / args.state,
+        format=args.input_format,
+        chunk_size=args.chunk_size,
     )
     # Load existing ID mappings or start with empty dict
-    accumulated_id_mapping = load_id_mapping(args.id_mapping_file)
+    id_mapping_file = args.output_directory / args.state / "id_mapping.tsv"
+    accumulated_id_mapping = load_id_mapping(id_mapping_file)
 
     first_chunk = True
     for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
@@ -58,13 +69,13 @@ def run_normalize(args: argparse.Namespace) -> int:
         save_mode = "overwrite" if first_chunk else "append"
         save_database(
             normalized_database,
-            args.output_directory,
+            args.output_directory / args.state,
             format=args.output_format,
             mode=save_mode,
         )
 
         # Save updated ID mappings after each chunk
-        save_id_mapping(accumulated_id_mapping, args.id_mapping_file)
+        save_id_mapping(accumulated_id_mapping, id_mapping_file)
 
         first_chunk = False
     return 0
@@ -73,15 +84,17 @@ def run_normalize(args: argparse.Namespace) -> int:
 def run_clean(args: argparse.Namespace) -> int:
     """Command entry point for cleaning normalized data"""
     database_chunks = load_database(
-        args.input_directory, format=args.input_format, chunk_size=args.chunk_size
+        args.input_directory / args.state,
+        format=args.input_format,
+        chunk_size=args.chunk_size,
     )
     first_chunk = True
     for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
-        cleaned_database = clean_data(chunk_database, args.config_file)
+        cleaned_database = clean_data(chunk_database, args.schema)
         save_mode = "overwrite" if first_chunk else "append"
         save_database(
             cleaned_database,
-            args.output_directory,
+            args.output_directory / args.state,
             format=args.output_format,
             mode=save_mode,
         )
@@ -109,7 +122,7 @@ def run_link(args: argparse.Namespace) -> int:
     run_linkage_pipeline(
         duckdb_path=args.database_path,
         model_path=args.model_path,
-        parquet_dir=args.input_directory,
+        parquet_dir=args.input_directory / args.state,
         threshold=args.threshold,
         table_name=args.table_name,
     )
@@ -126,78 +139,29 @@ def build_complete_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ccf", description="Campaign finance CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    # Standardize
-    p_standardize = sub.add_parser(
-        "standardize",
-        help="Standardize raw data with deterministic rules while maintaining shape.",
-    )
-    add_common_args(
-        p_standardize, input_directory_name="raw", output_directory_name="standardized"
-    )
-    p_standardize.add_argument("--input-format", help=argparse.SUPPRESS)
-    p_standardize.add_argument("--chunk-size", help=argparse.SUPPRESS)
-    p_standardize.set_defaults(
+    step_parsers = {}
+    for step in pipeline_step_details:
+        step_parsers[step] = create_parser_for_step(sub, step)
+
+    step_parsers["standardize"].set_defaults(
         func=route_pipeline_step, pipeline_step_func=run_standardize
     )
 
-    # Normalize
-    p_norm = sub.add_parser(
-        "normalize",
-        help="Reshape standardized data to match normalized database schema.",
+    step_parsers["normalize"].set_defaults(
+        func=route_pipeline_step, pipeline_step_func=run_normalize
     )
-    add_common_args(
-        p_norm, input_directory_name="standardized", output_directory_name="normalized"
-    )
-    p_norm.set_defaults(func=route_pipeline_step, pipeline_step_func=run_normalize)
 
-    # Clean
-    p_clean = sub.add_parser(
-        "clean", help="Clean normalized data with heuristic transformations."
+    step_parsers["clean"].set_defaults(
+        func=route_pipeline_step, pipeline_step_func=run_clean
     )
-    add_common_args(
-        p_clean, input_directory_name="normalized", output_directory_name="cleaned"
-    )
-    p_clean.set_defaults(func=route_pipeline_step, pipeline_step_func=run_clean)
 
-    # Link
-    p_link = sub.add_parser(
-        "link",
-        help="Perform probabilistic record linkage on cleaned data to identify duplicate records.",
+    step_parsers["link"].set_defaults(
+        func=route_pipeline_step, pipeline_step_func=run_link
     )
-    add_common_args(
-        p_link, input_directory_name="cleaned", output_directory_name="linked"
+
+    step_parsers["classify"].set_defaults(
+        func=route_pipeline_step, pipeline_step_func=run_classify
     )
-    p_link.add_argument(
-        "--database-path",
-        type=Path,
-        required=True,
-        help="Path to DuckDB database to load/save data",
-    )
-    p_link.add_argument(
-        "--model-path",
-        type=Path,
-        required=True,
-        help="Path to record linkage model. If training, this will be the path to save the model.",
-    )
-    p_link.add_argument(
-        "--train",
-        action="store_true",
-        default=False,
-        help="Run training pipeline before linkage, overwriting any model at model-path if it exists.",
-    )
-    p_link.add_argument(
-        "--threshold",
-        type=float,
-        default=0.95,
-        help="Match probability threshold for to consider two records as a match.",
-    )
-    p_link.add_argument(
-        "--table-name",
-        type=str,
-        default="transactor_detailed_view",
-        help="Table to perform record linkage on",
-    )
-    p_link.set_defaults(func=route_pipeline_step, pipeline_step_func=run_link)
 
     return parser
 
@@ -215,24 +179,20 @@ if __name__ == "__main__":
 
 def route_pipeline_step(
     args: argparse.Namespace,
-    input_directory_name: str,
-    output_directory_name: str,
 ) -> int:
     """Route pipeline step to either local execution or SLURM submission.
 
     Args:
         args: Arguments to validate. Must contain a pipeline_step_func attribute
             that should handle saving its outputs.
-        input_directory_name: Name of the input directory
-        output_directory_name: Name of the output directory
 
     Returns:
         int: 0 if successful
     """
     args = validate_args(
         args,
-        input_directory_name=input_directory_name,
-        output_directory_name=output_directory_name,
+        input_directory_name=args.input_directory_name,
+        output_directory_name=args.output_directory_name,
     )
 
     if args.slurm:
@@ -247,9 +207,11 @@ def route_pipeline_step(
         )
         with executor.batch():
             for state in args.states:
-                executor.submit(args.pipeline_step_func, state=state, **args)
+                args.state = state
+                executor.submit(args.pipeline_step_func, args)
     else:
         for state in args.states:
             print(f"Running pipeline step for {state}")
-            args.pipeline_step_func(state=state, **args)
+            args.state = state
+            args.pipeline_step_func(args)
     return 0
