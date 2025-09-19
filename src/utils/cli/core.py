@@ -42,10 +42,13 @@ def run_standardize(args: argparse.Namespace) -> int:
     db = standardize_state(
         args.state, args.start_year, args.end_year, args.input_directory
     )
+    print(
+        f"Standardizing data for {args.state} from {args.input_directory} to {args.output_directory}"
+    )
     save_database(
         db,
         Path(args.output_directory) / args.state,
-        format=args.format,
+        format=args.output_format,
     )
     return 0
 

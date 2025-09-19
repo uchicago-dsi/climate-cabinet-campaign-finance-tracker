@@ -263,7 +263,7 @@ def add_argument_to_parser(
             "-f",
             "--format",
             choices=["csv", "parquet"],
-            default="parquet",
+            default=None,
             help=(
                 "Desired file format (csv or parquet). If a separate input and output"
                 " format is desired, use --input-format and --output-format instead. "
@@ -274,14 +274,14 @@ def add_argument_to_parser(
         parser.add_argument(
             "--input-format",
             choices=["csv", "parquet"],
-            default="parquet",
+            default=None,
             help="Input file format (csv or parquet). Default is parquet",
         )
     elif argument_name == "output-format":
         parser.add_argument(
             "--output-format",
             choices=["csv", "parquet"],
-            default="parquet",
+            default=None,
             help="Output file format (csv or parquet). Default is parquet",
         )
     elif argument_name == "schema":
@@ -338,9 +338,15 @@ def validate_args(
         raise ValueError(
             "Cannot specify both --format and --input-format or --output-format"
         )
-    if "format" in args and args.format is not None:
-        args.input_format = args.format
-        args.output_format = args.format
+    if "format" in args:
+        if args.format is not None:
+            args.input_format = args.format
+            args.output_format = args.format
+        else:
+            if "input_format" in args and args.input_format is None:
+                args.input_format = "parquet"
+            if "output_format" in args and args.output_format is None:
+                args.output_format = "parquet"
     # validate directories
     if "input_directory" in args:
         if args.input_directory is not None:
