@@ -1,6 +1,6 @@
 base:
   meta: True
-  state_code: PA
+  state_code: pa
   read_csv_params:
     sep: ","
     encoding: latin-1

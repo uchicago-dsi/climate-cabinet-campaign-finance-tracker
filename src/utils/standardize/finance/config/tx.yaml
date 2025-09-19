@@ -1,7 +1,7 @@
 # Docs: https://www.ethics.state.tx.us/data/search/cf/CampaignFinanceCSVFileFormat.pdf
 base:
   meta: True
-  state_code: TX
+  state_code: tx
   read_csv_params:
     sep: ","
     encoding: utf-8

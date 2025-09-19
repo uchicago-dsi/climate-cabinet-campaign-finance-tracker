@@ -1,5 +1,5 @@
 base:
-  state_code: AZ
+  state_code: az
   state_code_columns:
     - reported_state
   read_csv_params:

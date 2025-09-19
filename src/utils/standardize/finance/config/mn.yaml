@@ -1,6 +1,6 @@
 base:
   meta: True
-  state_code: MN
+  state_code: mn
   read_csv_params:
     sep: ","
     on_bad_lines: warn

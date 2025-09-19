@@ -1,6 +1,6 @@
 base:
   meta: True
-  state_code: MI
+  state_code: mi
   read_csv_params:
     encoding: mac_roman
     on_bad_lines: warn
