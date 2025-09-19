@@ -22,20 +22,23 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
+
+from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
 
 
+@register_special_state_collector("tx")
 def download_TX_data(output_directory: Path = None) -> None:
     """Downloads Texas campaign finance CSV database to a local directory.
 
     Args:
-        output_directory: desired output location. Defaults to 'data/raw/TX'
+        output_directory: desired output location. Defaults to 'data/raw/tx'
     Modifies:
         Downloads and extracts the bulk CSV database from Texas Ethics Commission
         to output_directory
     """
     if output_directory is None:
-        output_directory = DATA_DIR / "raw" / "TX"
+        output_directory = DATA_DIR / "raw" / "tx"
     else:
         output_directory = Path(output_directory).resolve()
 

@@ -17,6 +17,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+
+from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
 
 ADVANCED_SEARCH_URL = "https://seethemoney.az.gov/Reporting/AdvancedSearch/"
@@ -693,43 +695,44 @@ def get_cycle_info_by_year(year: int, api: ArizonaAPI) -> dict[str, str] | None:
     return None
 
 
+@register_special_state_collector("az")
 def get_all_arizona_data(
-    start_date: str | None = None,
-    end_date: str | None = None,
-    output_dir: str | None = None,
+    start_year: str | None = None,
+    end_year: str | None = None,
+    output_directory: str | None = None,
     override_existing_data: bool = False,
-    save_in_batches: bool = True,
-    batch_size: int = 1000,
+    chunk_size: int = 1000,
 ) -> dict[str, pd.DataFrame]:
     """Get all Arizona Campaign Finance data.
 
     Args:
-        start_date: Start date for data collection in YYYY-MM-DD format
-        end_date: End date for data collection in YYYY-MM-DD format
-        output_dir: Directory to save the dataframes to
+        start_year: Start year for data collection
+        end_year: End year for data collection
+        output_directory: Directory to save the dataframes to
         override_existing_data: If True, existing data will be overwritten
-        save_in_batches: If True, save data in batches during processing
-        batch_size: Number of records per batch when save_in_batches is True
+        chunk_size: If set, data will be saved in chunks of this size
 
     Returns:
         Dictionary containing both transaction and transactor data
     """
-    if output_dir is None:
-        output_dir = DATA_DIR / "raw" / "AZ" / "AdvancedSearch"
+    if output_directory is None:
+        output_directory = DATA_DIR / "raw" / "az" / "AdvancedSearch"
+    else:
+        output_directory = Path(output_directory).resolve() / "AdvancedSearch"
 
     api = ArizonaAPI()
     processor = ArizonaDataProcessor(
-        output_path=output_dir,
+        output_path=output_directory,
         override_existing_data=override_existing_data,
-        save_in_batches=save_in_batches,
-        batch_size=batch_size,
+        save_in_batches=chunk_size is not None,
+        batch_size=chunk_size,
     )
 
     # Get transaction data
     transaction_data = processor.get_all_transaction_data(
         api=api,
-        start_date=start_date,
-        end_date=end_date,
+        start_date=f"{start_year}-01-01",
+        end_date=f"{end_year}-12-31",
     )
 
     # Get transactor data

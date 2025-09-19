@@ -6,6 +6,8 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
 
 
@@ -70,7 +72,10 @@ def _extract_all_download_links(soup: BeautifulSoup, base_url: str) -> dict:
     return downloads
 
 
-def download_MN_data(output_directory: Path = None) -> None:
+@register_special_state_collector("mn")
+def download_MN_data(
+    output_directory: Path = None,
+) -> None:
     """Downloads MN campaign finance datasets to a local directory
 
     Downloads the three main "All" datasets from the Minnesota Campaign Finance Board:
@@ -84,7 +89,7 @@ def download_MN_data(output_directory: Path = None) -> None:
         Saves raw files from cfb.mn.gov to output_directory
     """
     if output_directory is None:
-        output_directory = DATA_DIR / "raw" / "MN"
+        output_directory = DATA_DIR / "raw" / "mn"
     else:
         output_directory = Path(output_directory).resolve()
 
@@ -122,7 +127,6 @@ def download_MN_data(output_directory: Path = None) -> None:
             if response.status_code != HTTPStatus.OK:
                 print(f"Failed to download {filename}: {response.reason}")
                 continue
-
             file_path = output_directory / filename
             with file_path.open("wb") as f:
                 f.write(response.content)

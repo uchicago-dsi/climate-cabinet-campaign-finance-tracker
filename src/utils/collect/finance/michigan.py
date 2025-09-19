@@ -27,22 +27,29 @@ from urllib.parse import urljoin
 import py7zr
 import requests
 from bs4 import BeautifulSoup
+
+from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
 
 
-def download_MI_data(output_directory: Path = None) -> None:
+@register_special_state_collector("mi")
+def download_MI_data(
+    output_directory: Path = None, start_year: int = None, end_year: int = None
+) -> None:
     """Downloads Michigan legacy campaign finance datasets to a local directory
 
     Args:
-        output_directory: desired output location. Defaults to 'data/raw/MI'
+        output_directory: desired output location. Defaults to 'data/raw/mi'
+        start_year: the first year to download data for
+        end_year: the last year to download data for
     Modifies:
         Saves extracted files from michigan.gov to output_directory with a separate
         directory for each year's files.
     """
     if output_directory is None:
-        output_directory = DATA_DIR / "raw" / "MI" / "LegacyDownloads"
+        output_directory = DATA_DIR / "raw" / "mi" / "LegacyDownloads"
     else:
-        output_directory = Path(output_directory).resolve()
+        output_directory = Path(output_directory).resolve() / "LegacyDownloads"
 
     base_url = "https://www.michigan.gov"
     search_url = (
@@ -95,8 +102,19 @@ def download_MI_data(output_directory: Path = None) -> None:
         if not legacy_links:
             print("No legacy data links found on the page")
             return
+        if start_year is None:
+            start_year = min(int(year) for year, _ in legacy_links)
+        if end_year is None:
+            end_year = max(int(year) for year, _ in legacy_links)
+        legacy_links = [
+            (year, url)
+            for year, url in legacy_links
+            if int(year) >= start_year and int(year) <= end_year
+        ]
 
-        print(f"Found {len(legacy_links)} legacy data files")
+        print(
+            f"Found {len(legacy_links)} legacy data files in the range of {start_year} to {end_year}"
+        )
 
         # Download and extract each file
         for year, url in sorted(legacy_links):

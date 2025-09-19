@@ -1,16 +1,22 @@
 """This modules provides functions to scrape Pennsylvannia campaign finance data"""
 
+import datetime
 import zipfile
 from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
 
 import requests
+
+from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
 
+EARLIEST_YEAR = 2000
 
+
+@register_special_state_collector("pa")
 def download_PA_data(
-    start_year: int, end_year: int, output_directory: Path = None
+    start_year: int = None, end_year: int = None, output_directory: Path = None
 ) -> None:
     """Downloads PA datasets from specified years to a local directory
 
@@ -23,7 +29,11 @@ def download_PA_data(
         for each year's files.
     """
     if output_directory is None:
-        output_directory = DATA_DIR / "raw" / "PA"
+        output_directory = DATA_DIR / "raw" / "pa"
+    if start_year is None:
+        start_year = EARLIEST_YEAR
+    if end_year is None:
+        end_year = datetime.datetime.now().year
 
     else:
         output_directory = Path(output_directory).resolve()
