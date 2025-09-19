@@ -12,6 +12,7 @@ from utils.cli.utils import (
     create_subparsers,
     route_pipeline_step,
 )
+from utils.collect.state_collection_registry import get_state_collectors
 from utils.database import (
     connect_duckdb,
     create_database_from_nested_parquet_directories,
@@ -26,6 +27,13 @@ from utils.standardize import standardize_state
 
 def run_scrape(args: argparse.Namespace) -> int:
     """Command entry point for scraping raw data"""
+    # how do I get the list of states to scrape?
+    state_scraper, scraper_args = get_state_collectors()[args.state]
+    state_output_directory = args.output_directory / args.state
+    state_output_directory.mkdir(parents=True, exist_ok=True)
+    scraper_args = {arg: getattr(args, arg) for arg in scraper_args}
+    scraper_args["output_directory"] = state_output_directory
+    state_scraper(**scraper_args)
     return 0
 
 
@@ -136,6 +144,10 @@ def build_complete_parser() -> argparse.ArgumentParser:
     """Build a complete parser for CLI options for all pipeline steps"""
     parser = argparse.ArgumentParser(prog="ccf", description="Campaign finance CLI")
     step_parsers = create_subparsers(parser)
+
+    step_parsers["collect"].set_defaults(
+        func=route_pipeline_step, pipeline_step_func=run_scrape
+    )
 
     step_parsers["standardize"].set_defaults(
         func=route_pipeline_step, pipeline_step_func=run_standardize

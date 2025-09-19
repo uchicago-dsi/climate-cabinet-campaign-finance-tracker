@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from utils.collect.state_collection_registry import get_state_collectors
 from utils.constants import DATA_DIR, DEFAULT_SCHEMA_PATH
 
 pipeline_step_details = {
@@ -17,6 +18,8 @@ pipeline_step_details = {
             "output-directory",
             "slurm",
             "verbose",
+            "override-existing-data",
+            "chunk-size",
         ],
         "help": "Collect raw data from sources.",
         "input_directory_name": None,
@@ -295,6 +298,17 @@ def add_argument_to_parser(
             default=None,
             help="Maximum number of rows to process at once. If not specified, processes entire dataset in memory.",
         )
+    elif argument_name == "override-existing-data":
+        # only used for Arizona data collection, exclude from help
+        # and always set to True to match behavoir of other states.
+        # Leaving it in AZ in case its ever desired to be added to all
+        # states.
+        parser.add_argument(
+            "--override-existing-data",
+            action="store_true",
+            default=True,
+            help=argparse.SUPPRESS,
+        )
     elif argument_name == "verbose":
         parser.add_argument("-v", "--verbose", action="count", default=0)
     else:
@@ -314,34 +328,46 @@ def validate_args(
     Returns:
         args: Validated arguments
     """
-    if "chunk-size" in args and args.chunk_size is not None and args.chunk_size <= 0:
+    if "chunk_size" in args and args.chunk_size is not None and args.chunk_size <= 0:
         raise ValueError("Chunk size must be greater than 0")
     # handle format
     if (
-        ("input-format" in args and args.input_format is not None)
-        or ("output-format" in args and args.output_format is not None)
-    ) and args.format is not None:
+        ("input_format" in args and args.input_format is not None)
+        or ("output_format" in args and args.output_format is not None)
+    ) and ("format" in args and args.format is not None):
         raise ValueError(
             "Cannot specify both --format and --input-format or --output-format"
         )
-    if args.format is not None:
+    if "format" in args and args.format is not None:
         args.input_format = args.format
         args.output_format = args.format
     # validate directories
-    if args.input_directory is not None:
-        if not args.input_directory.exists():
-            raise ValueError(f"Input directory {args.input_directory} does not exist")
-    else:
-        args.input_directory = args.data_directory / input_directory_name
+    if "input_directory" in args:
+        if args.input_directory is not None:
+            if not args.input_directory.exists():
+                raise ValueError(
+                    f"Input directory {args.input_directory} does not exist"
+                )
+        else:
+            args.input_directory = args.data_directory / input_directory_name
     # its okay if the output directory doesn't exist
-    if args.output_directory is None:
-        args.output_directory = args.data_directory / output_directory_name
-    args.output_directory.mkdir(parents=True, exist_ok=True)
+    if "output_directory" in args:
+        if args.output_directory is None:
+            args.output_directory = args.data_directory / output_directory_name
+        args.output_directory.mkdir(parents=True, exist_ok=True)
     if args.states is None:
-        args.states = [state_dir.stem for state_dir in args.input_directory.iterdir()]
-        print(
-            f"States not provided, using all states in input directory: {args.states}"
-        )
+        if "input_directory" in args:
+            args.states = [
+                state_dir.stem for state_dir in args.input_directory.iterdir()
+            ]
+            print(
+                f"States not provided, using all states in input directory: {args.states}"
+            )
+        else:
+            args.states = get_state_collectors().keys()
+            print(
+                f"States not provided, using all states with registered collectors: {args.states}"
+            )
 
     return args
 
