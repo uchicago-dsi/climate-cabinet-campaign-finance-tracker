@@ -52,6 +52,7 @@ def save_database(
     path.mkdir(parents=True, exist_ok=True)
 
     for table_name, df in database.items():
+        print(f"Saving table {table_name} to {path / f'{table_name}.{format}'}")
         file_path = path / f"{table_name}.{format}"
         _save_table(df, file_path, format, mode)
 
