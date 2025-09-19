@@ -731,8 +731,8 @@ def get_all_arizona_data(
     # Get transaction data
     transaction_data = processor.get_all_transaction_data(
         api=api,
-        start_date=f"{start_year}-01-01",
-        end_date=f"{end_year}-12-31",
+        start_date=f"{start_year}-01-01" if start_year is not None else None,
+        end_date=f"{end_year}-12-31" if end_year is not None else None,
     )
 
     # Get transactor data
