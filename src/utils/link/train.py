@@ -37,30 +37,28 @@ def train_splink(
         output_file: where to save splink settings
     """
     db_api = DuckDBAPI(con)
+    comparisons = [
+        cl.ForenameSurnameComparison("first_name", "last_name"),
+        cl.NameComparison("address_city").configure(term_frequency_adjustments=True),
+        cl.NameComparison("address_street_name").configure(
+            term_frequency_adjustments=True
+        ),
+        cl.NameComparison("name_suffix").configure(term_frequency_adjustments=True),
+        cl.NameComparison("name_prefix").configure(term_frequency_adjustments=True),
+        cl.NameComparison("employer_full_name").configure(
+            term_frequency_adjustments=True
+        ),
+        cl.NameComparison("employer_role").configure(term_frequency_adjustments=True),
+    ]
+    if "phone_number" in con.execute(f"PRAGMA table_info('{table_name}')").fetchall():
+        comparisons.append(
+            cl.LevenshteinAtThresholds("phone_number", 1)
+        )  # phone numbers with 1 differing digit
 
     settings = SettingsCreator(
         link_type="dedupe_only",
         unique_id_column_name="id",
-        comparisons=[
-            cl.ForenameSurnameComparison("first_name", "last_name"),
-            cl.NameComparison("address_city").configure(
-                term_frequency_adjustments=True
-            ),
-            cl.NameComparison("address_street_name").configure(
-                term_frequency_adjustments=True
-            ),
-            cl.NameComparison("name_suffix").configure(term_frequency_adjustments=True),
-            cl.NameComparison("name_prefix").configure(term_frequency_adjustments=True),
-            cl.NameComparison("employer_full_name").configure(
-                term_frequency_adjustments=True
-            ),
-            cl.NameComparison("employer_role").configure(
-                term_frequency_adjustments=True
-            ),
-            cl.LevenshteinAtThresholds(
-                "phone_number", 1
-            ),  # phone numbers with 1 differing digit
-        ],
+        comparisons=comparisons,
         blocking_rules_to_generate_predictions=[
             block_on("first_name", "last_name"),
             block_on("address_city", "address_street_name"),

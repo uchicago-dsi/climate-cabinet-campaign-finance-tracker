@@ -16,6 +16,8 @@ from utils.collect.state_collection_registry import get_state_collectors
 from utils.database import (
     connect_duckdb,
     create_database_from_nested_parquet_directories,
+    create_transactor_detailed_view,
+    table_exists,
 )
 from utils.ids import load_id_mapping, save_id_mapping
 from utils.io import load_database, save_database
@@ -113,19 +115,26 @@ def run_clean(args: argparse.Namespace) -> int:
 
 def run_link(args: argparse.Namespace) -> int:
     """Command entry point for performing record linkage on cleaned data"""
-    if args.input_directory is not None:
-        con = create_database_from_nested_parquet_directories(
-            args.database_path, args.input_directory, overwrite=True
-        )
-    else:
+    # check if the database exists and is not empty
+    database_exists = args.database_path.exists()
+    if database_exists:
         con = connect_duckdb(args.database_path)
-        if (
+        database_empty = (
             con.execute("SELECT COUNT(*) FROM information_schema.tables")
             .fetch_df()
             .iloc[0][0]
             == 0
-        ):
-            raise ValueError("Database is empty. Please provide an input directory.")
+        )
+    else:
+        database_empty = True
+    if database_exists and database_empty and args.input_directory is None:
+        raise ValueError("Database is empty. Please provide an input directory.")
+    if args.input_directory is not None and (args.overwrite or database_empty):
+        con = create_database_from_nested_parquet_directories(
+            args.database_path, args.input_directory, overwrite=args.overwrite
+        )
+    if not table_exists(con, args.table_name):
+        create_transactor_detailed_view(con)
     if args.train:
         train_splink(con, args.table_name, args.model_path)
     run_linkage_pipeline(

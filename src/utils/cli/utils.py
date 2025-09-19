@@ -99,6 +99,8 @@ pipeline_step_details = {
             "model-path",
             "threshold",
             "table-name",
+            "train",
+            "overwrite",
         ],
         "help": "Perform probabilistic record linkage on cleaned data to identify duplicate records.",
         "input_directory_name": "cleaned",
@@ -311,6 +313,20 @@ def add_argument_to_parser(
         )
     elif argument_name == "verbose":
         parser.add_argument("-v", "--verbose", action="count", default=0)
+    elif argument_name == "train":
+        parser.add_argument(
+            "--train",
+            action="store_true",
+            default=False,
+            help="Train a record linkage model",
+        )
+    elif argument_name == "overwrite":
+        parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            default=False,
+            help="Overwrite existing database and tables",
+        )
     else:
         raise ValueError(f"Argument {argument_name} not found")
     return parser
