@@ -8,8 +8,8 @@ current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 current_abs_path := $(subst Makefile,,$(mkfile_path))
 
 # Project constants
-project_image_name := 2024-winter-clinic-climate-cabinet
-project_container_name := 2024-winter-clinic-climate-cabinet-container
+project_image_name := campaign-finance-tracker
+project_container_name := campaign-finance-tracker-container
 project_dir := $(current_abs_path)
 
 # Build Docker image
@@ -28,15 +28,24 @@ run-notebooks: build
 	jupyter lab --port=8888 --ip='*' --NotebookApp.token='' --NotebookApp.password='' \
 	--no-browser --allow-root
 
+run-collect-pipeline: build
+	$(MAKE) run-container cmd="cft collect"
+
 run-standardize-pipeline: build
-	$(MAKE) run-container cmd="python scripts/standardize_pipeline.py"
+	$(MAKE) run-container cmd="cft standardize"
 
 run-normalize-pipeline: build
-	$(MAKE) run-container cmd="python scripts/normalize_pipeline.py"
+	$(MAKE) run-container cmd="cft normalize --chunk-size 2000"
 
-run-standardize-normalize-pipeline: build
-	$(MAKE) run-standardize-pipeline
-	$(MAKE) run-normalize-pipeline
+run-clean-pipeline: build
+	$(MAKE) run-container cmd="cft clean --chunk-size 2000"
+
+run-link-pipeline: build
+	$(MAKE) run-container cmd="cft link --model-path $(DATA_DIR)/link_model.json"
+	
+run-classify-pipeline: build
+	$(MAKE) run-container cmd="cft classify"
+
 
 # Clean up Docker resources
 clean:

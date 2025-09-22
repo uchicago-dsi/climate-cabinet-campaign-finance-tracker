@@ -24,7 +24,7 @@ pip install -e .
 
 ### Docker / Make
 
-If you have set up with Docker, the quickest way to get started is to use make to interact with Docker. 
+If you have set up with Docker, the quickest way to get started is to use make to interact with Docker. You can run one of the following commands:
 
 ```bash
 make run-collect
@@ -41,6 +41,22 @@ If you would like to connect a jupyter lab to the docker container and use pytho
 ```bash
 make run-notebooks
 ```
+
+If you would like to run the fully configurable [Command Line Interface](#local--command-line-interface), please run `make interactive` to connect your terminal to the docker container and use the commands below. To exit, type `exit`
+
+### Local / Command Line Interface
+
+If you have completed a local installation, the `cft` command should be accessible to you. This way will provide you with the most configuration options. 
+
+```bash
+cft collect
+cft standardize
+cft normalize
+cft clean
+cft link
+cft classify
+```
+To see the full list of options for each command, add a `--help` argument to any of the above commands. To see all options, see [Command Line Options](#command-line-options). 
 
 ## Configuration
 
@@ -119,22 +135,10 @@ The full pipeline is broken down into several steps:
 
 Each step can be run as a command line tool by running `cft <step>` where `<step>` is replaced the by the desired step (ex: `cft clean`). To see a list of command line options for a particular step, run `cft <step> --help`. 
 
-## Data Storage
-
-The pipeline saves intermediate files after each step for data provenance. By default, each state's results are saved in a separate directory until the link step. File paths will be relative to DATA_DIR which can be set in a `.env` file. 
-
-## Local Development
-
-### Data Collection and Standardization Pipeline
-1. Collect the data through **<span style="color: red;">one</span>** of the steps below
-    a. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN) OR
-    b. Go to the [Project's Google Drive]('https://drive.google.com/file/d/1fazviLqQWOXDVkP8NR80tO522lsIu5-H/view?usp=drive_link') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
-2. Run `pip install -r requirements.txt` and `pip install -e .` if not in Docker (not recommended for development)
 
 
 ## Past Student Team Members
-Thanks to all of the students who have contributed from the Data Science Clinic, MPCS Practicum, and the DSSI TAs.
-Nicolas Posner, Alan Kagiri, Adil Kassin, Nayna Pashilkar, Bhavya Pandey, Kaya Lee, Yangge Xu.
+Thanks to all of the students who have contributed to this project, including MPCS Practicum student Yue Xu; Data Science Clinic students Aïcha Camara, Alan Kagiri, Nicolas Posner, Yuzhou Wang, Adil Kassim, Nayna Pashilkar, Kaya Lee, Bhavya Pandey, and Yangge Xu; TAs Avery Schoen and Sarah Walker; and Research Assistants Steph Trello and Sarah Walker.
 
 # Documentation
 
