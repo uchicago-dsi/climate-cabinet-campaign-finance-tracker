@@ -8,7 +8,7 @@ This package was developed at the Data Science Institute at the University of Ch
 
 ### Docker (recommended)
 
-For the most consistent installation, the pipeline components can be run using Docker. To install Docker, visit TODO. 
+For the most consistent installation, the pipeline components can be run using Docker. To install Docker, visit [the docker website](https://docs.docker.com/get-started/get-docker/) and follow the directions to get started. 
 
 ### Local
 
@@ -28,18 +28,30 @@ If you have set up with Docker, the quickest way to get started is to use make t
 
 ```bash
 make run-collect
+make run-standardize
+make run-normalize
+make run-clean
+make run-link
+make run-classify
 ```
-To run the step of the pipeline with default options.
+To run the step of the pipeline with default options and chunk-size set to 2000.
+
+If you would like to connect a jupyter lab to the docker container and use python notebooks in your browswer:
+
+```bash
+make run-notebooks
+```
 
 ## Configuration
 
 ### DATA_DIR
+By default, each pipeline step reads and saves data in a set structure under the data `DATA_DIR`. This `DATA_DIR` is an environment variable that can be set by adding a `.env` file to the repository root and setting `DATA_DIR=X` replacing `X` with the absolute path to your preferred directory. If unset, it will default to the `data` directory in the repository root. If `data-directory`, `input-directory`, or `output-directory` options are set for any step, they will ignore `DATA_DIR`. 
 
 ### Command Line Options
 These options are shared across pipeline steps. To see per-step details and available options, run `cft <step> --help`, replacing `<step>` with your desired step.
 
 #### --states
-List of states on which to run the given pipeline step. The pipeline steps except link will process each state separately. 
+List of states on which to run the given pipeline step. The pipeline steps except link will process each state separately.
 
 #### --chunk-size
 Maximum number of rows to process at once. If left blank, all rows for a given state and step will be processed at once. This may not work if your computer has limited memory / RAM.
@@ -50,24 +62,48 @@ Earliest year (in YYYY format) on which to process data. If none is given, the e
 #### --end-year
 Latest year (in YYYY format) on which to process data. If none is given, the latest available year will be included. 
 
-
-#### --format
-
-
-#### --input-format
-
-#### --output-format
-
-
-#### --slurm
-
+#### --data-directory
+Path to the main data directory. If `--input-directory` or `--output-directory` are not set, steps use their default subdirectories under this base directory. The default base directory comes from the `DATA_DIR` environment variable.
 
 #### --input-directory
-
+Path to the input directory for this step. Defaults to the step's expected input subdirectory under `--data-directory`. Setting this overrides `--data-directory`.
 
 #### --output-directory
+Path to the output directory for this step. Defaults to the step's output subdirectory under `--data-directory`. Setting this overrides `--data-directory`.
+
+#### --format
+Desired file format (`csv` or `parquet`). If separate input and output formats are desired, use `--input-format` and `--output-format` instead. Default is `parquet`.
+
+#### --input-format
+Input file format (`csv` or `parquet`). Default is `parquet`.
+
+#### --output-format
+Output file format (`csv` or `parquet`). Default is `parquet`.
+
+#### --schema
+Path to data schema. Default: `src/utils/table.yaml`.
+
+#### --slurm
+Run the pipeline on an HPC cluster using SLURM.
 
 
+#### --database-path
+Path to DuckDB database to load/save data. (link step)
+
+#### --model-path
+Path to record linkage model. If training, this is the path to save the model. (link step)
+
+#### --threshold
+Match probability threshold to consider two records a match. Default: `0.95`. (link step)
+
+#### --table-name
+Table to perform record linkage on. Default: `transactor_detailed_view`. (link step)
+
+#### --train
+Train a record linkage model. (link step)
+
+#### --overwrite
+Overwrite existing database and tables. (link step)
 
 
 ## Pipeline
