@@ -25,3 +25,4 @@ splink
 tqdm
 pyarrow
 py7zr
+python-dotenv
