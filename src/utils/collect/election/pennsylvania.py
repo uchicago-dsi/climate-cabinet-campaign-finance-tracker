@@ -7,6 +7,7 @@ from io import StringIO
 
 import pandas as pd
 import requests
+
 from utils.constants import BASE_FILEPATH
 
 BASE_URL = "https://www.electionreturns.pa.gov/api/Reports/GenerateReport"
