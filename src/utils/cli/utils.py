@@ -166,21 +166,21 @@ def add_argument_to_parser(
             "--states",
             nargs="+",
             default=None,
-            help="State codes on which to run the pipeline",
+            help="List of states on which to run the given pipeline step. The pipeline steps except link will process each state separately.",
         )
     elif argument_name == "start-year":
         parser.add_argument(
             "--start-year",
             type=int,
             default=None,
-            help="Earliest year to run the pipeline on",
+            help="Earliest year (in YYYY format) on which to process data. If none is given, the earliest available year will be included.",
         )
     elif argument_name == "end-year":
         parser.add_argument(
             "--end-year",
             type=int,
             default=None,
-            help="Latest year to run the pipeline on",
+            help="Latest year (in YYYY format) on which to process data. If none is given, the latest available year will be included.",
         )
     elif argument_name == "data-directory":
         parser.add_argument(
