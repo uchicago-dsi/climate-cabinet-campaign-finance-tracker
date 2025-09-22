@@ -50,7 +50,7 @@ def register_special_state_collector(
     """Decorator factory for special state collectors
 
     Usage:
-        @register_special_state_collector("CA")
+        @register_special_state_collector("ca")
         def ca_collector():
             ...
     """

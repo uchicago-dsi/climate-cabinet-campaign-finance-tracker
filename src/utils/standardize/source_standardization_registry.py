@@ -81,7 +81,7 @@ def register_special_data_source(
     """Decorator factory for special (code) pipelines.
 
     Usage:
-        @register_special_pipeline("CA", form_code="990")
+        @register_special_pipeline("ca", form_code="990")
         class CA990(DataSourceStandardizationPipeline):
             ...
 
