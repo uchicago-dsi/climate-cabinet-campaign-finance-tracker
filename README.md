@@ -36,7 +36,7 @@ make run-classify
 ```
 To run the step of the pipeline with default options and chunk-size set to 2000.
 
-If you would like to connect a jupyter lab to the docker container and use python notebooks in your browswer:
+If you would like to connect a jupyter lab to the docker container and use python notebooks in your browser:
 
 ```bash
 make run-notebooks
@@ -129,7 +129,7 @@ The full pipeline is broken down into several steps:
 1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
 2. Standardize: Define database schema for storing transaction and entity information and standardize column names and values.
 3. Normalize: Normalize data into provided schema
-4. Clean: Use hueristics to fill in missing information and make data consistent. 
+4. Clean: Use heuristics to fill in missing information and make data consistent. 
 5. Link: Perform probabilistic record linkage on cleaned data to identify duplicate records.
 6. Classify: Label all entities as fossil fuel, clean energy, or other
 
@@ -157,4 +157,4 @@ Tables may have the following keys:
 - reverse_relations (mapping where keys are strings and values are table names): has keys that are names of table attributes that map to TODO. These columns do not have  
 - reverse_relation_names (mapping where keys are strings in reverse_relations and values are strings in the forward_relations of the table this column refers to): every entry in reverse_relations must have an entry here. This is to disambiguate which columns refer to which reverse relations
 
-*Note on inheritence: A given table may have its own attributes, any attributes of any parent types (and parents of parent types, etc), or attributes of children (and children of children, etc.).
+*Note on inheritance: A given table may have its own attributes, any attributes of any parent types (and parents of parent types, etc), or attributes of children (and children of children, etc.).

@@ -7,8 +7,7 @@ import dotenv
 
 dotenv.load_dotenv()
 BASE_FILEPATH = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = os.getenv("DATA_DIR", BASE_FILEPATH / "data")
-DATA_DIR = Path(DATA_DIR).resolve()
+DATA_DIR = Path(os.getenv("DATA_DIR", BASE_FILEPATH / "data")).resolve()
 RAW_DATA_DIRECTORY = DATA_DIR / "raw"
 STATE_FINANCE_CONFIG_DIRECTORY = (
     BASE_FILEPATH / "src" / "utils" / "standardize" / "finance" / "config"

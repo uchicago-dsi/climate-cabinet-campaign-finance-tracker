@@ -47,9 +47,14 @@ def download_MI_data(
         directory for each year's files.
     """
     if output_directory is None:
-        output_directory = DATA_DIR / "raw" / "mi" / "LegacyDownloads"
+        output_directory = DATA_DIR / "raw" / "mi"
     else:
-        output_directory = Path(output_directory).resolve() / "LegacyDownloads"
+        output_directory = Path(output_directory).resolve()
+
+    # put everything in a "LegacyDownloads" to signify where from MI Secretary of State
+    # the data came from. Since there other sources (currently being worked on by MI SOS)
+    # the scraper may be expanded in the future.
+    output_directory = output_directory / "LegacyDownloads"
 
     base_url = "https://www.michigan.gov"
     search_url = (
