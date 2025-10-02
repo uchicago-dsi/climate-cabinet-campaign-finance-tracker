@@ -75,7 +75,7 @@ def test_save_and_load_database_csv(tmp_path, sample_database):
     assert (tmp_path / "accounts.csv").exists()
 
     # Load and verify
-    loaded_db = load_database(tmp_path, format="csv")
+    loaded_db = next(load_database(tmp_path, format="csv"))
 
     assert set(loaded_db.keys()) == {"transactions", "accounts"}
     pd.testing.assert_frame_equal(
@@ -93,7 +93,7 @@ def test_save_and_load_database_parquet(tmp_path, sample_database):
     assert (tmp_path / "accounts.parquet").exists()
 
     # Load and verify
-    loaded_db = load_database(tmp_path, format="parquet")
+    loaded_db = next(load_database(tmp_path, format="parquet"))
 
     assert set(loaded_db.keys()) == {"transactions", "accounts"}
     pd.testing.assert_frame_equal(
@@ -115,7 +115,7 @@ def test_save_database_creates_directory(tmp_path, sample_database):
 
 def test_load_database_empty_directory(tmp_path):
     """Test loading from empty directory returns empty dict."""
-    result = load_database(tmp_path, format="csv")
+    result = next(load_database(tmp_path, format="csv"))
     assert result == {}
 
 
@@ -126,7 +126,7 @@ def test_load_database_mixed_files(tmp_path, sample_database):
     # Add file with wrong extension
     (tmp_path / "other_file.txt").write_text("not a csv")
 
-    loaded_db = load_database(tmp_path, format="csv")
+    loaded_db = next(load_database(tmp_path, format="csv"))
     assert set(loaded_db.keys()) == {"transactions", "accounts"}
 
 
@@ -141,7 +141,7 @@ def test_save_database_append_mode_csv(tmp_path):
     save_database(additional_data, tmp_path, format="csv", mode="append")
 
     # Verify combined result
-    loaded_db = load_database(tmp_path, format="csv")
+    loaded_db = next(load_database(tmp_path, format="csv"))
     expected = pd.DataFrame({"id": [1, 2, 3, 4], "value": ["a", "b", "c", "d"]})
     pd.testing.assert_frame_equal(loaded_db["test_table"], expected)
 
@@ -157,7 +157,7 @@ def test_save_database_append_mode_parquet(tmp_path):
     save_database(additional_data, tmp_path, format="parquet", mode="append")
 
     # Verify combined result
-    loaded_db = load_database(tmp_path, format="parquet")
+    loaded_db = next(load_database(tmp_path, format="parquet"))
     expected = pd.DataFrame({"id": [1, 2, 3, 4], "value": ["a", "b", "c", "d"]})
     pd.testing.assert_frame_equal(loaded_db["test_table"], expected)
 
@@ -175,7 +175,7 @@ def test_save_database_overwrite_mode(tmp_path):
     save_database(new_data, tmp_path, format="csv", mode="overwrite")
 
     # Verify only new data exists
-    loaded_db = load_database(tmp_path, format="csv")
+    loaded_db = next(load_database(tmp_path, format="csv"))
     pd.testing.assert_frame_equal(loaded_db["test_table"], new_data["test_table"])
 
 
@@ -183,7 +183,7 @@ def test_indexed_dataframe_handling(tmp_path, indexed_database):
     """Test handling of DataFrames with named indices."""
     save_database(indexed_database, tmp_path, format="csv")
 
-    loaded_db = load_database(tmp_path, format="csv")
+    loaded_db = next(load_database(tmp_path, format="csv"))
 
     # CSV should preserve the index as a column
     expected_columns = {"transaction_id", "amount", "type"}
@@ -276,7 +276,7 @@ def test_load_database_no_matching_files(tmp_path):
     (tmp_path / "data.txt").write_text("not a csv")
     (tmp_path / "other.json").write_text("{}")
 
-    result = load_database(tmp_path, format="csv")
+    result = next(load_database(tmp_path, format="csv"))
     assert result == {}
 
 

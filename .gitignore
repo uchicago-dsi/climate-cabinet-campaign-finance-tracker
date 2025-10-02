@@ -141,3 +141,6 @@ venv.bak/
 data/
 old/
 output/
+
+# exploration
+exploration/

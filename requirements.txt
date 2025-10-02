@@ -24,3 +24,5 @@ nameparser==1.1.3
 splink
 tqdm
 pyarrow
+py7zr
+python-dotenv

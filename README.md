@@ -1,80 +1,144 @@
 # Climate Cabinet Campaign Finance Tracker
 
-## Process
+This package provides tools for collecting and processing state campaign finance data. Currently the package supports Arizona, Michigan, Minnesota, Pennsylvania, and Texas. To request another state, please open an issue. To add another state yourself, see [Adding a new state](./CONTRIBUTING.md#adding-a-new-state).
+
+This package was developed at the Data Science Institute at the University of Chicago in partnership with Climate Cabinet. 
+
+## Installation
+
+### Docker (recommended)
+
+For the most consistent installation, the pipeline components can be run using Docker. To install Docker, visit [the docker website](https://docs.docker.com/get-started/get-docker/) and follow the directions to get started. 
+
+### Local
+
+If you are not using Docker, it is still recommended to use a Python environment to avoid dependency conflicts. Conda is a good option. 
+
+To install in an environment:
+```bash
+pip install -r requirements
+pip install -e . 
+```
+
+## Use
+
+### Docker / Make
+
+If you have set up with Docker, the quickest way to get started is to use make to interact with Docker. You can run one of the following commands:
+
+```bash
+make run-collect
+make run-standardize
+make run-normalize
+make run-clean
+make run-link
+make run-classify
+```
+To run the step of the pipeline with default options and chunk-size set to 2000.
+
+If you would like to connect a jupyter lab to the docker container and use python notebooks in your browser:
+
+```bash
+make run-notebooks
+```
+
+If you would like to run the fully configurable [Command Line Interface](#local--command-line-interface), please run `make interactive` to connect your terminal to the docker container and use the commands below. To exit, type `exit`
+
+### Local / Command Line Interface
+
+If you have completed a local installation, the `cft` command should be accessible to you. This way will provide you with the most configuration options. 
+
+```bash
+cft collect
+cft standardize
+cft normalize
+cft clean
+cft link
+cft classify
+```
+To see the full list of options for each command, add a `--help` argument to any of the above commands. To see all options, see [Command Line Options](#command-line-options). 
+
+## Configuration
+
+### DATA_DIR
+By default, each pipeline step reads and saves data in a set structure under the data `DATA_DIR`. This `DATA_DIR` is an environment variable that can be set by adding a `.env` file to the repository root and setting `DATA_DIR=X` replacing `X` with the absolute path to your preferred directory. If unset, it will default to the `data` directory in the repository root. If `data-directory`, `input-directory`, or `output-directory` options are set for any step, they will ignore `DATA_DIR`. 
+
+### Command Line Options
+These options are shared across pipeline steps. To see per-step details and available options, run `cft <step> --help`, replacing `<step>` with your desired step.
+
+#### --states
+List of states on which to run the given pipeline step. The pipeline steps except link will process each state separately.
+
+#### --chunk-size
+Maximum number of rows to process at once. If left blank, all rows for a given state and step will be processed at once. This may not work if your computer has limited memory / RAM.
+
+#### --start-year
+Earliest year (in YYYY format) on which to process data. If none is given, the earliest available year will be included. 
+
+#### --end-year
+Latest year (in YYYY format) on which to process data. If none is given, the latest available year will be included. 
+
+#### --data-directory
+Path to the main data directory. If `--input-directory` or `--output-directory` are not set, steps use their default subdirectories under this base directory. The default base directory comes from the `DATA_DIR` environment variable.
+
+#### --input-directory
+Path to the input directory for this step. Defaults to the step's expected input subdirectory under `--data-directory`. Setting this overrides `--data-directory`.
+
+#### --output-directory
+Path to the output directory for this step. Defaults to the step's output subdirectory under `--data-directory`. Setting this overrides `--data-directory`.
+
+#### --format
+Desired file format (`csv` or `parquet`). If separate input and output formats are desired, use `--input-format` and `--output-format` instead. Default is `parquet`.
+
+#### --input-format
+Input file format (`csv` or `parquet`). Default is `parquet`.
+
+#### --output-format
+Output file format (`csv` or `parquet`). Default is `parquet`.
+
+#### --schema
+Path to data schema. Default: `src/utils/table.yaml`.
+
+#### --slurm
+Run the pipeline on an HPC cluster using SLURM.
+
+
+#### --database-path
+Path to DuckDB database to load/save data. (link step)
+
+#### --model-path
+Path to record linkage model. If training, this is the path to save the model. (link step)
+
+#### --threshold
+Match probability threshold to consider two records a match. Default: `0.95`. (link step)
+
+#### --table-name
+Table to perform record linkage on. Default: `transactor_detailed_view`. (link step)
+
+#### --train
+Train a record linkage model. (link step)
+
+#### --overwrite
+Overwrite existing database and tables. (link step)
+
+
+## Pipeline
+
+The full pipeline is broken down into several steps:
 
 1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
 2. Standardize: Define database schema for storing transaction and entity information and standardize column names and values.
 3. Normalize: Normalize data into provided schema
-4. Classify: Label all entities as fossil fuel, clean energy, or other
-5. Graph: Construct a network graph of campaign finance contributions
-6. Analyze: Perform analysis on network data and join with other relevant dataset
+4. Clean: Use heuristics to fill in missing information and make data consistent. 
+5. Link: Perform probabilistic record linkage on cleaned data to identify duplicate records.
+6. Classify: Label all entities as fossil fuel, clean energy, or other
 
+Each step can be run as a command line tool by running `cft <step>` where `<step>` is replaced the by the desired step (ex: `cft clean`). To see a list of command line options for a particular step, run `cft <step> --help`. 
 
-## Local Development
-
-### Data Collection and Standardization Pipeline
-1. Collect the data through **<span style="color: red;">one</span>** of the steps below
-    a. Collect state's finance campaign data either from web scraping (AZ, MI, PA) or direct download (MN) OR
-    b. Go to the [Project's Google Drive]('https://drive.google.com/file/d/1fazviLqQWOXDVkP8NR80tO522lsIu5-H/view?usp=drive_link') to download each state's data to their local repo following this format: repo_root / "data" / "raw" / state acronym / "file"
-2. Run `pip install -r requirements.txt` and `pip install -e .` if not in Docker (not recommended for development)
-
-### Docker Development
-
-The repository provides a Dockerfile and devcontainer configuration. It is recommended to develop in Docker. 
-
-
-## Usage
-
-The main components of the package are broken up into subpackages which can be imported and used in external code. To run pipelines directly you can use the scripts in the `scripts` directory. These scripts have been dockerized already and can be run simply using `make` commands.
-
-- `make run-standardize-pipeline`: This runs the pipeline to read in raw data and standardize column names and data.
-  - Expects there to be a folder for each state in a `data/raw` folder. Follow setup instructions to get data.  Outputs to `output/standardized`
-- `make run-normalize-pipeline`: This runs the pipeline to normalize data. 
-  - Expects data in `output/standardized`. Outputes to `output/normalized`
-- `make run-standardize-normalize-pipeline`. Combines both pipelines.
-
-For developing, please use either a Docker dev container or slurm computer cluster. See more details in `CONTRIBUTING.md`
-
-
-## Repository Structure
-
-### utils
-Project python code
-
-### notebooks
-Contains short, clean notebooks to demonstrate analysis.
-
-### data
-
-Contains details of acquiring all raw data used in repository. If data is small (<50MB) then it is okay to save it to the repo, making sure to clearly document how to the data is obtained.
-
-If the data is larger than 50MB than you should not add it to the repo and instead document how to get the data in the README.md file in the data directory. 
-
-This [README.md file](/data/README.md) should be kept up to date.
 
 
 ## Past Student Team Members
-
-Student Name: Nicolas Posner
-Student Email: nrposner@uchicago.edu
-
-Student Name: Alan Kagiri
-Student Email: alankagiri@uchicago.edu. 
-
-Student Name: Adil Kassim
-Student Email: adilk@uchicago.edu
-
-Student Name: Nayna Pashilkar
-Student Email: npashilkar@uchicago.edu
-
-Student Name: Yangge Xu
-Student Email: yanggexu@uchicago.edu
-
-Student Name: Bhavya Pandey    
-Student Email: bhavyapandey@uchicago.edu
-
-Student Name: Kaya Lee
-Student Email: klee2024@uchicago.edu
+Thanks to all of the students who have contributed to this project, including MPCS Practicum student Yue Xu; Data Science Clinic students Aïcha Camara, Alan Kagiri, Nicolas Posner, Yuzhou Wang, Adil Kassim, Nayna Pashilkar, Kaya Lee, Bhavya Pandey, and Yangge Xu; TAs Avery Schoen and Sarah Walker; and Research Assistants Steph Trello and Sarah Walker.
 
 # Documentation
 
@@ -93,4 +157,4 @@ Tables may have the following keys:
 - reverse_relations (mapping where keys are strings and values are table names): has keys that are names of table attributes that map to TODO. These columns do not have  
 - reverse_relation_names (mapping where keys are strings in reverse_relations and values are strings in the forward_relations of the table this column refers to): every entry in reverse_relations must have an entry here. This is to disambiguate which columns refer to which reverse relations
 
-*Note on inheritence: A given table may have its own attributes, any attributes of any parent types (and parents of parent types, etc), or attributes of children (and children of children, etc.).
+*Note on inheritance: A given table may have its own attributes, any attributes of any parent types (and parents of parent types, etc), or attributes of children (and children of children, etc.).

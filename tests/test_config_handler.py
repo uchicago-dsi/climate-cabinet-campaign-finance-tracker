@@ -1,10 +1,8 @@
 from pathlib import Path
 
 import pytest
-import utils.constants
-import utils.finance
-import utils.finance.config
-from utils.finance.config import ConfigHandler
+import utils.standardize.config
+from utils.standardize.config import ConfigHandler
 from yaml import safe_dump
 
 
@@ -89,7 +87,7 @@ def explicit_header_config(tmp_path):
 @pytest.fixture
 def mock_raw_data_directory(tmp_path, monkeypatch):
     """Override RAW_DATA_DIRECTORY with a temporary path."""
-    monkeypatch.setattr(utils.finance.config, "RAW_DATA_DIRECTORY", tmp_path)
+    monkeypatch.setattr(utils.standardize.config, "RAW_DATA_DIRECTORY", tmp_path)
     return tmp_path
 
 

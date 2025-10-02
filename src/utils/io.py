@@ -16,7 +16,7 @@ def load_database(
     path: Path,
     format: FileFormat = "csv",
     chunk_size: int | None = None,
-) -> dict[str, pd.DataFrame] | Generator[dict[str, pd.DataFrame], None, None]:
+) -> Generator[dict[str, pd.DataFrame], None, None]:
     """Load database from directory containing table files.
 
     Args:
@@ -25,11 +25,14 @@ def load_database(
         chunk_size: If specified, returns chunked generator for memory efficiency
 
     Returns:
-        Dictionary of table_name -> DataFrame, or generator yielding chunks
+        Generator yielding database chunks (dict of table_name -> DataFrame).
+        If chunk_size is None, yields a single chunk containing the full database.
     """
     if chunk_size is None:
-        return _load_database_full(path, format)
-    return _load_database_chunked(path, format, chunk_size)
+        # Yield the full database as a single chunk
+        yield _load_database_full(path, format)
+        return
+    yield from _load_database_chunked(path, format, chunk_size)
 
 
 def save_database(
@@ -49,6 +52,7 @@ def save_database(
     path.mkdir(parents=True, exist_ok=True)
 
     for table_name, df in database.items():
+        print(f"Saving table {table_name} to {path / f'{table_name}.{format}'}")
         file_path = path / f"{table_name}.{format}"
         _save_table(df, file_path, format, mode)
 
