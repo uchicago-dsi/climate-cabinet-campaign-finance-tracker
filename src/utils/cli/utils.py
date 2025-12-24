@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from pathlib import Path
 
 from utils.collect.state_collection_registry import get_state_collectors
@@ -426,13 +427,15 @@ def route_pipeline_step(
         )
         with executor.batch():
             for state in args.states:
-                args.state = state
-                executor.submit(args.pipeline_step_func, args)
+                state_args = deepcopy(args)
+                state_args.state = state
+                executor.submit(args.pipeline_step_func, state_args)
     else:
         for state in args.states:
             print(f"Running pipeline step for {state}")
-            args.state = state
-            args.pipeline_step_func(args)
+            state_args = deepcopy(args)
+            state_args.state = state
+            args.pipeline_step_func(state_args)
     return 0
 
 
