@@ -63,7 +63,7 @@ def train_splink(
             block_on("first_name", "last_name"),
             block_on("address_city", "address_street_name"),
         ],
-        retain_intermediate_calculation_columns=True,
+        retain_intermediate_calculation_columns=False,
     )
 
     linker = Linker(table_name, settings, db_api=db_api)
@@ -76,13 +76,13 @@ def train_splink(
     linker.training.estimate_probability_two_random_records_match(
         deterministic_rules, recall=0.9
     )
-    linker.training.estimate_u_using_random_sampling(max_pairs=1e9)
-    training_blocking_rule = block_on("first_name", "address_city")
+    linker.training.estimate_u_using_random_sampling(max_pairs=1e8)
+    training_blocking_rule = block_on("first_name", "last_name")
 
     linker.training.estimate_parameters_using_expectation_maximisation(
         training_blocking_rule
     )
-    training_blocking_rule_address = block_on("last_name", "address_street_name")
+    training_blocking_rule_address = block_on("address_city", "address_street_name")
     linker.training.estimate_parameters_using_expectation_maximisation(
         training_blocking_rule_address
     )
