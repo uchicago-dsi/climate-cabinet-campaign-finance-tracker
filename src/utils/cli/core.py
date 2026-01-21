@@ -136,7 +136,14 @@ def run_link(args: argparse.Namespace) -> int:
     if not table_exists(con, args.table_name):
         create_transactor_detailed_view(con)
     if args.train:
-        train_splink(con, args.table_name, args.model_path)
+        checkpoint_path = str(args.model_path).replace(".json", "_checkpoint.json")
+        train_splink(
+            con,
+            args.table_name,
+            args.model_path,
+            checkpoint_path=checkpoint_path,
+            resume_from_checkpoint=args.resume_from_checkpoint,
+        )
     run_linkage_pipeline(
         duckdb_path=args.database_path,
         model_path=args.model_path,

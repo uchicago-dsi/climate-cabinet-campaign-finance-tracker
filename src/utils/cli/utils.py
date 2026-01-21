@@ -102,6 +102,7 @@ pipeline_step_details = {
             "table-name",
             "train",
             "overwrite",
+            "resume-from-checkpoint",
         ],
         "help": "Perform probabilistic record linkage on cleaned data to identify duplicate records.",
         "input_directory_name": "cleaned",
@@ -327,6 +328,13 @@ def add_argument_to_parser(
             action="store_true",
             default=False,
             help="Overwrite existing database and tables",
+        )
+    elif argument_name == "resume-from-checkpoint":
+        parser.add_argument(
+            "--resume-from-checkpoint",
+            action="store_true",
+            default=False,
+            help="Resume training from a saved checkpoint, skipping the first EM training session",
         )
     else:
         raise ValueError(f"Argument {argument_name} not found")
