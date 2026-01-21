@@ -214,10 +214,11 @@ class ArizonaAPI:
             f"columns[2][data]=Amount&columns[2][name]=&columns[2][searchable]=true&columns[2][orderable]=true&columns[2][search][value]=&columns[2][search][regex]=false&"
             f"columns[3][data]=TransactionName&columns[3][name]=&columns[3][searchable]=true&columns[3][orderable]=true&columns[3][search][value]=&columns[3][search][regex]=false&"
             f"columns[4][data]=TransactionType&columns[4][name]=&columns[4][searchable]=true&columns[4][orderable]=true&columns[4][search][value]=&columns[4][search][regex]=false&"
-            f"columns[5][data]=City&columns[5][name]=&columns[5][searchable]=true&columns[5][orderable]=true&columns[5][search][value]=&columns[5][search][regex]=false&"
-            f"columns[6][data]=State&columns[6][name]=&columns[6][searchable]=true&columns[6][orderable]=true&columns[6][search][value]=&columns[6][search][regex]=false&"
-            f"columns[7][data]=ZipCode&columns[7][name]=&columns[7][searchable]=true&columns[7][orderable]=true&columns[7][search][value]=&columns[7][search][regex]=false&"
-            f"columns[8][data]=Memo&columns[8][name]=&columns[8][searchable]=true&columns[8][orderable]=true&columns[8][search][value]=&columns[8][search][regex]=false&"
+            f"columns[5][data]=Occupation&columns[5][name]=&columns[5][searchable]=true&columns[5][orderable]=true&columns[5][search][value]=&columns[5][search][regex]=false&"
+            f"columns[6][data]=Employer&columns[6][name]=&columns[6][searchable]=true&columns[6][orderable]=true&columns[6][search][value]=&columns[6][search][regex]=false&"
+            f"columns[7][data]=City&columns[7][name]=&columns[7][searchable]=true&columns[7][orderable]=true&columns[7][search][value]=&columns[7][search][regex]=false&"
+            f"columns[8][data]=State&columns[8][name]=&columns[8][searchable]=true&columns[8][orderable]=true&columns[8][search][value]=&columns[8][search][regex]=false&"
+            f"columns[9][data]=ZipCode&columns[9][name]=&columns[9][searchable]=true&columns[9][orderable]=true&columns[9][search][value]=&columns[9][search][regex]=false&"
             f"order[0][column]=0&order[0][dir]=asc&"
             f"start={start}&length={length}&"
             f"search[value]=&search[regex]=false"
@@ -274,19 +275,62 @@ class ArizonaAPI:
             start: Start index for pagination
             length: Number of records to fetch
         """
-        form_data = self._build_form_data(
-            category_type=category_type,
-            cycle_id=cycle_id,
-            start_date=start_date,
-            end_date=end_date,
-            filer_type_id=filer_type_id,
-            start=start,
-            length=length,
+        # Cap page size to 100; server ignores larger sizes
+        page_length = min(int(length), 100)
+
+        # Build DataTables form data with up-to-date columns
+        datatables_form = (
+            f"draw=1&"
+            f"columns[0][data]=TransactionDate&columns[0][name]=&columns[0][searchable]=true&columns[0][orderable]=true&columns[0][search][value]=&columns[0][search][regex]=false&"
+            f"columns[1][data]=CommitteeName&columns[1][name]=&columns[1][searchable]=true&columns[1][orderable]=true&columns[1][search][value]=&columns[1][search][regex]=false&"
+            f"columns[2][data]=Amount&columns[2][name]=&columns[2][searchable]=true&columns[2][orderable]=true&columns[2][search][value]=&columns[2][search][regex]=false&"
+            f"columns[3][data]=TransactionName&columns[3][name]=&columns[3][searchable]=true&columns[3][orderable]=true&columns[3][search][value]=&columns[3][search][regex]=false&"
+            f"columns[4][data]=TransactionType&columns[4][name]=&columns[4][searchable]=true&columns[4][orderable]=true&columns[4][search][value]=&columns[4][search][regex]=false&"
+            f"columns[5][data]=Occupation&columns[5][name]=&columns[5][searchable]=true&columns[5][orderable]=true&columns[5][search][value]=&columns[5][search][regex]=false&"
+            f"columns[6][data]=Employer&columns[6][name]=&columns[6][searchable]=true&columns[6][orderable]=true&columns[6][search][value]=&columns[6][search][regex]=false&"
+            f"columns[7][data]=City&columns[7][name]=&columns[7][searchable]=true&columns[7][orderable]=true&columns[7][search][value]=&columns[7][search][regex]=false&"
+            f"columns[8][data]=State&columns[8][name]=&columns[8][searchable]=true&columns[8][orderable]=true&columns[8][search][value]=&columns[8][search][regex]=false&"
+            f"columns[9][data]=ZipCode&columns[9][name]=&columns[9][searchable]=true&columns[9][orderable]=true&columns[9][search][value]=&columns[9][search][regex]=false&"
+            f"order[0][column]=0&order[0][dir]=asc&"
+            f"start={start}&length={page_length}&"
+            f"search[value]=&search[regex]=false"
         )
+
+        # Place search criteria in query string to match browser behavior
+        search_query_params = {
+            "JurisdictionId": "0",
+            "CommiteeReportId": "",
+            "CategoryType": category_type,
+            "CycleId": cycle_id,
+            "StartDate": start_date,
+            "EndDate": end_date,
+            "FilerName": "",
+            "FilerId": "",
+            "BallotName": "",
+            "BallotMeasureId": "",
+            "FilerTypeId": filer_type_id,
+            "OfficeTypeId": "",
+            "OfficeId": "",
+            "PartyId": "",
+            "ContributorName": "",
+            "VendorName": "",
+            "StateId": "",
+            "City": "",
+            "Employer": "",
+            "Occupation": "",
+            "CandidateName": "",
+            "CandidateFilerId": "",
+            "Position": "Support",
+            "LowAmount": "",
+            "HighAmount": "",
+        }
 
         time.sleep(self.wait_time)
         response = self.session.post(
-            ADVANCED_SEARCH_URL, data=form_data, timeout=self.timeout
+            ADVANCED_SEARCH_URL,
+            params=search_query_params,
+            data=datatables_form,
+            timeout=self.timeout,
         )
 
         if response.status_code == TOO_MANY_REQUESTS:
@@ -410,6 +454,8 @@ class ArizonaDataProcessor:
         report_category: str,
         election_cycle: str,
         filer_type_id: str,
+        start_date_override: str | None = None,
+        end_date_override: str | None = None,
     ) -> pd.DataFrame:
         """Process transaction data for given parameters.
 
@@ -418,18 +464,49 @@ class ArizonaDataProcessor:
             report_category: Category type (Income, Expenditures, etc.)
             election_cycle: Election cycle ID with date range
             filer_type_id: ID of the filer type to filter by
+            start_date_override: Optional YYYY-MM-DD to override cycle start (intersected)
+            end_date_override: Optional YYYY-MM-DD to override cycle end (intersected)
 
         Returns:
             DataFrame containing processed transaction data
         """
-        start_date, end_date = api._extract_date_range_from_cycle_id(election_cycle)
+        cycle_start_date, cycle_end_date = api._extract_date_range_from_cycle_id(
+            election_cycle
+        )
+        # Apply optional precise-date overrides (intersect with cycle bounds)
+        request_start_date = cycle_start_date
+        request_end_date = cycle_end_date
+        if start_date_override is not None:
+            try:
+                override_start = datetime.datetime.strptime(
+                    start_date_override, "%Y-%m-%d"
+                ).date()
+                request_start_date = max(cycle_start_date, override_start)
+            except ValueError:
+                print(
+                    f"Invalid start_date_override '{start_date_override}', using cycle start"
+                )
+        if end_date_override is not None:
+            try:
+                override_end = datetime.datetime.strptime(
+                    end_date_override, "%Y-%m-%d"
+                ).date()
+                request_end_date = min(cycle_end_date, override_end)
+            except ValueError:
+                print(
+                    f"Invalid end_date_override '{end_date_override}', using cycle end"
+                )
+
+        if request_start_date > request_end_date:
+            # No overlap between requested date range and this cycle
+            return pd.DataFrame()
         output_file = self._get_output_file_path(
             report_category, filer_type_id, election_cycle
         )
 
         start_position = self._get_resume_position(output_file)
         all_records = []
-        page_size = self.batch_size
+        page_size = min(self.batch_size, 100)
         progress_bar = None
 
         while True:
@@ -437,8 +514,8 @@ class ArizonaDataProcessor:
                 response_data = api.fetch_transaction_data_page(
                     category_type=report_category,
                     cycle_id=election_cycle,
-                    start_date=start_date.strftime("%Y-%m-%d"),
-                    end_date=end_date.strftime("%Y-%m-%d"),
+                    start_date=request_start_date.strftime("%Y-%m-%d"),
+                    end_date=request_end_date.strftime("%Y-%m-%d"),
                     filer_type_id=filer_type_id,
                     start=start_position,
                     length=page_size,
@@ -455,7 +532,9 @@ class ArizonaDataProcessor:
                     self._save_batch_data(records, output_file)
 
                 # Initialize progress bar after first successful request
-                total_records = response_data.get("recordsTotal", 0)
+                total_records = response_data.get(
+                    "recordsFiltered", response_data.get("recordsTotal", 0)
+                )
                 if progress_bar is None and total_records > 0:
                     progress_bar = tqdm(
                         total=total_records - start_position,
@@ -465,9 +544,12 @@ class ArizonaDataProcessor:
                 if progress_bar:
                     progress_bar.update(len(records))
 
-                if start_position + page_size >= total_records:
+                # Advance by the number of records actually returned
+                start_position += len(records)
+
+                # Stop once we've reached the total number of records
+                if total_records and start_position >= total_records:
                     break
-                start_position += page_size
 
                 if self.early_stop and len(all_records) >= self.early_stop:
                     break
@@ -646,6 +728,7 @@ class ArizonaDataProcessor:
 
         all_data = {}
         cycle_ids = self._get_cycle_ids_in_range(start_date, end_date, api)
+        print(f"Found {len(cycle_ids)} election cycles in the date range")
 
         for category_name in report_categories:
             all_category_data = []
@@ -656,6 +739,8 @@ class ArizonaDataProcessor:
                         report_category=category_name,
                         election_cycle=cycle_id,
                         filer_type_id=filer_type_id,
+                        start_date_override=start_date,
+                        end_date_override=end_date,
                     )
                     partial_df["filer_type"] = filer_type
                     all_category_data.append(partial_df)
@@ -702,6 +787,8 @@ def get_all_arizona_data(
     output_directory: str | None = None,
     override_existing_data: bool = False,
     chunk_size: int = 1000,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Get all Arizona Campaign Finance data.
 
@@ -711,6 +798,8 @@ def get_all_arizona_data(
         output_directory: Directory to save the dataframes to
         override_existing_data: If True, existing data will be overwritten
         chunk_size: If set, data will be saved in chunks of this size
+        start_date: Optional YYYY-MM-DD to override year-based start date
+        end_date: Optional YYYY-MM-DD to override year-based end date
 
     Returns:
         Dictionary containing both transaction and transactor data
@@ -729,13 +818,25 @@ def get_all_arizona_data(
     )
 
     # Get transaction data
+    print("Collecting Arizona transaction data...")
+    effective_start_date = (
+        start_date
+        if start_date is not None
+        else (f"{start_year}-01-01" if start_year is not None else None)
+    )
+    effective_end_date = (
+        end_date
+        if end_date is not None
+        else (f"{end_year}-12-31" if end_year is not None else None)
+    )
     transaction_data = processor.get_all_transaction_data(
         api=api,
-        start_date=f"{start_year}-01-01" if start_year is not None else None,
-        end_date=f"{end_year}-12-31" if end_year is not None else None,
+        start_date=effective_start_date,
+        end_date=effective_end_date,
     )
 
     # Get transactor data
+    print("Collecting Arizona transactor data...")
     transactor_ids = processor.get_transactor_ids_from_transactions()
     transactor_data = processor.process_transactor_data(
         api=api, transactor_ids_by_type=transactor_ids
@@ -746,19 +847,33 @@ def get_all_arizona_data(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape Arizona Campaign Finance data")
-    parser.add_argument("--start_date", type=str, required=True)
-    parser.add_argument("--end_date", type=str, required=True)
-    parser.add_argument("--output_dir", type=str, required=False)
-    parser.add_argument("--override_existing_data", action="store_true", default=False)
-    parser.add_argument("--save_in_batches", action="store_true", default=True)
-    parser.add_argument("--batch_size", type=int, default=1000)
+    parser.add_argument("--start-year", type=int, required=True)
+    parser.add_argument("--end-year", type=int, required=True)
+    parser.add_argument(
+        "--start-date",
+        type=str,
+        required=False,
+        default=None,
+        help="Optional YYYY-MM-DD to override start-year",
+    )
+    parser.add_argument(
+        "--end-date",
+        type=str,
+        required=False,
+        default=None,
+        help="Optional YYYY-MM-DD to override end-year",
+    )
+    parser.add_argument("--output-directory", type=str, required=False)
+    parser.add_argument("--override-existing-data", action="store_true", default=False)
+    parser.add_argument("--chunk-size", type=int, default=1000)
     args = parser.parse_args()
 
     get_all_arizona_data(
+        start_year=args.start_year,
+        end_year=args.end_year,
+        output_directory=args.output_directory,
+        override_existing_data=args.override_existing_data,
+        chunk_size=args.chunk_size,
         start_date=args.start_date,
         end_date=args.end_date,
-        output_dir=args.output_dir,
-        override_existing_data=args.override_existing_data,
-        save_in_batches=args.save_in_batches,
-        batch_size=args.batch_size,
     )

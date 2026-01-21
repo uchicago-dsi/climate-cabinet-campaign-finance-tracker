@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
+from tqdm import tqdm
 
 from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
@@ -39,12 +40,18 @@ def download_PA_data(
         output_directory = Path(output_directory).resolve()
     pa_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/dos/resources/voting-and-elections/campaign-finance/campaign-finance-data/"  # noqa
 
-    for year in range(start_year, end_year + 1):
+    total_years = end_year - start_year + 1
+    for year in tqdm(
+        range(start_year, end_year + 1),
+        total=total_years,
+        desc="Downloading PA finance data",
+    ):
         link = f"{pa_url}{year}.zip"
 
         response = requests.get(link, timeout=10)
         if response.status_code != HTTPStatus.OK:
             print(f"Pennsylvania data from {year} returned {response.reason}")
+            continue
 
         year_directory = output_directory / str(year)
         year_directory.mkdir(exist_ok=True, parents=True)
