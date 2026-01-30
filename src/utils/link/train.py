@@ -46,6 +46,20 @@ def train_splink(
         checkpoint_path: path to save/load checkpoint after first EM training
         resume_from_checkpoint: if True, load from checkpoint and skip initial training
     """
+    # Sample dataset if it's too large for training to prevent disk space issues
+    row_count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+    TRAINING_SAMPLE_SIZE = 200000
+    if row_count > TRAINING_SAMPLE_SIZE:
+        print(
+            f"Dataset has {row_count:,} records. Creating training sample of "
+            f"{TRAINING_SAMPLE_SIZE:,} for memory efficiency..."
+        )
+        create_random_individuals_subset(con, TRAINING_SAMPLE_SIZE)
+        table_name = "random_subset"
+        print(f"Training will use sample table: {table_name}")
+    else:
+        print(f"Training on full dataset: {row_count:,} records")
+
     checkpoint_exists = checkpoint_path and Path(checkpoint_path).exists()
 
     if resume_from_checkpoint and checkpoint_exists:
@@ -88,7 +102,8 @@ def train_splink(
             comparisons=comparisons,
             blocking_rules_to_generate_predictions=[
                 block_on("first_name", "last_name"),
-                block_on("address_city", "address_street_name"),
+                # More restrictive address blocking to prevent disk space issues
+                block_on("first_name", "address_city", "address_street_name"),
             ],
             retain_intermediate_calculation_columns=False,
         )
@@ -114,7 +129,11 @@ def train_splink(
             linker.misc.save_model_to_json(checkpoint_path, overwrite=True)
             print(f"Saved checkpoint: {checkpoint_path}")
 
-    training_blocking_rule_address = block_on("address_city", "address_street_name")
+    # Use more restrictive blocking rule (includes first_name) to prevent
+    # generating billions of pairs from common addresses
+    training_blocking_rule_address = block_on(
+        "first_name", "address_city", "address_street_name"
+    )
     linker.training.estimate_parameters_using_expectation_maximisation(
         training_blocking_rule_address
     )
