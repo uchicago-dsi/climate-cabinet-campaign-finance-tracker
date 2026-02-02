@@ -147,7 +147,6 @@ def run_link(args: argparse.Namespace) -> int:
     run_linkage_pipeline(
         duckdb_path=args.database_path,
         model_path=args.model_path,
-        parquet_dir=args.input_directory / args.state,
         threshold=args.threshold,
         table_name=args.table_name,
     )
