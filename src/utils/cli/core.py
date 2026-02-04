@@ -122,7 +122,7 @@ def run_link(args: argparse.Namespace) -> int:
         database_empty = (
             con.execute("SELECT COUNT(*) FROM information_schema.tables")
             .fetch_df()
-            .iloc[0][0]
+            .iloc[0, 0]
             == 0
         )
     else:
