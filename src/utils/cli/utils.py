@@ -439,6 +439,10 @@ def route_pipeline_step(
                 state_args.state = state
                 executor.submit(args.pipeline_step_func, state_args)
     else:
+        # Link step operates on entire database, not per-state
+        if args.command == "link":
+            return args.pipeline_step_func(args)
+        # Other steps operate on per-state
         for state in args.states:
             print(f"Running pipeline step for {state}")
             state_args = deepcopy(args)
