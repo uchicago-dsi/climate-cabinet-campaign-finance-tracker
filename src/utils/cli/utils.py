@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from pathlib import Path
 
 from utils.collect.state_collection_registry import get_state_collectors
@@ -101,6 +102,7 @@ pipeline_step_details = {
             "table-name",
             "train",
             "overwrite",
+            "resume-from-checkpoint",
         ],
         "help": "Perform probabilistic record linkage on cleaned data to identify duplicate records.",
         "input_directory_name": "cleaned",
@@ -327,6 +329,13 @@ def add_argument_to_parser(
             default=False,
             help="Overwrite existing database and tables",
         )
+    elif argument_name == "resume-from-checkpoint":
+        parser.add_argument(
+            "--resume-from-checkpoint",
+            action="store_true",
+            default=False,
+            help="Resume training from a saved checkpoint, skipping the first EM training session",
+        )
     else:
         raise ValueError(f"Argument {argument_name} not found")
     return parser
@@ -426,13 +435,19 @@ def route_pipeline_step(
         )
         with executor.batch():
             for state in args.states:
-                args.state = state
-                executor.submit(args.pipeline_step_func, args)
+                state_args = deepcopy(args)
+                state_args.state = state
+                executor.submit(args.pipeline_step_func, state_args)
     else:
+        # Link step operates on entire database, not per-state
+        if args.command == "link":
+            return args.pipeline_step_func(args)
+        # Other steps operate on per-state
         for state in args.states:
             print(f"Running pipeline step for {state}")
-            args.state = state
-            args.pipeline_step_func(args)
+            state_args = deepcopy(args)
+            state_args.state = state
+            args.pipeline_step_func(state_args)
     return 0
 
 

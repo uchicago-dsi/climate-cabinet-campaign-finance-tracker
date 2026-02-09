@@ -6,10 +6,14 @@ https://moj-analytical-services.github.io/splink/demos/tutorials/00_Tutorial_Int
 #!/usr/bin/env python
 # coding: utf-8
 
+from pathlib import Path
+
 import duckdb
 import pandas as pd
 import splink.comparison_library as cl
 from splink import DuckDBAPI, Linker, SettingsCreator, block_on
+
+from utils.link.predict import load_linker
 
 
 def create_random_individuals_subset(con: duckdb.DuckDBPyConnection, size: int) -> None:
@@ -24,7 +28,11 @@ def create_random_individuals_subset(con: duckdb.DuckDBPyConnection, size: int) 
 
 
 def train_splink(
-    con: duckdb.DuckDBPyConnection, table_name: str, output_file: str
+    con: duckdb.DuckDBPyConnection,
+    table_name: str,
+    output_file: str,
+    checkpoint_path: str | None = None,
+    resume_from_checkpoint: bool = False,
 ) -> None:
     """Train splink linker and save to json
 
@@ -35,59 +43,103 @@ def train_splink(
             and an id column with unique ids.
         table_name: name of a table in database
         output_file: where to save splink settings
+        checkpoint_path: path to save/load checkpoint after first EM training
+        resume_from_checkpoint: if True, load from checkpoint and skip initial training
     """
-    db_api = DuckDBAPI(con)
-    comparisons = [
-        cl.ForenameSurnameComparison("first_name", "last_name"),
-        cl.NameComparison("address_city").configure(term_frequency_adjustments=True),
-        cl.NameComparison("address_street_name").configure(
-            term_frequency_adjustments=True
-        ),
-        cl.NameComparison("name_suffix").configure(term_frequency_adjustments=True),
-        cl.NameComparison("name_prefix").configure(term_frequency_adjustments=True),
-        cl.NameComparison("employer_full_name").configure(
-            term_frequency_adjustments=True
-        ),
-        cl.NameComparison("employer_role").configure(term_frequency_adjustments=True),
-    ]
-    if "phone_number" in con.execute(f"PRAGMA table_info('{table_name}')").fetchall():
-        comparisons.append(
-            cl.LevenshteinAtThresholds("phone_number", 1)
-        )  # phone numbers with 1 differing digit
+    # Sample dataset if it's too large for training to prevent disk space issues
+    row_count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+    TRAINING_SAMPLE_SIZE = 200000
+    if row_count > TRAINING_SAMPLE_SIZE:
+        print(
+            f"Dataset has {row_count:,} records. Creating training sample of "
+            f"{TRAINING_SAMPLE_SIZE:,} for memory efficiency..."
+        )
+        create_random_individuals_subset(con, TRAINING_SAMPLE_SIZE)
+        table_name = "random_subset"
+        print(f"Training will use sample table: {table_name}")
+    else:
+        print(f"Training on full dataset: {row_count:,} records")
 
-    settings = SettingsCreator(
-        link_type="dedupe_only",
-        unique_id_column_name="id",
-        comparisons=comparisons,
-        blocking_rules_to_generate_predictions=[
-            block_on("first_name", "last_name"),
-            block_on("address_city", "address_street_name"),
-        ],
-        retain_intermediate_calculation_columns=True,
+    checkpoint_exists = checkpoint_path and Path(checkpoint_path).exists()
+
+    if resume_from_checkpoint and checkpoint_exists:
+        print(f"Resuming from checkpoint: {checkpoint_path}")
+        linker = load_linker(con, checkpoint_path, table_name)
+    else:
+        if resume_from_checkpoint and not checkpoint_exists:
+            print(
+                f"Warning: --resume-from-checkpoint specified but checkpoint not found at {checkpoint_path}"
+            )
+            print("Starting training from scratch")
+
+        db_api = DuckDBAPI(con)
+        comparisons = [
+            cl.ForenameSurnameComparison("first_name", "last_name"),
+            cl.NameComparison("address_city").configure(
+                term_frequency_adjustments=True
+            ),
+            cl.NameComparison("address_street_name").configure(
+                term_frequency_adjustments=True
+            ),
+            cl.NameComparison("name_suffix").configure(term_frequency_adjustments=True),
+            cl.NameComparison("name_prefix").configure(term_frequency_adjustments=True),
+            cl.NameComparison("employer_full_name").configure(
+                term_frequency_adjustments=True
+            ),
+            cl.NameComparison("employer_role").configure(
+                term_frequency_adjustments=True
+            ),
+        ]
+        if (
+            "phone_number"
+            in con.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+        ):
+            comparisons.append(cl.LevenshteinAtThresholds("phone_number", 1))
+
+        settings = SettingsCreator(
+            link_type="dedupe_only",
+            unique_id_column_name="id",
+            comparisons=comparisons,
+            blocking_rules_to_generate_predictions=[
+                block_on("first_name", "last_name"),
+                # More restrictive address blocking to prevent disk space issues
+                block_on("first_name", "address_city", "address_street_name"),
+            ],
+            retain_intermediate_calculation_columns=False,
+        )
+
+        linker = Linker(table_name, settings, db_api=db_api)
+
+        deterministic_rules = [
+            block_on("first_name", "last_name", "address_city"),
+            "jaro_winkler_similarity(l.first_name, r.first_name) >= 0.94 and l.last_name = r.last_name and l.address_street_name = r.address_street_name",
+        ]
+
+        linker.training.estimate_probability_two_random_records_match(
+            deterministic_rules, recall=0.9
+        )
+        linker.training.estimate_u_using_random_sampling(max_pairs=1e8)
+        training_blocking_rule = block_on("first_name", "last_name")
+
+        linker.training.estimate_parameters_using_expectation_maximisation(
+            training_blocking_rule
+        )
+
+        if checkpoint_path:
+            linker.misc.save_model_to_json(checkpoint_path, overwrite=True)
+            print(f"Saved checkpoint: {checkpoint_path}")
+
+    # Use more restrictive blocking rule (includes first_name) to prevent
+    # generating billions of pairs from common addresses
+    training_blocking_rule_address = block_on(
+        "first_name", "address_city", "address_street_name"
     )
-
-    linker = Linker(table_name, settings, db_api=db_api)
-
-    deterministic_rules = [
-        block_on("first_name", "last_name", "address_city"),
-        "jaro_winkler_similarity(l.first_name, r.first_name) >= 0.94 and l.last_name = r.last_name and l.address_street_name = r.address_street_name",
-    ]
-
-    linker.training.estimate_probability_two_random_records_match(
-        deterministic_rules, recall=0.9
-    )
-    linker.training.estimate_u_using_random_sampling(max_pairs=1e9)
-    training_blocking_rule = block_on("first_name", "address_city")
-
-    linker.training.estimate_parameters_using_expectation_maximisation(
-        training_blocking_rule
-    )
-    training_blocking_rule_address = block_on("last_name", "address_street_name")
     linker.training.estimate_parameters_using_expectation_maximisation(
         training_blocking_rule_address
     )
 
-    settings = linker.misc.save_model_to_json(output_file, overwrite=True)
+    linker.misc.save_model_to_json(output_file, overwrite=True)
+    print(f"Saved final model: {output_file}")
 
 
 def create_splink_visualizations(linker: Linker) -> None:
