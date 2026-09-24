@@ -142,6 +142,13 @@ contributions:
 contributions_2002:
   inherits: contributions
   path_pattern: "(?i)^2002/contrib.*\\.txt$"
+  # 2002 files use the legacy layout with no header row
+  read_csv_params:
+    sep: ","
+    encoding: latin-1
+    on_bad_lines: warn
+    header: null
+    engine: python
   column_order:
     - FILERID
     - EYEAR
@@ -310,6 +317,13 @@ filer:
 filer_2002:
   inherits: filer
   path_pattern: "(?i)^2002/filer.*\\.txt$"
+  # 2002 files use the legacy layout with no header row
+  read_csv_params:
+    sep: ","
+    encoding: latin-1
+    on_bad_lines: warn
+    header: null
+    engine: python
   column_order:
     - FILERID
     - EYEAR
@@ -395,6 +409,13 @@ expense:
 expense_2002:
   inherits: expense
   path_pattern: "(?i)^2002/expense.*\\.txt$"
+  # 2002 files use the legacy layout with no header row
+  read_csv_params:
+    sep: ","
+    encoding: latin-1
+    on_bad_lines: warn
+    header: null
+    engine: python
   column_order:
     - FILERID
     - EYEAR

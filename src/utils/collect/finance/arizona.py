@@ -6,6 +6,13 @@ https://seethemoney.az.gov/Reporting/AdvancedSearch/
 For bulk data, a Microsoft Access database is available for purchase from
 the Arizona Secretary of State: https://azsos.nextrequest.com/requests/new
 
+Data notes:
+- Only contributions over $100 or from out of state, and expenses over $250, must
+  be itemized. Smaller in-state contributions may appear under pseudonyms such as
+  'Multiple Donors'.
+- Negative amounts (refunds, loan payments) are shown in parentheses.
+- Lobbyist spending is not distinguished, and spending by political organizations
+  is sometimes listed as payments to vendors.
 """
 
 import argparse

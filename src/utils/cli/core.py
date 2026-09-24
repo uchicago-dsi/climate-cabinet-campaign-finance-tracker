@@ -115,6 +115,11 @@ def run_clean(args: argparse.Namespace) -> int:
 
 def run_link(args: argparse.Namespace) -> int:
     """Command entry point for performing record linkage on cleaned data"""
+    if args.model_path is None:
+        raise ValueError(
+            "--model-path is required for link: it is where a trained model is "
+            "saved (with --train) and loaded from for inference."
+        )
     # check if the database exists and is not empty
     database_exists = args.database_path.exists()
     if database_exists:
@@ -136,7 +141,10 @@ def run_link(args: argparse.Namespace) -> int:
     if not table_exists(con, args.table_name):
         create_transactor_detailed_view(con)
     if args.train:
-        checkpoint_path = str(args.model_path).replace(".json", "_checkpoint.json")
+        model_path = Path(args.model_path)
+        checkpoint_path = model_path.with_name(
+            f"{model_path.stem}_checkpoint{model_path.suffix or '.json'}"
+        )
         train_splink(
             con,
             args.table_name,

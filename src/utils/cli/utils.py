@@ -107,6 +107,8 @@ pipeline_step_details = {
         "help": "Perform probabilistic record linkage on cleaned data to identify duplicate records.",
         "input_directory_name": "cleaned",
         "output_directory_name": "linked",
+        # link operates on the full database, so it runs once, not per state
+        "per_state": False,
     },
     "classify": {
         "arguments": [
@@ -146,6 +148,7 @@ def create_parser_for_step(
         default=step_details["output_directory_name"],
         help=argparse.SUPPRESS,
     )
+    step_parser.set_defaults(per_state=step_details.get("per_state", True))
 
     return step_parser
 
@@ -395,7 +398,7 @@ def validate_args(
                 f"States not provided, using all states in input directory: {args.states}"
             )
         else:
-            args.states = get_state_collectors().keys()
+            args.states = list(get_state_collectors().keys())
             print(
                 f"States not provided, using all states with registered collectors: {args.states}"
             )
@@ -421,6 +424,17 @@ def route_pipeline_step(
         output_directory_name=args.output_directory_name,
     )
 
+    # Most steps run once per state. Steps like link operate on the whole
+    # database and run once, regardless of how many states are requested.
+    if getattr(args, "per_state", True):
+        job_args_list = []
+        for state in args.states:
+            state_args = deepcopy(args)
+            state_args.state = state
+            job_args_list.append(state_args)
+    else:
+        job_args_list = [args]
+
     if args.slurm:
         import submitit
 
@@ -434,20 +448,13 @@ def route_pipeline_step(
             slurm_partition="general",
         )
         with executor.batch():
-            for state in args.states:
-                state_args = deepcopy(args)
-                state_args.state = state
-                executor.submit(args.pipeline_step_func, state_args)
+            for job_args in job_args_list:
+                executor.submit(args.pipeline_step_func, job_args)
     else:
-        # Link step operates on entire database, not per-state
-        if args.command == "link":
-            return args.pipeline_step_func(args)
-        # Other steps operate on per-state
-        for state in args.states:
-            print(f"Running pipeline step for {state}")
-            state_args = deepcopy(args)
-            state_args.state = state
-            args.pipeline_step_func(state_args)
+        for job_args in job_args_list:
+            if "state" in job_args:
+                print(f"Running pipeline step for {job_args.state}")
+            args.pipeline_step_func(job_args)
     return 0
 
 
