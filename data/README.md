@@ -123,7 +123,7 @@ contribution data and READMEs in a Google Drive for the duration of this project
 ### Summary
 - Official results come from the Minnesota Secretary of State's results media files at `https://electionresultsfiles.sos.mn.gov/<YYYYMMDD>/<file>.txt`. Run `python src/utils/collect/election/minnesota.py` to download them to `DATA_DIR/raw/mn/elections/<YYYYMMDD>/` and write a combined `ElectionResults.csv`.
 - The interactive results site (electionresults.sos.mn.gov) is behind a captcha, so election dates are listed in `ELECTIONS` in the collector rather than discovered. Files for 2014 and earlier are not hosted on the media file server.
-- Covers statewide primaries and generals from 2016 through 2024 for State Senate (`stsenate.txt`), State House (`LegislativeByDistrict.txt`), and Governor (`Governor.txt`). A 404 means the office was not on the ballot that election (e.g. no State Senate primary in 2018).
+- Covers statewide primaries and generals from 2016 through 2024 for State Senate (`stsenate.txt`), State House (`LegislativeByDistrict.txt`), Governor (`Governor.txt`), Attorney General (`attorneygen.txt`), Secretary of State (`SecofState.txt`), State Auditor (`Auditor.txt`), and the Supreme Court and Court of Appeals (`judicial.txt`). A 404 means the office was not on the ballot that election (e.g. no State Senate primary in 2018). Federal offices are published too (`ussenate.txt`, `ushouse.txt`, `USPres.txt`) but are not collected.
 
 ### Format
 - Semicolon-delimited, no header, latin-1 encoded. Columns: state, county id, precinct name, office id, office name, district, candidate order code, candidate name, suffix, incumbent code, party, precincts reporting, total precincts, votes, vote percentage, total votes for office. Rows are statewide totals per candidate per office, so county and precinct are empty.
@@ -131,7 +131,9 @@ contribution data and READMEs in a Google Drive for the duration of this project
 
 ### Standardization
 - Aggregate write-in rows (party `WI`) are dropped.
-- `win` is true for the top vote getter in each race; in primaries each party has its own race for the same office, so there is one winner per party.
+- `win` is true for the top vote getter in each race. In partisan primaries each party has its own race for the same office, so there is one winner per party. Judicial primaries are nonpartisan (party `NP`) and the top two advance, so both are marked as winners.
+- `office_sought` is mapped from the office name: State Auditor maps to `Auditor General`, Supreme Court seats to `Supreme Court Justice`, and Court of Appeals seats to `Judge`. Judicial seats have no district; the seat is in `election--office_name` (e.g. "Judge - Court of Appeals 5").
+- Governor candidates are listed as the ticket, e.g. "Tim Walz and Peggy Flanagan".
 - Special elections held on other dates are not included, except for specials that share a general election date.
 
 
