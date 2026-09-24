@@ -9,6 +9,9 @@ from utils.collect.election.minnesota import (
     parse_result_file,
     standardize_results,
 )
+from utils.constants import DEFAULT_SCHEMA_PATH
+from utils.ids import UUID4_REGEX
+from utils.normalize import Normalizer
 
 GENERAL_ROWS = [
     "MN;;;0121;State Senator District 1;1;0301;Mark Johnson;;;R;315;315;27320;97.05;28150",
@@ -69,7 +72,7 @@ def test_standardize_general_picks_one_winner_per_race(write_result_file):
         "20221108-0123-0301",
         "20221108-0123-0401",
     ]
-    assert standardized["election--id"].to_list() == [
+    assert standardized["election_id"].to_list() == [
         "20221108-0121",
         "20221108-0123",
         "20221108-0123",
@@ -83,7 +86,7 @@ def test_standardize_primary_picks_winner_per_party(write_result_file):
     winners = standardized[standardized["win"]]
     assert winners["candidate--full_name"].to_list() == ["Mark Johnson", "Jane Doe Jr."]
     assert standardized["id"].is_unique
-    assert (standardized["election--id"] == "20220809-0121").all()
+    assert (standardized["election_id"] == "20220809-0121").all()
     assert (standardized["election--election_type"] == "primary").all()
 
 
@@ -97,6 +100,24 @@ def test_standardize_nonpartisan_primary_advances_top_two(write_result_file):
     ]
     assert (standardized["election--office_sought"] == "Supreme Court Justice").all()
     assert standardized["election--district"].isna().all()
+
+
+def test_standardized_results_normalize(write_result_file):
+    results = parse_result_file(write_result_file(GENERAL_ROWS))
+    standardized = standardize_results(results, Election("20221108", "general"))
+    # normalizing replaces raw ids with uuids in place
+    raw_ids = set(standardized["id"])
+    raw_election_ids = set(standardized["election_id"])
+    normalizer = Normalizer({"ElectionResult": standardized}, DEFAULT_SCHEMA_PATH)
+    database = normalizer.normalize_database()
+    election_results = database["ElectionResult"]
+    elections = database["Election"]
+    assert election_results["id"].str.match(UUID4_REGEX).all()
+    assert len(elections) == len(raw_election_ids)
+    assert election_results["election_id"].isin(elections["id"]).all()
+    mapped_raw_ids = {key[0] for key in normalizer.id_mapping}
+    assert raw_ids <= mapped_raw_ids
+    assert raw_election_ids <= mapped_raw_ids
 
 
 @pytest.mark.parametrize(
