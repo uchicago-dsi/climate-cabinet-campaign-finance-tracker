@@ -58,8 +58,10 @@ TRANSACTOR_TYPES_TO_DETAILED_INFO_ID = {
 }
 
 TOO_MANY_REQUESTS = 429
-# Largest page size requested from the advanced search endpoint
-MAX_PAGE_SIZE = 100
+# Largest page size requested from the advanced search endpoint. Requests take
+# about the same time up to at least 2500 rows, but the server returns HTTP 500
+# for 5000 rows (tested September 2026).
+MAX_PAGE_SIZE = 1000
 
 
 class ArizonaAPI:
@@ -277,7 +279,7 @@ class ArizonaAPI:
             start: Start index for pagination
             length: Number of records to fetch
         """
-        # Cap page size to 100; server ignores larger sizes
+        # Cap page size; the server errors on very large pages
         page_length = min(int(length), MAX_PAGE_SIZE)
 
         # Build DataTables form data with up-to-date columns

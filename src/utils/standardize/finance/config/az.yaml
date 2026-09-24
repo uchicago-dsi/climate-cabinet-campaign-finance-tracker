@@ -286,7 +286,7 @@ base:
 
 advanced_search_transactions:
   inherits: base
-  path_pattern: "^AdvancedSearch/(BallotMeasures|Contributions|Expenditures|IndependentExpenditures)-.*\\.csv$"
+  path_pattern: "^AdvancedSearch/(BallotMeasures|Income|Expenditures|IndependentExpenditures)-.*\\.csv$"
   table_name: Transaction
 
   column_details:

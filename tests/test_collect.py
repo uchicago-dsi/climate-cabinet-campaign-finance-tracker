@@ -11,8 +11,14 @@ import requests
 import utils.collect.finance
 from utils.cli.core import build_complete_parser
 from utils.collect.finance import michigan
-from utils.collect.finance.arizona import ArizonaAPI, ArizonaDataProcessor
+from utils.collect.finance.arizona import (
+    CATEGORY_TYPES,
+    MAX_PAGE_SIZE,
+    ArizonaAPI,
+    ArizonaDataProcessor,
+)
 from utils.collect.state_collection_registry import get_state_collectors
+from utils.standardize.config import ConfigHandler
 
 CYCLE_ID = "43~1/1/2023 12:00:00 AM~12/31/2024 11:59:59 PM"
 
@@ -102,6 +108,27 @@ def test_pagination_without_batch_size(tmp_path):
         FakeArizonaAPI(150), "Income", CYCLE_ID, "130"
     )
     assert len(transactions) == 150
+
+
+@pytest.mark.parametrize("batch_size", [None, 50, MAX_PAGE_SIZE * 10])
+def test_page_size_is_capped(tmp_path, batch_size):
+    api = FakeArizonaAPI(5)
+    ArizonaDataProcessor(
+        output_path=tmp_path, save_in_batches=False, batch_size=batch_size
+    ).process_transaction_data(api, "Income", CYCLE_ID, "130")
+    assert api.calls[0]["length"] == min(batch_size or MAX_PAGE_SIZE, MAX_PAGE_SIZE)
+
+
+@pytest.mark.parametrize("category", CATEGORY_TYPES)
+def test_standardize_config_matches_collected_transaction_files(category):
+    pattern = ConfigHandler(
+        "advanced_search_transactions", state_code="az"
+    ).raw_data_path_pattern
+    for filename in [
+        f"{category}-130-43-20240101-20241231.csv",
+        f"{category}-130-43.csv",
+    ]:
+        assert pattern.fullmatch(f"AdvancedSearch/{filename}")
 
 
 def test_output_file_name_includes_date_range(tmp_path):
