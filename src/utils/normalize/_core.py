@@ -123,7 +123,12 @@ class Normalizer:
         repeat_col_table.columns = pd.MultiIndex.from_tuples(
             repeat_col_table.columns.to_series().str.split("-")
         )
-        unstacked_repeat_col_table = repeat_col_table.stack(1).droplevel(1)  # noqa: PD013
+        # pandas>=3 stack keeps all-NaN rows (from absent repeats), so drop them
+        unstacked_repeat_col_table = (
+            repeat_col_table.stack(1)  # noqa: PD013
+            .dropna(how="all")
+            .droplevel(1)
+        )
         # Join with unrepeated columns
         first_normal_form_table = unnormalized_table.drop(
             columns=repeated_columns
