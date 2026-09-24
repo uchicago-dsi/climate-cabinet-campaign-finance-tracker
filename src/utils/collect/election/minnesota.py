@@ -40,14 +40,35 @@ RESULT_FILE_COLUMNS = [
     "total_votes_for_office",
 ]
 
-# Maps media file name to the office_sought enum value in table.yaml
-RESULT_FILES = {
-    "stsenate.txt": "State Senator",
-    "LegislativeByDistrict.txt": "State Representative",
-    "Governor.txt": "Governor",
+# Media files for state legislative and statewide offices. Federal offices
+# (ussenate.txt, ushouse.txt, USPres.txt) are published too but are out of scope.
+RESULT_FILES = [
+    "stsenate.txt",
+    "LegislativeByDistrict.txt",
+    "Governor.txt",
+    "attorneygen.txt",
+    "SecofState.txt",
+    "Auditor.txt",
+    "judicial.txt",
+]
+
+# Maps a substring of the media file office name to the office_sought enum value
+# in table.yaml. judicial.txt holds both Supreme Court and Court of Appeals seats.
+OFFICE_SOUGHT_BY_NAME = {
+    "State Senator": "State Senator",
+    "State Representative": "State Representative",
+    "Governor": "Governor",
+    "Attorney General": "Attorney General",
+    "Secretary of State": "Secretary of State",
+    "State Auditor": "Auditor General",
+    "Supreme Court": "Supreme Court Justice",
+    "Court of Appeals": "Judge",
 }
 
 WRITE_IN_PARTY = "WI"
+NONPARTISAN_PARTY = "NP"
+# Nonpartisan primaries send the top two candidates to the general election
+NONPARTISAN_PRIMARY_ADVANCING = 2
 
 
 @dataclass(frozen=True)
@@ -133,19 +154,37 @@ def parse_result_file(file_path: Path) -> pd.DataFrame:
     return results
 
 
-def standardize_results(
-    results: pd.DataFrame, election: Election, office_sought: str
-) -> pd.DataFrame:
+def get_office_sought(office_name: str) -> str:
+    """Map a media file office name to its office_sought enum value.
+
+    Args:
+        office_name: Office name from a media file, e.g.
+            "State Senator District 1" or "Judge - Court of Appeals 5".
+
+    Returns:
+        The matching office_sought value from table.yaml.
+
+    Raises:
+        ValueError: If the office name matches no known office.
+    """
+    for name_substring, office_sought in OFFICE_SOUGHT_BY_NAME.items():
+        if name_substring in office_name:
+            return office_sought
+    raise ValueError(f"Unknown Minnesota office name: {office_name}")
+
+
+def standardize_results(results: pd.DataFrame, election: Election) -> pd.DataFrame:
     """Convert parsed media file rows to ElectionResult rows.
 
-    Winners are the top vote getter in each race. In primaries each party
-    has its own race for the same office, so winners are chosen per party.
-    Aggregate write-in rows are dropped since they are not a candidate.
+    Winners are the top vote getter in each race. In partisan primaries each
+    party has its own race for the same office, so winners are chosen per
+    party. In nonpartisan (judicial) primaries the top two candidates advance,
+    so both are marked as winners. Aggregate write-in rows are dropped since
+    they are not a candidate.
 
     Args:
         results: Output of parse_result_file.
         election: Election the results are from.
-        office_sought: office_sought enum value for every race in the file.
 
     Returns:
         DataFrame of candidate results using the project's nested column
@@ -154,10 +193,14 @@ def standardize_results(
     results = results[results["party"] != WRITE_IN_PARTY].copy()
 
     race_columns = ["office_id"]
+    seats = pd.Series(1, index=results.index)
     if election.election_type == "primary":
         race_columns.append("party")
-    max_votes = results.groupby(race_columns)["votes"].transform("max")
-    results["win"] = results["votes"] == max_votes
+        seats[results["party"] == NONPARTISAN_PARTY] = NONPARTISAN_PRIMARY_ADVANCING
+    vote_rank = results.groupby(race_columns)["votes"].rank(
+        method="min", ascending=False
+    )
+    results["win"] = vote_rank <= seats
 
     full_names = results["candidate_name"] + " " + results["suffix"]
     return pd.DataFrame(
@@ -165,7 +208,7 @@ def standardize_results(
             "election--year": election.year,
             "election--date": pd.to_datetime(election.date, format="%Y%m%d"),
             "election--election_type": election.election_type,
-            "election--office_sought": office_sought,
+            "election--office_sought": results["office_name"].map(get_office_sought),
             "election--office_name": results["office_name"],
             "election--district": results["district"].replace("", pd.NA),
             "election--state": "MN",
@@ -194,13 +237,13 @@ def collect_election_results(
     """
     standardized = []
     for election in elections:
-        for file_name, office_sought in RESULT_FILES.items():
+        for file_name in RESULT_FILES:
             file_path = download_result_file(election, file_name, output_directory)
             if file_path is None:
                 print(f"No {file_name} for {election.date}, skipping")
                 continue
             results = parse_result_file(file_path)
-            standardized.append(standardize_results(results, election, office_sought))
+            standardized.append(standardize_results(results, election))
             print(f"Collected {len(results)} rows from {election.date}/{file_name}")
     return pd.concat(standardized, ignore_index=True)
 
