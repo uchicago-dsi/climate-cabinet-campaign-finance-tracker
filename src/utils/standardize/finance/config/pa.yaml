@@ -6,7 +6,6 @@ base:
     encoding: latin-1
     on_bad_lines: warn
     header: 0
-    engine: python
   state_code_columns:
     - reported_state
   year_filter_filepath_regex: ".*\\/(\\d{4})\\/[^\\/]+$"
@@ -148,7 +147,6 @@ contributions_2002:
     encoding: latin-1
     on_bad_lines: warn
     header: null
-    engine: python
   column_order:
     - FILERID
     - EYEAR
@@ -323,7 +321,6 @@ filer_2002:
     encoding: latin-1
     on_bad_lines: warn
     header: null
-    engine: python
   column_order:
     - FILERID
     - EYEAR
@@ -415,7 +412,6 @@ expense_2002:
     encoding: latin-1
     on_bad_lines: warn
     header: null
-    engine: python
   column_order:
     - FILERID
     - EYEAR
