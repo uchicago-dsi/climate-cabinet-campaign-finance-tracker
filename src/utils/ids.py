@@ -1,13 +1,23 @@
-"""Code for management and creation of unique identifiers"""
+"""Code for management and creation of unique identifiers
+
+Every entity gets a UUID. Ids provided by sources (a committee registration
+number, a filer id, ...) are mapped to those UUIDs, keyed by the id system that
+issued them ("source"), the id itself, and the table of the entity it
+identifies. Keying by source means the same number from two id systems maps to
+two entities. The mapping is saved as the SourceIdentifier table.
+"""
 
 import re
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
 
 import pandas as pd
 
-from utils.constants import DEFAULT_SCHEMA_PATH
+from utils.constants import DEFAULT_SCHEMA_PATH, ID_SOURCE_SUFFIX
+from utils.io import FileFormat, save_database
 from utils.schema import DataSchema, TableSchema
+from utils.sources import SourceRegistry, get_default_registry, legacy_source
 
 # Precompiled regex for UUID4 validation
 UUID4_REGEX = re.compile(
@@ -15,7 +25,106 @@ UUID4_REGEX = re.compile(
     re.IGNORECASE,
 )
 
-UUIDMapping = dict[tuple[str, int | None, str | None, str], str]
+# (source, source_id, entity_table)
+SourceKey = tuple[str, str, str]
+
+SOURCE_IDENTIFIER_TABLE = "SourceIdentifier"
+SOURCE_IDENTIFIER_COLUMNS = [
+    "entity_id",
+    "entity_table",
+    "source",
+    "source_id",
+    "reported_state",
+    "earliest_known_date",
+    "latest_known_date",
+]
+LEGACY_ID_MAPPING_FILE = "id_mapping.tsv"
+
+
+class SourceIdentifierMapping:
+    """Mapping of source ids to the UUIDs of the entities they identify
+
+    Each (source, source_id, entity_table) key maps to exactly one entity_id.
+    One entity may have any number of keys.
+    """
+
+    def __init__(self) -> None:
+        """Create an empty mapping"""
+        self._entity_ids: dict[SourceKey, str] = {}
+        self._reported_states: dict[SourceKey, str | None] = {}
+
+    def __len__(self) -> int:
+        """Number of source ids in the mapping"""
+        return len(self._entity_ids)
+
+    def __contains__(self, key: SourceKey) -> bool:
+        """Whether key is in the mapping"""
+        return key in self._entity_ids
+
+    def __getitem__(self, key: SourceKey) -> str:
+        """Entity id that key maps to"""
+        return self._entity_ids[key]
+
+    def __iter__(self) -> Iterator[SourceKey]:
+        """Iterate over keys"""
+        return iter(self._entity_ids)
+
+    def get(self, key: SourceKey, default: str | None = None) -> str | None:
+        """Entity id that key maps to, or default if key is not in the mapping"""
+        return self._entity_ids.get(key, default)
+
+    def reported_state(self, key: SourceKey) -> str | None:
+        """State whose data the source id was first seen in"""
+        return self._reported_states.get(key)
+
+    def add(
+        self, key: SourceKey, entity_id: str, reported_state: str | None = None
+    ) -> None:
+        """Map key to entity_id, keeping the first reported_state seen for key"""
+        self._entity_ids[key] = entity_id
+        self._reported_states.setdefault(key, reported_state)
+
+    def update(self, other: "SourceIdentifierMapping") -> None:
+        """Add all keys from other, overwriting entity ids of shared keys"""
+        for key in other:
+            self.add(key, other[key], other.reported_state(key))
+
+    def copy(self) -> "SourceIdentifierMapping":
+        """Shallow copy of the mapping"""
+        copied = SourceIdentifierMapping()
+        copied.update(self)
+        return copied
+
+    def to_table(self) -> pd.DataFrame:
+        """Mapping as a SourceIdentifier table"""
+        rows = [
+            {
+                "entity_id": entity_id,
+                "entity_table": entity_table,
+                "source": source,
+                "source_id": source_id,
+                "reported_state": self._reported_states.get(
+                    (source, source_id, entity_table)
+                ),
+                "earliest_known_date": None,
+                "latest_known_date": None,
+            }
+            for (source, source_id, entity_table), entity_id in self._entity_ids.items()
+        ]
+        return pd.DataFrame(rows, columns=SOURCE_IDENTIFIER_COLUMNS)
+
+    @classmethod
+    def from_table(cls, table: pd.DataFrame) -> "SourceIdentifierMapping":
+        """Build a mapping from a SourceIdentifier table"""
+        mapping = cls()
+        for row in table.itertuples(index=False):
+            reported_state = row.reported_state
+            mapping.add(
+                (row.source, str(row.source_id), row.entity_table),
+                row.entity_id,
+                None if pd.isna(reported_state) else reported_state,
+            )
+        return mapping
 
 
 def normalize_id_to_string(value: int | float | str | None) -> str:
@@ -40,6 +149,34 @@ def normalize_id_to_string(value: int | float | str | None) -> str:
     return str(value)
 
 
+def get_id_sources(table: pd.DataFrame, id_column: str) -> pd.Series:
+    """Source of each value in id_column
+
+    Sources come from the '<id_column>_source' column added during
+    standardization. Rows without one fall back to the legacy source for their
+    reported_state.
+
+    Args:
+        table: DataFrame with id_column
+        id_column: name of the id column
+
+    Returns:
+        Series of source names aligned with table's index
+    """
+    if "reported_state" in table.columns:
+        legacy_sources = table["reported_state"].map(legacy_source)
+    else:
+        legacy_sources = pd.Series(legacy_source(None), index=table.index)
+    source_column = f"{id_column}{ID_SOURCE_SUFFIX}"
+    if source_column not in table.columns:
+        return legacy_sources.astype(object)
+    return (
+        table[source_column]
+        .astype(object)
+        .where(table[source_column].notna(), legacy_sources)
+    )
+
+
 def replace_null_ids_with_uuids(table: pd.DataFrame, id_column: str) -> None:
     """For each null value in id_column, replace it with a new UUID
 
@@ -59,16 +196,16 @@ def replace_null_ids_with_uuids(table: pd.DataFrame, id_column: str) -> None:
 def map_ids_to_uuids(
     table: pd.DataFrame,
     table_name: str,
-    id_mapping: UUIDMapping,
+    id_mapping: SourceIdentifierMapping,
     id_column: str = "id",
     mask: pd.Series = None,
 ) -> None:
-    """Replace values in `id_column` if their row exists in `id_mapping`.
+    """Replace values in `id_column` if their source id exists in `id_mapping`.
 
     Args:
         table: DataFrame with an existing `id_column`.
-        table_name: Table name used in the mapping.
-        id_mapping: Mapping of (raw id, year, state, table_name) to UUIDs.
+        table_name: Name of the table the ids identify rows of.
+        id_mapping: Mapping of (source, source_id, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
         mask: Optional boolean mask to filter which rows to update
 
@@ -77,59 +214,61 @@ def map_ids_to_uuids(
     """
     if mask is None:
         mask = pd.Series(True, index=table.index)
-    table[id_column] = table[id_column].astype("string")
-    table.loc[mask, id_column] = table.loc[mask].apply(
-        lambda row: id_mapping.get(
-            (
-                normalize_id_to_string(row[id_column]),
-                row.get("year"),
-                row.get("reported_state"),
-                table_name,
-            ),
-            row[id_column],
-        ),
-        axis=1,
-    )
+    sources = get_id_sources(table, id_column)
+    raw_ids = [normalize_id_to_string(value) for value in table[id_column]]
+    table[id_column] = pd.Series(raw_ids, index=table.index, dtype="string")
+    table.loc[mask, id_column] = [
+        raw_id
+        if pd.isna(raw_id)
+        else id_mapping.get((source, raw_id, table_name), raw_id)
+        for raw_id, source in zip(
+            table.loc[mask, id_column], sources[mask], strict=True
+        )
+    ]
 
 
 def create_new_uuid_mapping(
     table: pd.DataFrame,
     table_name: str,
     id_column: str = "id",
-    existing_mapping: UUIDMapping = None,
-) -> UUIDMapping:
-    """Create UUIDs for rows with invalid or missing UUIDs in `id_column`.
+    existing_mapping: SourceIdentifierMapping | None = None,
+) -> SourceIdentifierMapping:
+    """Create UUIDs for source ids in `id_column` that have none yet.
 
     This function will skip any rows for which the id_column is NA,
     a valid uuid, or already exists in the existing_mapping.
 
     Args:
         table: DataFrame with an existing `id_column`.
-        table_name: Name of the table (used in mapping).
+        table_name: Name of the table the ids identify rows of.
         id_column: Name of the `id` column, defaults to 'id'.
         existing_mapping: Existing ID mapping to check against.
 
     Returns:
-        A dictionary mapping (raw_id, year, state, table_name) → new UUID.
+        Mapping of (source, source_id, table_name) → new UUID.
     """
     if existing_mapping is None:
-        existing_mapping = {}
+        existing_mapping = SourceIdentifierMapping()
+    raw_ids_mask = get_raw_ids_mask(table, id_column)
+    raw_table = table.loc[raw_ids_mask]
+    sources = get_id_sources(raw_table, id_column)
+    if "reported_state" in raw_table.columns:
+        reported_states = raw_table["reported_state"]
+    else:
+        reported_states = pd.Series(None, index=raw_table.index)
 
-    new_mappings = {}
-    for _, row in table[
-        (table[id_column].notna())
-        & (~table[id_column].astype("string").str.match(UUID4_REGEX, na=False))
-    ].iterrows():
-        key = (
-            normalize_id_to_string(row[id_column]),
-            row.get("year"),
-            row.get("reported_state"),
-            table_name,
-        )
-        if key not in existing_mapping:
-            new_mappings[key] = str(uuid.uuid4())
-
-    return new_mappings
+    new_mapping = SourceIdentifierMapping()
+    for raw_id, source, reported_state in zip(
+        raw_table[id_column], sources, reported_states, strict=True
+    ):
+        key = (source, normalize_id_to_string(raw_id), table_name)
+        if key not in existing_mapping and key not in new_mapping:
+            new_mapping.add(
+                key,
+                str(uuid.uuid4()),
+                None if pd.isna(reported_state) else reported_state,
+            )
+    return new_mapping
 
 
 def get_raw_ids_mask(table: pd.DataFrame, id_column: str) -> pd.Series:
@@ -146,14 +285,17 @@ def get_raw_ids_mask(table: pd.DataFrame, id_column: str) -> pd.Series:
 
 
 def handle_existing_ids(
-    table: pd.DataFrame, table_name: str, id_mapping: UUIDMapping, id_column: str
+    table: pd.DataFrame,
+    table_name: str,
+    id_mapping: SourceIdentifierMapping,
+    id_column: str,
 ) -> None:
     """Ensure all non null ids in id_column are mapped to a uuid in id_mapping
 
     Args:
         table: DataFrame with `id_column`.
         table_name: Name of table name the id represents.
-        id_mapping: Mapping of (raw id, year, reported_state, table_name) to UUIDs.
+        id_mapping: Mapping of (source, source_id, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
 
     Modifies:
@@ -163,10 +305,9 @@ def handle_existing_ids(
     map_ids_to_uuids(table, table_name, id_mapping, id_column)
     raw_ids_mask = get_raw_ids_mask(table, id_column)
     new_mappings = create_new_uuid_mapping(
-        table.loc[raw_ids_mask], table_name, id_column
+        table.loc[raw_ids_mask], table_name, id_column, id_mapping
     )
     id_mapping.update(new_mappings)
-    # this can be done more efficiently if we filter table here
     map_ids_to_uuids(table, table_name, new_mappings, id_column, mask=raw_ids_mask)
 
 
@@ -174,7 +315,7 @@ def handle_id_column(
     table: pd.DataFrame,
     table_schema: TableSchema,
     id_table_name: str,
-    id_mapping: UUIDMapping,
+    id_mapping: SourceIdentifierMapping,
     id_column: str = "id",
 ) -> None:
     """Ensure each 'id' value in table is a uuid and all raw ids are mapped
@@ -183,7 +324,7 @@ def handle_id_column(
         table: DataFrame with or without `id_column`.
         table_schema: Schema defining properties of table.
         id_table_name: Name of the table that the id identifies a row of.
-        id_mapping: Mapping of (raw id, year, reported_state, table_name) to UUIDs.
+        id_mapping: Mapping of (source, source_id, table_name) to UUIDs.
         id_column: Name of the column to replace with UUIDs.
 
     Modifies:
@@ -199,60 +340,136 @@ def handle_id_column(
     handle_existing_ids(table, id_table_name, id_mapping, id_column)
 
 
-def save_id_mapping(id_mapping: UUIDMapping, file_path: Path) -> None:
-    """Save ID mapping to a TSV file.
+def drop_id_source_columns(table: pd.DataFrame) -> pd.DataFrame:
+    """Remove the '<id column>_source' columns once ids are mapped to UUIDs"""
+    return table.drop(
+        columns=[
+            column for column in table.columns if column.endswith(ID_SOURCE_SUFFIX)
+        ]
+    )
+
+
+def save_source_identifiers(
+    id_mapping: SourceIdentifierMapping,
+    directory: Path,
+    format: FileFormat = "parquet",
+) -> None:
+    """Save a mapping as the SourceIdentifier table in directory
 
     Args:
-        id_mapping: Dictionary mapping tuples to UUIDs
-        file_path: Path where to save the mapping
+        id_mapping: Mapping to save
+        directory: Directory of the normalized database
+        format: File format of the database
     """
-    if not id_mapping:
+    if len(id_mapping) == 0:
         return
-
-    # Convert mapping to DataFrame format
-    rows = []
-    for (raw_id, year, reported_state, table_name), uuid_value in id_mapping.items():
-        rows.append(
-            {
-                "raw_id": raw_id,
-                "year": year,
-                "reported_state": reported_state,
-                "table_name": table_name,
-                "uuid": uuid_value,
-            }
-        )
-
-    id_mapping_df = pd.DataFrame(rows)
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    id_mapping_df.to_csv(file_path, sep="\t", index=False)
+    save_database(
+        {SOURCE_IDENTIFIER_TABLE: id_mapping.to_table()},
+        directory,
+        format=format,
+        mode="overwrite",
+    )
 
 
-def load_id_mapping(file_path: Path) -> UUIDMapping:
-    """Load ID mapping from a TSV file.
+def load_source_identifiers(
+    directory: Path,
+    format: FileFormat = "parquet",
+    legacy_id_source_rules: list | None = None,
+    source_registry: SourceRegistry | None = None,
+) -> SourceIdentifierMapping:
+    """Load the SourceIdentifier table from directory, if any
+
+    If there is no SourceIdentifier table but there is an id_mapping.tsv from an
+    earlier version of the pipeline, it is migrated so existing UUIDs are kept.
 
     Args:
-        file_path: Path to the saved mapping file
+        directory: Directory of the normalized database
+        format: File format of the database
+        legacy_id_source_rules: id source rules declared in the state's config,
+            used to infer sources when migrating id_mapping.tsv
+        source_registry: registry used when migrating. Defaults to sources.yaml.
 
     Returns:
-        Dictionary mapping tuples to UUIDs
+        The saved mapping, a migrated mapping, or an empty mapping
     """
-    if not file_path.exists():
-        return {}
-
-    id_mapping_df = pd.read_csv(file_path, sep="\t")
-
-    # Convert DataFrame back to mapping format
-    id_mapping = {}
-    for _, row in id_mapping_df.iterrows():
-        key = (
-            row["raw_id"],
-            row["year"] if pd.notna(row["year"]) else None,
-            row["reported_state"] if pd.notna(row["reported_state"]) else None,
-            row["table_name"],
+    table_path = directory / f"{SOURCE_IDENTIFIER_TABLE}.{format}"
+    if table_path.exists():
+        if format == "parquet":
+            table = pd.read_parquet(table_path)
+        else:
+            table = pd.read_csv(table_path, dtype=str)
+        return SourceIdentifierMapping.from_table(table)
+    legacy_path = directory / LEGACY_ID_MAPPING_FILE
+    if legacy_path.exists():
+        print(f"Migrating {legacy_path} to the {SOURCE_IDENTIFIER_TABLE} table")
+        return migrate_legacy_id_mapping(
+            legacy_path, legacy_id_source_rules or [], source_registry
         )
-        id_mapping[key] = row["uuid"]
+    return SourceIdentifierMapping()
 
-    return id_mapping
+
+def migrate_legacy_id_mapping(
+    file_path: Path,
+    id_source_rules: list,
+    source_registry: SourceRegistry | None = None,
+) -> SourceIdentifierMapping:
+    """Convert an id_mapping.tsv from earlier pipeline versions, keeping UUIDs
+
+    The old mapping did not record which id system a raw id came from. A source
+    is inferred when exactly one of the state's declared sources accepts the raw
+    id (its 'when' and its registry pattern match). Otherwise, for example when
+    two id systems share a number format, the legacy source for the state is
+    used. Rules with a source_id_format are skipped since the old mapping lacks
+    the values needed to build their source ids.
+
+    Args:
+        file_path: Path to id_mapping.tsv with columns raw_id, year,
+            reported_state, table_name, and uuid
+        id_source_rules: IdSourceRules declared in the state's config
+        source_registry: registry of sources. Defaults to sources.yaml.
+
+    Returns:
+        Mapping with one key per distinct (source, raw_id, table_name)
+    """
+    source_registry = source_registry or get_default_registry()
+    candidate_rules = [
+        rule for rule in id_source_rules if rule.source_id_format is None
+    ]
+    legacy_table = pd.read_csv(file_path, sep="\t", dtype=str)
+    mapping = SourceIdentifierMapping()
+    n_conflicts = 0
+    for row in legacy_table.itertuples(index=False):
+        raw_id = normalize_id_to_string(row.raw_id)
+        reported_state = None if pd.isna(row.reported_state) else row.reported_state
+        matching_sources = {
+            rule.source
+            for rule in candidate_rules
+            if (rule.when is None or rule.when.fullmatch(raw_id))
+            and source_registry[rule.source].matches(
+                source_registry[rule.source].normalize(raw_id)
+            )
+            and not source_registry[rule.source].is_null(
+                source_registry[rule.source].normalize(raw_id)
+            )
+        }
+        if len(matching_sources) == 1:
+            source = matching_sources.pop()
+            source_id = source_registry[source].normalize(raw_id)
+        else:
+            source = legacy_source(reported_state)
+            source_id = raw_id
+        key = (source, source_id, row.table_name)
+        if key in mapping:
+            n_conflicts += mapping[key] != row.uuid
+            continue
+        mapping.add(key, row.uuid, reported_state)
+    if n_conflicts:
+        print(
+            f"Warning: {n_conflicts} rows of {file_path} mapped a raw id to a "
+            "different UUID than an earlier row for the same source id; the "
+            "first UUID was kept."
+        )
+    return mapping
 
 
 def get_all_id_references(

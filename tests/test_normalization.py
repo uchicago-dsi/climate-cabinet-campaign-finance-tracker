@@ -661,6 +661,7 @@ def test_split_prefixed_columns(
                 "ElectionResult": {},
                 "Individual": {},
                 "Organization": {},
+                "SourceIdentifier": {},
             },
             "full_schema_fixture",
         ),

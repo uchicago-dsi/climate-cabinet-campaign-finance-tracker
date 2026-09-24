@@ -130,10 +130,10 @@ When training, resume from the checkpoint saved after the first training session
 The full pipeline is broken down into several steps:
 
 1. Collect: Gather key states' political campaign finance report data which should include recipient information, donor information, and transaction information.
-2. Standardize: Define database schema for storing transaction and entity information and standardize column names and values.
-3. Normalize: Normalize data into provided schema
+2. Standardize: Define database schema for storing transaction and entity information and standardize column names and values. Each raw id is tagged with the id system ("source") it comes from.
+3. Normalize: Normalize data into provided schema. Every entity gets a UUID, and the ids provided by sources are recorded in the `SourceIdentifier` table (see [Source identifiers](#source-identifiers)).
 4. Clean: Use heuristics to fill in missing information and make data consistent. 
-5. Link: Perform probabilistic record linkage on cleaned data to identify duplicate records.
+5. Link: Merge entities that share a source id (for example, the same FEC committee in two states), then perform probabilistic record linkage on cleaned data to identify duplicate records.
 6. Classify: Label all entities as fossil fuel, clean energy, or other
 
 Each step can be run as a command line tool by running `cft <step>` where `<step>` is replaced the by the desired step (ex: `cft clean`). To see a list of command line options for a particular step, run `cft <step> --help`. 
@@ -144,6 +144,22 @@ Each step can be run as a command line tool by running `cft <step>` where `<step
 Thanks to all of the students who have contributed to this project, including MPCS Practicum student Yue Xu; Data Science Clinic students Aïcha Camara, Alan Kagiri, Nicolas Posner, Yuzhou Wang, Adil Kassim, Nayna Pashilkar, Kaya Lee, Bhavya Pandey, and Yangge Xu; TAs Avery Schoen and Sarah Walker; and Research Assistants Steph Trello and Sarah Walker.
 
 # Documentation
+
+## Source identifiers
+
+Ids provided by the states (committee registration numbers, filer ids, ...) are not used as entity ids. Each entity gets a UUID, and every source-provided id is recorded in the `SourceIdentifier` table with the entity it points to:
+
+| column | meaning |
+| --- | --- |
+| `entity_id` | UUID of the row the id identifies |
+| `entity_table` | table of that row, e.g. `Transactor` |
+| `source` | id system that issued the id, e.g. `mn_cfb_registration` |
+| `source_id` | the id as the source provides it |
+| `reported_state` | state whose data the id was first seen in |
+
+Each `(source, source_id, entity_table)` maps to exactly one entity, and one entity can have many source ids (for example, a committee with registrations in two id systems). Keying by source keeps ids from different id systems apart: in Arizona, CommitteeID `1001` and NameID `1001` are different entities.
+
+Valid sources, with their formats and placeholder values, are listed in [`src/utils/sources.yaml`](src/utils/sources.yaml). Each id column in a state config declares its source with `id_source` (see [CONTRIBUTING.md](CONTRIBUTING.md#source-identifiers)). Normalization writes `SourceIdentifier` next to the other normalized tables and reuses it on later runs, so entities keep their UUIDs; an `id_mapping.tsv` from earlier versions of the pipeline is migrated automatically. Linking updates `entity_id` whenever entities are merged, and records merges made because entities shared a source id in the `source_identifier_linkage` table.
 
 ## Schema
 

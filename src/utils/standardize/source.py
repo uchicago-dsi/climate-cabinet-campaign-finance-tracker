@@ -6,8 +6,19 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from utils.constants import RAW_DATA_DIRECTORY
-from utils.standardize.config import ConfigHandler
+from utils.constants import ID_SOURCE_SUFFIX, RAW_DATA_DIRECTORY
+from utils.ids import normalize_id_to_string
+from utils.standardize.config import ConfigHandler, IdSourceRule
+
+MAX_INVALID_ID_EXAMPLES = 5
+
+
+def _raw_id_to_string(value: object) -> str | None:
+    """Represent a raw id as a stripped string, or None if it is missing"""
+    if pd.isna(value):
+        return None
+    raw_id = normalize_id_to_string(value).strip()
+    return raw_id or None
 
 
 class DataReader:
@@ -160,6 +171,8 @@ class SchemaTransformer:
         self.state_code_columns = config_handler.state_code_columns
         self.state_code = config_handler.state_code
         self.overloaded_columns = config_handler.overloaded_columns
+        self.id_source_rules = config_handler.id_source_rules
+        self.source_registry = config_handler.source_registry
 
     def _split_overloaded_columns(
         self, standard_data_table: pd.DataFrame
@@ -228,6 +241,81 @@ class SchemaTransformer:
             standard_data_table[column] = self.state_code
         return standard_data_table
 
+    def _build_source_ids(
+        self, table: pd.DataFrame, raw_ids: pd.Series, rule: IdSourceRule
+    ) -> pd.Series:
+        """Build source_ids for the rows of raw_ids according to rule"""
+        if rule.source_id_format is None:
+            return raw_ids
+        return pd.Series(
+            [
+                rule.source_id_format.format(
+                    value=raw_id,
+                    **{
+                        column: "" if pd.isna(value) else normalize_id_to_string(value)
+                        for column, value in row.items()
+                    },
+                )
+                for raw_id, (_, row) in zip(
+                    raw_ids, table.loc[raw_ids.index].iterrows()
+                )
+            ],
+            index=raw_ids.index,
+            dtype="string",
+        )
+
+    def _assign_id_sources(self, standard_data_table: pd.DataFrame) -> pd.DataFrame:
+        """Record which source each id comes from in a '<id column>_source' column
+
+        For each id column with an id_source in the config, the first rule whose
+        'when' matches a raw id decides its source. The id is replaced by its
+        source_id (the raw id, or a value built by the rule's source_id_format).
+        Ids that are placeholders for the source become null. Ids that match no
+        rule, or don't match their source's pattern, are logged and become null
+        so that malformed values are not treated as identifiers.
+        """
+        for id_column, rules in self.id_source_rules.items():
+            if id_column not in standard_data_table.columns:
+                continue
+            raw_ids = pd.Series(
+                [_raw_id_to_string(value) for value in standard_data_table[id_column]],
+                index=standard_data_table.index,
+                dtype="string",
+            )
+            source_ids = pd.Series(pd.NA, index=raw_ids.index, dtype="string")
+            sources = pd.Series(pd.NA, index=raw_ids.index, dtype="string")
+            unassigned = raw_ids.notna()
+            invalid = pd.Series(False, index=raw_ids.index)
+            for rule in rules:
+                applies = unassigned.copy()
+                if rule.when is not None:
+                    applies &= raw_ids.str.fullmatch(rule.when).fillna(False)
+                if not applies.any():
+                    continue
+                candidate_ids = self._build_source_ids(
+                    standard_data_table, raw_ids[applies], rule
+                )
+                source = self.source_registry[rule.source]
+                candidate_ids = candidate_ids.map(source.normalize).astype("string")
+                is_null = candidate_ids.map(source.is_null).astype(bool)
+                is_valid = candidate_ids.map(source.matches).astype(bool) & ~is_null
+                valid_index = candidate_ids.index[is_valid]
+                source_ids[valid_index] = candidate_ids[is_valid]
+                sources[valid_index] = rule.source
+                invalid[candidate_ids.index[~is_valid & ~is_null]] = True
+                unassigned &= ~applies
+            invalid |= unassigned
+            if invalid.any():
+                examples = raw_ids[invalid].unique()[:MAX_INVALID_ID_EXAMPLES]
+                print(
+                    f"Warning: {invalid.sum()} values in {id_column} match no "
+                    f"configured id source format and were set to null. "
+                    f"Examples: {list(examples)}"
+                )
+            standard_data_table[id_column] = source_ids
+            standard_data_table[f"{id_column}{ID_SOURCE_SUFFIX}"] = sources
+        return standard_data_table
+
     def standardize_schema(self, raw_data_table: pd.DataFrame) -> pd.DataFrame:
         """Rename columns, remove unused columns, and add missing columns
 
@@ -241,6 +329,9 @@ class SchemaTransformer:
             standard_relevant_column_table
         )
         standard_relevant_column_table = self._add_new_columns(
+            standard_relevant_column_table
+        )
+        standard_relevant_column_table = self._assign_id_sources(
             standard_relevant_column_table
         )
         standard_schema_table = self._add_duplicate_columns(

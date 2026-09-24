@@ -1,11 +1,88 @@
 """Configuration hanlder class for state campaign finance data"""
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from yaml import safe_load
 
 from utils.constants import STATE_FINANCE_CONFIG_DIRECTORY
+from utils.sources import SourceRegistry, get_default_registry
+
+
+@dataclass(frozen=True)
+class IdSourceRule:
+    """How to assign a source to the values of an id column
+
+    Attributes:
+        source: name of a source in sources.yaml
+        when: regex a raw id must fully match for this rule to apply. None
+            matches every id.
+        source_id_format: optional python format string that builds the
+            source_id from the raw id ('{value}') and other standard columns
+            of the same row, e.g. '{reported_election_year}-{value}'.
+    """
+
+    source: str
+    when: re.Pattern | None = None
+    source_id_format: str | None = None
+
+
+def parse_id_source(id_source: str | list[dict]) -> list[IdSourceRule]:
+    """Convert a column's 'id_source' config value to a list of rules
+
+    Args:
+        id_source: either a source name, or a list of mappings with keys
+            'source' and optionally 'when' and 'source_id_format'. Rules are
+            tried in order and the first whose 'when' matches is used.
+
+    Raises:
+        ValueError: if a rule without 'when' is followed by other rules, since
+            those rules could never apply.
+    """
+    if isinstance(id_source, str):
+        return [IdSourceRule(source=id_source)]
+    rules = [
+        IdSourceRule(
+            source=rule["source"],
+            when=re.compile(rule["when"]) if rule.get("when") else None,
+            source_id_format=rule.get("source_id_format"),
+        )
+        for rule in id_source
+    ]
+    for rule in rules[:-1]:
+        if rule.when is None:
+            raise ValueError(
+                f"id_source rule for '{rule.source}' has no 'when' but is not the "
+                "last rule, so the rules after it can never apply."
+            )
+    return rules
+
+
+def declared_id_sources(
+    state_code: str, config_directory: Path = STATE_FINANCE_CONFIG_DIRECTORY
+) -> list[IdSourceRule]:
+    """All id source rules declared anywhere in a state's config
+
+    Args:
+        state_code: two letter state abbreviation
+        config_directory: directory containing <state_code>.yaml
+
+    Returns:
+        Distinct rules across every form's column_details
+    """
+    with (config_directory / f"{state_code.lower()}.yaml").open() as f:
+        config = safe_load(f)
+    rules = []
+    for form_config in config.values():
+        if not isinstance(form_config, dict):
+            continue
+        for column_detail in form_config.get("column_details", []) or []:
+            if "id_source" in column_detail:
+                for rule in parse_id_source(column_detail["id_source"]):
+                    if rule not in rules:
+                        rules.append(rule)
+    return rules
 
 
 def resolve_inheritance(config: dict, form_code: str) -> dict:
@@ -169,6 +246,16 @@ class ConfigHandler:
         return self._year_column
 
     @property
+    def source_registry(self) -> SourceRegistry:
+        """Registry of valid id sources that id_source_rules were validated against"""
+        return self._source_registry
+
+    @property
+    def id_source_rules(self) -> dict[str, list[IdSourceRule]]:
+        """Maps standard id column names to rules assigning their values a source"""
+        return self._id_source_rules
+
+    @property
     def overloaded_columns(self) -> dict[str, dict[str, str]]:
         """Maps column names to information about how to split them into multiple columns"""
         return self._overloaded_columns
@@ -178,6 +265,7 @@ class ConfigHandler:
         form_code: str,
         config_file_path: Path | None = None,
         state_code: str | None = None,
+        source_registry: SourceRegistry | None = None,
     ) -> None:
         """Manage configuration from config file
 
@@ -188,6 +276,11 @@ class ConfigHandler:
             config_file_path: Path to configuration file
             state_code: two letter abbreviation of state with config
                 file in default config folder
+            source_registry: registry that id sources are validated against.
+                Defaults to sources.yaml.
+
+        Raises:
+            KeyError: if a column's id_source names a source not in the registry
         """
         if config_file_path is None:
             if state_code is not None:
@@ -233,3 +326,31 @@ class ConfigHandler:
         self._overloaded_columns = form_config.get("overloaded_columns", {})
         self._null_values = form_config.get("null_values", {})
         self._filter = form_config.get("filter", {})
+        self._source_registry = source_registry or get_default_registry()
+        self._id_source_rules = self._load_id_source_rules(self._source_registry)
+
+    def _load_id_source_rules(
+        self, source_registry: SourceRegistry
+    ) -> dict[str, list[IdSourceRule]]:
+        """Parse and validate the id_source of each column in column_details"""
+        id_source_rules = {}
+        for column_detail in self._column_details:
+            if "id_source" not in column_detail:
+                continue
+            if "standard_name" not in column_detail:
+                raise ValueError(
+                    f"Column '{column_detail['raw_name']}' has an id_source but no "
+                    "standard_name, so it would be dropped during standardization."
+                )
+            standard_name = column_detail["standard_name"]
+            if standard_name in id_source_rules:
+                raise ValueError(
+                    f"More than one column with an id_source maps to "
+                    f"'{standard_name}'. Override the unused column without a "
+                    "standard_name."
+                )
+            rules = parse_id_source(column_detail["id_source"])
+            for rule in rules:
+                source_registry[rule.source]  # raises KeyError if unregistered
+            id_source_rules[standard_name] = rules
+        return id_source_rules

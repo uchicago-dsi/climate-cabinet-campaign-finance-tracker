@@ -15,7 +15,7 @@ from utils.database import (
     connect_duckdb,
     table_exists,
 )
-from utils.ids import get_all_id_references
+from utils.ids import SOURCE_IDENTIFIER_TABLE, get_all_id_references
 
 LINKAGE_MAPPING_TABLE = "linkage_mapping"
 
@@ -117,6 +117,7 @@ def replace_ids_with_canonical(
     con: duckdb.DuckDBPyConnection,
     table_name: str,
     id_columns: list[str],
+    mapping_table: str = LINKAGE_MAPPING_TABLE,
 ) -> None:
     """Replace *id_columns* values in *table_name* with their canonical counterpart.
 
@@ -126,6 +127,7 @@ def replace_ids_with_canonical(
         con: DuckDB connection.
         table_name: Name of the table to update.
         id_columns: Columns to update.
+        mapping_table: Table with old_id and canonical_id columns.
     """
     if (
         con.execute(
@@ -153,10 +155,40 @@ def replace_ids_with_canonical(
             f"""
             UPDATE {table_name} AS t
             SET {id_column} = m.canonical_id
-            FROM {LINKAGE_MAPPING_TABLE} AS m
+            FROM {mapping_table} AS m
             WHERE t.{id_column} = m.old_id
             """
         )
+
+
+def update_source_identifiers(
+    con: duckdb.DuckDBPyConnection,
+    entity_table: str,
+    mapping_table: str = LINKAGE_MAPPING_TABLE,
+) -> None:
+    """Point source ids of merged entities at their canonical entity id
+
+    Rows that become identical after the update are collapsed.
+
+    Args:
+        con: DuckDB connection.
+        entity_table: Only source ids of entities in this table are updated.
+        mapping_table: Table with old_id and canonical_id columns.
+    """
+    if not table_exists(con, SOURCE_IDENTIFIER_TABLE):
+        return
+    con.execute(
+        f"""
+        UPDATE {SOURCE_IDENTIFIER_TABLE} AS s
+        SET entity_id = m.canonical_id
+        FROM {mapping_table} AS m
+        WHERE s.entity_table = '{entity_table}' AND s.entity_id = m.old_id
+        """
+    )
+    con.execute(
+        f"CREATE OR REPLACE TABLE {SOURCE_IDENTIFIER_TABLE} AS "
+        f"SELECT DISTINCT * FROM {SOURCE_IDENTIFIER_TABLE}"
+    )
 
 
 def run_linkage_pipeline(
@@ -187,3 +219,4 @@ def run_linkage_pipeline(
     id_references = get_all_id_references(base_table_name="Transactor")
     for table_name, id_columns in id_references.items():
         replace_ids_with_canonical(con, table_name=table_name, id_columns=id_columns)
+    update_source_identifiers(con, entity_table="Transactor")

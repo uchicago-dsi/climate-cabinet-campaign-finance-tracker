@@ -58,6 +58,7 @@ Both first level keys have the same set of subkeys:
     - `standard_name`: (optional) The name for the column based on our [standard naming rules](#standard-column-naming). Even if the standard name is the same as the raw name, this must be included. If no standard name is included, this column will be dropped during standardization. 
     - `date_format`: (optional) Format of dates in the provided data according to [datetime strftime](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior). If unix time is used, use `%unix_ms` for unix ms.
     - `post_load_float`: (optional) If the column should be interpreted as a float, but contains erroneous rows or ',' and '$' characters that pandas cannot handle, set the column as a string and set this value to True. 
+    - `id_source`: required for columns whose standard name is `id` or ends in `_id`. The id system the column's values come from. See [Source identifiers](#source-identifiers).
 - `column_order`: list of columns in the order they appear in the data format. If not provided, will default to the order in column_properties.
 - `duplicate_columns`:
     - map of standard column names to list of additional columns that should be copies of them
@@ -78,6 +79,36 @@ Both first level keys have the same set of subkeys:
 - `filter`:
   - map of standard column names to 'NOT' key that maps to all the values of that column that should not be included in returned dataframe. This is required as sometimes unfiltered data will double count filer to filer transactions (ex: filer A makes a contribution to filer B. A reports it in expenses and B reports it in contributions). 
 - `path_pattern`: regex describing the default location of default raw files of this type. Relative to `${DATA_DIR}/${state_code}` directory. 
+
+#### Source identifiers
+
+Raw ids are namespaced by the id system ("source") that issued them, so the same number from two id systems maps to two different entities. Every column mapped to `id` or a `*_id` standard name must declare an `id_source`, and every source must be listed in [`src/utils/sources.yaml`](src/utils/sources.yaml) with a description, url, and (ideally) a `pattern` its ids must match and any `null_values` used as placeholders. Standardization fails if a config uses an unregistered source. Ids that are placeholders become null; ids that don't match their source's `pattern` are logged and become null.
+
+If a column always holds one kind of id, name the source:
+
+```yaml
+- raw_name: filerIdent
+  type: str
+  standard_name: recipient_id
+  id_source: tx_ethics_filer
+```
+
+If a column mixes id systems, give an ordered list of rules. The first rule whose `when` regex fully matches the raw id decides its source; a final rule without `when` catches everything else. A rule may build the source id from the raw id (`{value}`) and other standard columns of the row with `source_id_format`, which is needed when a state reuses ids (Pennsylvania reassigns short candidate FILERIDs across elections, so those include the election year):
+
+```yaml
+- raw_name: FILERID
+  type: str
+  standard_name: recipient_id
+  id_source:
+    - source: pa_dos_candidate_filer
+      when: '^\d{1,6}$'
+      source_id_format: '{reported_election_year}-{value}'
+    - source: pa_dos_filer
+```
+
+Use a YAML anchor (`&name` / `*name`) to reuse the same rules for several columns. If a form inherits an id column that doesn't apply to it and would map to the same standard name as one of its own id columns, override the inherited column without a `standard_name`.
+
+To add a source, add an entry to `sources.yaml` named `<state>_<agency>_<id type>` (federal id systems have no state prefix) and add examples of real ids to `tests/test_sources.py`.
 
 #### Standard Column Naming
 The state source standardization steps are to prepare the state code to be normalized and joined with other states. As part of this there is a specific naming pattern for columns. Standard table attributes are named in `table.yaml` under attributes. Provided source data, however, may not be normalized. These columns will be named with a `SPLIT` separator (`--`) between the name of the relation and the name of the attribute in the related column. This may be nested (i.e. if in a transaction table we are given a donor's address, this would be shown as `donor--address--line_1`). If a column is a repeated column (i.e. there are two amount columns to signify two transactions that share all other properties), it will end with `-\d` where \d is an integer. Valid column names include alphabetic characters and underscores.

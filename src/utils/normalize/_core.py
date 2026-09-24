@@ -30,7 +30,13 @@ from pathlib import Path
 import pandas as pd
 
 from utils.constants import ID_SUFFIX, SPLIT
-from utils.ids import handle_existing_ids, handle_id_column
+from utils.ids import (
+    SourceIdentifierMapping,
+    drop_id_source_columns,
+    handle_existing_ids,
+    handle_id_column,
+    replace_null_ids_with_uuids,
+)
 from utils.schema import DataSchema
 
 REPEATING_COLUMN_REGEX = r"^[A-Za-z_]+-\d+$"
@@ -40,10 +46,10 @@ class Normalizer:
     """Class for normalizing a database according to a provided schema"""
 
     @property
-    def id_mapping(self) -> dict[tuple, str]:
-        """Dictionary mapping original ids to uuids
+    def id_mapping(self) -> SourceIdentifierMapping:
+        """Mapping of source ids to the uuids of the entities they identify
 
-        Original ids are stored as tuples of the form (raw id, table_name, year, state)
+        Source ids are keyed as (source, source_id, entity table name)
         """
         return self._id_mapping
 
@@ -51,14 +57,15 @@ class Normalizer:
         self,
         database: dict[str, pd.DataFrame],
         schema: DataSchema | Path | str,
-        existing_id_mapping: dict[tuple, str] | None = None,
+        existing_id_mapping: SourceIdentifierMapping | None = None,
     ) -> None:
         """Create new normalizer
 
         Args:
             database: Dictionary of table names to DataFrames
             schema: DataSchema object or path to yaml file containing one
-            existing_id_mapping: Pre-existing ID mappings to maintain consistency across chunks
+            existing_id_mapping: Pre-existing ID mappings to maintain consistency
+                across chunks and runs
         """
         self.database = database
         if isinstance(schema, str | Path):
@@ -66,7 +73,11 @@ class Normalizer:
         elif not isinstance(schema, DataSchema):
             raise RuntimeError("schema must be path or DataSchema object")
         self.schema = schema
-        self._id_mapping = existing_id_mapping.copy() if existing_id_mapping else {}
+        self._id_mapping = (
+            existing_id_mapping.copy()
+            if existing_id_mapping is not None
+            else SourceIdentifierMapping()
+        )
 
     def get_foreign_table_name(self, base_type: str, column_name: str) -> str:
         """Retrieve the type of a multivalued/foreign table"""
@@ -414,6 +425,12 @@ class Normalizer:
             extracted_table = self._add_relationship_metadata_to_extracted_table(
                 extracted_table, table_name, relation_prefix
             )
+            if "id" in extracted_table_schema.attributes:
+                # rows of tables with ids (e.g. ElectionResult) that are only
+                # reachable through a reverse relation still need their own id
+                extracted_id_column = f"{relation_prefix}{SPLIT}id"
+                extracted_table[extracted_id_column] = None
+                replace_null_ids_with_uuids(extracted_table, extracted_id_column)
         elif relation_prefix in self.schema.schema[table_name].forward_relations:
             handle_id_column(
                 extracted_table,
@@ -616,6 +633,9 @@ class Normalizer:
                     handle_existing_ids(
                         table, column_reference_table, self.id_mapping, column
                     )
+            # sources are recorded in id_mapping, so the columns naming each id's
+            # source are no longer needed
+            self.database[table_name] = drop_id_source_columns(table)
 
         # bring to 1NF
         for table_name in self.database:

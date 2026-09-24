@@ -19,12 +19,14 @@ from utils.database import (
     create_transactor_detailed_view,
     table_exists,
 )
-from utils.ids import load_id_mapping, save_id_mapping
+from utils.ids import load_source_identifiers, save_source_identifiers
 from utils.io import load_database, save_database
 from utils.link.predict import run_linkage_pipeline
+from utils.link.source_ids import link_by_source_identifiers
 from utils.link.train import train_splink
 from utils.normalize import Normalizer
 from utils.standardize import standardize_state
+from utils.standardize.config import declared_id_sources
 
 
 def run_scrape(args: argparse.Namespace) -> int:
@@ -63,30 +65,38 @@ def run_normalize(args: argparse.Namespace) -> int:
         format=args.input_format,
         chunk_size=args.chunk_size,
     )
-    # Load existing ID mappings or start with empty dict
-    id_mapping_file = args.output_directory / args.state / "id_mapping.tsv"
-    accumulated_id_mapping = load_id_mapping(id_mapping_file)
+    # Load source identifiers from a previous run (migrating an id_mapping.tsv
+    # from older pipeline versions) so existing entities keep their UUIDs
+    state_output_directory = args.output_directory / args.state
+    source_identifiers = load_source_identifiers(
+        state_output_directory,
+        format=args.output_format,
+        legacy_id_source_rules=declared_id_sources(args.state),
+    )
 
     first_chunk = True
     for chunk_database in tqdm(database_chunks, desc="Processing chunks"):
-        # Create normalizer with accumulated ID mappings from previous chunks
-        normalizer = Normalizer(chunk_database, args.schema, accumulated_id_mapping)
+        # Create normalizer with source identifiers from previous chunks
+        normalizer = Normalizer(chunk_database, args.schema, source_identifiers)
         normalized_database = normalizer.normalize_database()
 
-        # Update accumulated ID mappings with new mappings from this chunk
-        accumulated_id_mapping.update(normalizer.id_mapping)
+        # Update source identifiers with new ones from this chunk
+        source_identifiers.update(normalizer.id_mapping)
 
         # Save first chunk with overwrite mode, subsequent chunks with append mode
         save_mode = "overwrite" if first_chunk else "append"
         save_database(
             normalized_database,
-            args.output_directory / args.state,
+            state_output_directory,
             format=args.output_format,
             mode=save_mode,
         )
 
-        # Save updated ID mappings after each chunk
-        save_id_mapping(accumulated_id_mapping, id_mapping_file)
+        # The SourceIdentifier table holds every source id seen so far, so it
+        # is rewritten (not appended) after each chunk
+        save_source_identifiers(
+            source_identifiers, state_output_directory, format=args.output_format
+        )
 
         first_chunk = False
     return 0
@@ -138,6 +148,11 @@ def run_link(args: argparse.Namespace) -> int:
         con = create_database_from_nested_parquet_directories(
             args.database_path, args.input_directory, overwrite=args.overwrite
         )
+    # merge entities that share a source id (e.g. the same FEC committee seen in
+    # two states) before building the view that probabilistic linkage uses
+    n_remapped = link_by_source_identifiers(con)
+    if n_remapped:
+        print(f"Merged {n_remapped} entity ids that shared a source id")
     if not table_exists(con, args.table_name):
         create_transactor_detailed_view(con)
     if args.train:

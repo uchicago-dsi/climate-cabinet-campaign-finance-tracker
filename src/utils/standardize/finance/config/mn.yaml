@@ -83,6 +83,12 @@ contributions:
     - raw_name: "Recipient reg num" 
       type: Int32
       standard_name: recipient_id
+      id_source: &mn_reg_num_sources
+        - source: mn_cfb_unregistered
+          when: '^-\d+$'
+        - source: mn_cfb_lobbyist
+          when: '^\d{1,4}$'
+        - source: mn_cfb_registration
 
     - raw_name: "Recipient"
       type: str
@@ -116,6 +122,7 @@ contributions:
     - raw_name: Contrib Reg Num
       type: Int32
       standard_name: donor_id
+      id_source: *mn_reg_num_sources
 
     - raw_name: Contrib type
       type: str
@@ -233,6 +240,7 @@ expenditures:
     - raw_name: "Committee reg num" 
       type: Int32
       standard_name: donor_id
+      id_source: *mn_reg_num_sources
 
     - raw_name: "Committee name"
       type: str
@@ -306,6 +314,7 @@ expenditures:
     - raw_name: Affected committee reg num
       type: Int32
       standard_name: recipient_id
+      id_source: *mn_reg_num_sources
 
     - raw_name: generated_last_name
       type: str
@@ -395,13 +404,22 @@ independent_expenditures:
       Against: negative
 
   column_details:
+    # inherited from expenditures; not in independent expenditure files. Here
+    # donor_id and affected_party_id come from the spender and affected committee
+    - raw_name: "Committee reg num"
+      type: Int32
+
+    - raw_name: Affected committee reg num
+      type: Int32
+
     - raw_name: "Spender name"
       type: str
       standard_name: donor--full_name
 
-    - raw_name: "Spender reg num" 
+    - raw_name: "Spender Reg Num"
       type: Int32
       standard_name: donor_id
+      id_source: *mn_reg_num_sources
 
     - raw_name: "Spender type"
       type: str
@@ -415,9 +433,10 @@ independent_expenditures:
       type: str
       standard_name: affected_party--full_name
 
-    - raw_name: "Affected Comte Reg Num"
+    - raw_name: "Affected Cmte Reg Num"
       type: Int32
       standard_name: affected_party_id
+      id_source: *mn_reg_num_sources
 
     - raw_name: "For /Against"
       type: str

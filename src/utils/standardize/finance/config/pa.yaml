@@ -38,6 +38,11 @@ contributions:
     - raw_name: FILERID
       type: str
       standard_name: recipient_id
+      id_source:
+        - source: pa_dos_candidate_filer
+          when: '^\d{1,6}$'
+          source_id_format: '{reported_election_year}-{value}'
+        - source: pa_dos_filer
 
     - raw_name: EYEAR
       type: Int16
@@ -228,6 +233,11 @@ filer:
     - raw_name: FILERID
       type: str
       standard_name: id
+      id_source:
+        - source: pa_dos_candidate_filer
+          when: '^\d{1,6}$'
+          source_id_format: '{election_result--election--year}-{value}'
+        - source: pa_dos_filer
 
     - raw_name: EYEAR
       type: Int16
@@ -355,6 +365,11 @@ expense:
     - raw_name: FILERID
       type: str
       standard_name: donor_id
+      id_source:
+        - source: pa_dos_candidate_filer
+          when: '^\d{1,6}$'
+          source_id_format: '{reported_election_year}-{value}'
+        - source: pa_dos_filer
 
     - raw_name: EYEAR
       type: Int16

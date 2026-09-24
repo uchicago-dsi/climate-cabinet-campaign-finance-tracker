@@ -1,0 +1,109 @@
+# Registry of identifier systems ("sources") that raw ids come from.
+#
+# Every id column in a state standardization config declares which source its
+# values come from (see `id_source` in CONTRIBUTING.md). Standardization fails
+# if a config names a source that is not listed here. Each source may define:
+#   state: two letter state code, or null for federal id systems
+#   agency: organization that issues the id
+#   description: what the id identifies
+#   url: where the ids are published
+#   pattern: regex the full source_id must match; ids that don't match are
+#     logged and set to null during standardization
+#   null_values: placeholder values that are treated as missing ids
+#   case: 'upper' or 'lower' if source ids are case insensitive; ids are
+#     converted before being checked against pattern and null_values
+#
+# Naming: <state>_<agency>_<id type> in lower snake case. Federal id systems
+# have no state prefix.
+
+mn_cfb_registration:
+  state: mn
+  agency: Minnesota Campaign Finance and Public Disclosure Board
+  description: Registration number of a committee, party unit, or fund
+  url: https://cfb.mn.gov/reports-and-data/self-help/data-downloads/campaign-finance/
+  pattern: '^[1-9]\d{4,5}$'
+  null_values: ['12345']
+
+mn_cfb_lobbyist:
+  state: mn
+  agency: Minnesota Campaign Finance and Public Disclosure Board
+  description: Lobbyist registration number (appears in Contrib Reg Num)
+  url: https://cfb.mn.gov/reports-and-data/self-help/data-downloads/campaign-finance/
+  pattern: '^\d{1,4}$'
+  null_values: ['0']
+
+mn_cfb_unregistered:
+  state: mn
+  agency: Minnesota Campaign Finance and Public Disclosure Board
+  description: >-
+    Negative ids used for local committees that are not registered with the
+    Board (seen in 2025 expenditures). Undocumented; kept so the same local
+    committee maps to the same entity.
+  url: https://cfb.mn.gov/reports-and-data/self-help/data-downloads/campaign-finance/
+  pattern: '^-\d+$'
+
+mn_sos_candidacy:
+  state: mn
+  agency: Minnesota Secretary of State
+  description: >-
+    One candidate in one race, as <YYYYMMDD>-<office id>-<candidate order code>.
+    Identifies an ElectionResult row, not a person.
+  url: https://electionresults.sos.mn.gov/
+  pattern: '^\d{8}-\d{4}-\d{4}$'
+
+az_sos_committee:
+  state: az
+  agency: Arizona Secretary of State
+  description: CommitteeID in the campaign finance Access DB export and AdvancedSearch
+  url: https://seethemoney.az.gov/Reporting/AdvancedSearch/
+  pattern: '^\d{4,9}$'
+
+az_sos_name:
+  state: az
+  agency: Arizona Secretary of State
+  description: >-
+    NameID in the campaign finance Access DB export (people and organizations,
+    including committees). A separate id system from CommitteeID; the same
+    number can denote different entities in each.
+  url: https://seethemoney.az.gov/Reporting/AdvancedSearch/
+  pattern: '^-?\d{1,7}$'
+
+pa_dos_filer:
+  state: pa
+  agency: Pennsylvania Department of State
+  description: >-
+    Standard FILERID (7-8 digits, or 4 digits + letter + 4 digits). The letter
+    appears in both cases for the same filer (2012c1014 and 2012C1014).
+  url: https://www.pa.gov/agencies/dos/resources/voting-and-elections-resources/campaign-finance-resources/technical-specifications-for-electronic-filing-of-campaign-expen.html
+  pattern: '^(\d{7,8}|\d{4}[A-Z]\d{4})$'
+  case: upper
+
+pa_dos_candidate_filer:
+  state: pa
+  agency: Pennsylvania Department of State
+  description: >-
+    Short candidate FILERID (1-6 digits). These are reassigned to different
+    candidates across elections, so source_id is <election year>-<FILERID>.
+  url: https://www.pa.gov/agencies/dos/resources/voting-and-elections-resources/campaign-finance-resources/technical-specifications-for-electronic-filing-of-campaign-expen.html
+  pattern: '^\d{4}-\d{1,6}$'
+
+tx_ethics_filer:
+  state: tx
+  agency: Texas Ethics Commission
+  description: filerIdent, the filer account number
+  url: https://www.ethics.state.tx.us/data/search/cf/CampaignFinanceCSVFileFormat.pdf
+  pattern: '^\d{8}$'
+
+mi_sos_committee:
+  state: mi
+  agency: Michigan Department of State, Bureau of Elections
+  description: cfr_com_id, the committee id
+  url: https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/
+  pattern: '^\d{1,6}$'
+
+fec_committee:
+  state: null
+  agency: Federal Election Commission
+  description: FEC committee id of a federal PAC or candidate committee
+  url: https://www.fec.gov/data/browse-data/?tab=bulk-data
+  pattern: '^C\d{8}$'
