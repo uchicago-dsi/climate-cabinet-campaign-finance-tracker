@@ -6,6 +6,27 @@ and office at https://electionresultsfiles.sos.mn.gov/<YYYYMMDD>/<file>.txt.
 The layout of each row is described by RESULT_FILE_COLUMNS. The interactive
 results site (electionresults.sos.mn.gov) sits behind a captcha, so elections
 cannot be discovered automatically and are listed explicitly in ELECTIONS.
+
+Run `python src/utils/collect/election/minnesota.py` to download the files to
+DATA_DIR/raw/mn/elections/<YYYYMMDD>/ and write a combined ElectionResults.csv.
+
+Data notes:
+- Covers statewide primaries and generals from 2016 through 2024. Files for 2014
+  and earlier are not hosted on the media file server.
+- A 404 means the office was not on the ballot that election (e.g. no State
+  Senate primary in 2018). Federal offices (ussenate.txt, ushouse.txt,
+  USPres.txt) are published too but are not collected.
+- Rows are statewide totals per candidate per office, so county and precinct
+  are empty. The incumbent code column is empty in every file checked.
+- Governor candidates are listed as the ticket, e.g. "Tim Walz and Peggy
+  Flanagan".
+- Judicial seats have no district; the seat is in election--office_name
+  (e.g. "Judge - Court of Appeals 5").
+- Special elections held on other dates are not included, except for specials
+  that share a general election date.
+- "id" and "election_id" are raw ids built from Secretary of State codes.
+  Normalization maps them to UUIDs through the id mapping, like other
+  state-provided ids.
 """
 
 import argparse

@@ -1,4 +1,12 @@
-"""This module provides functions to scrape Minnesota campaign finance data"""
+"""This module provides functions to scrape Minnesota campaign finance data
+
+Data notes:
+- Only contributions from a single source over $200 in a calendar year are
+  itemized. Smaller contributions are reported only as aggregate totals and do not
+  appear in the data.
+- In-kind contributions (donations other than money) are reported separately from
+  monetary contributions.
+"""
 
 from http import HTTPStatus
 from pathlib import Path

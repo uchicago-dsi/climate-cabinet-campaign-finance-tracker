@@ -15,6 +15,13 @@ Previously data was available here:
 https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/
 
 This is no longer available without a login.
+
+Data notes:
+- In legacy downloads split into multiple files, only the first file of each year
+  has a header row. The header includes a RUNTIME field giving the export time.
+- Since 2014, committees spending or receiving $5,000 or more in a calendar year
+  must file electronically.
+- Data includes federal and local races as well as state races.
 """
 
 import argparse
@@ -27,6 +34,7 @@ from urllib.parse import urljoin
 import py7zr
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
@@ -122,20 +130,28 @@ def download_MI_data(
         )
 
         # Download and extract each file
-        for year, url in sorted(legacy_links):
+        for year, url in tqdm(
+            sorted(legacy_links),
+            desc="Downloading Michigan legacy finance data",
+            total=len(legacy_links),
+        ):
             print(f"Processing Michigan data for {year}...")
 
+            # Download the 7z file
             try:
-                # Download the 7z file
                 file_response = requests.get(url, timeout=60, headers=headers)
-                if file_response.status_code != HTTPStatus.OK:
-                    print(f"Michigan data from {year} returned {file_response.reason}")
-                    continue
+            except requests.RequestException as e:
+                print(f"Network error downloading Michigan data for {year}: {e}")
+                continue
+            if file_response.status_code != HTTPStatus.OK:
+                print(f"Michigan data from {year} returned {file_response.reason}")
+                continue
 
-                # Create year directory
-                year_directory = output_directory / year
-                year_directory.mkdir(exist_ok=True, parents=True)
+            # Create year directory
+            year_directory = output_directory / year
+            year_directory.mkdir(exist_ok=True, parents=True)
 
+            try:
                 # Extract 7z archive directly from memory
                 with py7zr.SevenZipFile(
                     io.BytesIO(file_response.content), mode="r"
@@ -144,8 +160,14 @@ def download_MI_data(
 
                 print(f"Successfully extracted Michigan data for {year}")
 
-            except Exception as e:
-                print(f"Error processing {year} data: {e}")
+            except PermissionError as e:
+                print(
+                    f"Permission error while extracting Michigan data for {year}: {e}"
+                )
+                # this is likely harmless, failure to set mtime on mounts
+                continue
+            except py7zr.Bad7zFile as e:
+                print(f"Invalid 7z archive for Michigan data from {year}: {e}")
                 continue
 
         print(f"Michigan data download completed. Files saved to {output_directory}")

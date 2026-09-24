@@ -121,6 +121,9 @@ Train a record linkage model. (link step)
 #### --overwrite
 Overwrite existing database and tables. (link step)
 
+#### --resume-from-checkpoint
+When training, resume from the checkpoint saved after the first training session instead of starting over. The checkpoint is saved next to the model as `<model name>_checkpoint.json` (for example, `link_model_checkpoint.json` for `--model-path link_model.json`). If no checkpoint exists, training starts from scratch. (link step)
+
 
 ## Pipeline
 

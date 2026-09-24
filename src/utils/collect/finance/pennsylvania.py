@@ -1,4 +1,22 @@
-"""This modules provides functions to scrape Pennsylvannia campaign finance data"""
+"""This modules provides functions to scrape Pennsylvannia campaign finance data
+
+Data is retrieved from the Pennsylvania Department of State Full Campaign Finance
+Export. Each year has contrib, debt, expense, filer, and receipt files. Column
+definitions are in the technical specifications:
+https://www.pa.gov/agencies/dos/resources/voting-and-elections-resources/campaign-finance-resources/technical-specifications-for-electronic-filing-of-campaign-expen.html
+
+Data notes:
+- 2002 files use a legacy layout with no header row. All other years use the
+  current layout (adding CampaignFinanceID and SubmittedDate) with a header row.
+- Filers whose contributions, expenditures, and liabilities each stay under $250
+  in a reporting period can file a statement instead of a full report.
+- Contributions of $50 or less per contributor need not be itemized, so itemized
+  totals can understate what a filer received.
+- Forgiven debts count as contributions.
+- For cross-checking, aggregated data is available from Transparency USA and from
+  the PA campaign finance search:
+  https://www.campaignfinanceonline.pa.gov/Pages/CFReportSearch.aspx
+"""
 
 import datetime
 import zipfile
@@ -7,6 +25,7 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
+from tqdm import tqdm
 
 from utils.collect.state_collection_registry import register_special_state_collector
 from utils.constants import DATA_DIR
@@ -39,12 +58,18 @@ def download_PA_data(
         output_directory = Path(output_directory).resolve()
     pa_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/dos/resources/voting-and-elections/campaign-finance/campaign-finance-data/"  # noqa
 
-    for year in range(start_year, end_year + 1):
+    total_years = end_year - start_year + 1
+    for year in tqdm(
+        range(start_year, end_year + 1),
+        total=total_years,
+        desc="Downloading PA finance data",
+    ):
         link = f"{pa_url}{year}.zip"
 
         response = requests.get(link, timeout=10)
         if response.status_code != HTTPStatus.OK:
             print(f"Pennsylvania data from {year} returned {response.reason}")
+            continue
 
         year_directory = output_directory / str(year)
         year_directory.mkdir(exist_ok=True, parents=True)
