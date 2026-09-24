@@ -58,6 +58,8 @@ TRANSACTOR_TYPES_TO_DETAILED_INFO_ID = {
 }
 
 TOO_MANY_REQUESTS = 429
+# Largest page size requested from the advanced search endpoint
+MAX_PAGE_SIZE = 100
 
 
 class ArizonaAPI:
@@ -276,7 +278,7 @@ class ArizonaAPI:
             length: Number of records to fetch
         """
         # Cap page size to 100; server ignores larger sizes
-        page_length = min(int(length), 100)
+        page_length = min(int(length), MAX_PAGE_SIZE)
 
         # Build DataTables form data with up-to-date columns
         datatables_form = (
@@ -414,11 +416,66 @@ class ArizonaDataProcessor:
         self.output_path.mkdir(parents=True, exist_ok=True)
 
     def _get_output_file_path(
-        self, report_category: str, filer_type_id: str, cycle_id: str
+        self,
+        report_category: str,
+        filer_type_id: str,
+        cycle_id: str,
+        start_date: datetime.date,
+        end_date: datetime.date,
     ) -> Path:
-        """Generate output file path for transaction data."""
-        filename = f"{report_category}-{filer_type_id}-{cycle_id.split('~')[0]}.csv"
+        """Generate output file path for transaction data.
+
+        The requested date range is part of the name so that a file only ever
+        holds the results of a single query, which keeps resuming safe.
+        """
+        filename = (
+            f"{self._get_output_file_prefix(report_category, filer_type_id, cycle_id)}"
+            f"-{start_date:%Y%m%d}-{end_date:%Y%m%d}.csv"
+        )
         return self.output_path / filename
+
+    def _get_output_file_prefix(
+        self, report_category: str, filer_type_id: str, cycle_id: str
+    ) -> str:
+        """Generate the filename prefix shared by all date ranges of a cycle."""
+        return f"{report_category}-{filer_type_id}-{cycle_id.split('~')[0]}"
+
+    def _prepare_output_file(
+        self,
+        output_file: Path,
+        report_category: str,
+        filer_type_id: str,
+        cycle_id: str,
+    ) -> int:
+        """Clear or check existing files for a query and return the resume position.
+
+        Files for the same category, filer type, and cycle but a different date
+        range would overlap with the new results. If override_existing_data is
+        True, they are deleted along with output_file. Otherwise an error is raised.
+
+        Returns:
+            Number of records already saved to output_file
+        """
+        prefix = self._get_output_file_prefix(report_category, filer_type_id, cycle_id)
+        existing_files = [
+            *self.output_path.glob(f"{prefix}-*.csv"),
+            # files saved before the date range was added to the name
+            *self.output_path.glob(f"{prefix}.csv"),
+        ]
+        if self.override_existing_data:
+            for file in existing_files:
+                file.unlink()
+            return 0
+
+        conflicting_files = [file for file in existing_files if file != output_file]
+        if conflicting_files:
+            raise ValueError(
+                f"Found data for a different date range than {output_file.name}: "
+                f"{', '.join(file.name for file in conflicting_files)}. Resuming "
+                "would mix results from different queries. Use "
+                "override_existing_data or a different output directory."
+            )
+        return self._get_resume_position(output_file)
 
     def _get_transactor_file_path(self, transactor_type: str) -> Path:
         """Generate output file path for transactor data."""
@@ -501,12 +558,19 @@ class ArizonaDataProcessor:
             # No overlap between requested date range and this cycle
             return pd.DataFrame()
         output_file = self._get_output_file_path(
-            report_category, filer_type_id, election_cycle
+            report_category,
+            filer_type_id,
+            election_cycle,
+            request_start_date,
+            request_end_date,
         )
 
-        start_position = self._get_resume_position(output_file)
+        start_position = self._prepare_output_file(
+            output_file, report_category, filer_type_id, election_cycle
+        )
         all_records = []
-        page_size = min(self.batch_size, 100)
+        # batch_size is None when data is not saved in batches
+        page_size = min(self.batch_size or MAX_PAGE_SIZE, MAX_PAGE_SIZE)
         progress_bar = None
 
         while True:

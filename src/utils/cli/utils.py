@@ -14,6 +14,8 @@ pipeline_step_details = {
             "states",
             "start-year",
             "end-year",
+            "start-date",
+            "end-date",
             "data-directory",
             "output-directory",
             "slurm",
@@ -181,6 +183,20 @@ def add_argument_to_parser(
             type=int,
             default=None,
             help="Latest year (in YYYY format) on which to process data. If none is given, the latest available year will be included.",
+        )
+    elif argument_name == "start-date":
+        parser.add_argument(
+            "--start-date",
+            type=str,
+            default=None,
+            help="Earliest date (in YYYY-MM-DD format) on which to collect data. Overrides --start-year. Currently only used by Arizona.",
+        )
+    elif argument_name == "end-date":
+        parser.add_argument(
+            "--end-date",
+            type=str,
+            default=None,
+            help="Latest date (in YYYY-MM-DD format) on which to collect data. Overrides --end-year. Currently only used by Arizona.",
         )
     elif argument_name == "data-directory":
         parser.add_argument(

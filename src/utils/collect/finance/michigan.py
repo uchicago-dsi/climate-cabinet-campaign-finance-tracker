@@ -131,7 +131,11 @@ def download_MI_data(
             print(f"Processing Michigan data for {year}...")
 
             # Download the 7z file
-            file_response = requests.get(url, timeout=60, headers=headers)
+            try:
+                file_response = requests.get(url, timeout=60, headers=headers)
+            except requests.RequestException as e:
+                print(f"Network error downloading Michigan data for {year}: {e}")
+                continue
             if file_response.status_code != HTTPStatus.OK:
                 print(f"Michigan data from {year} returned {file_response.reason}")
                 continue
@@ -154,6 +158,9 @@ def download_MI_data(
                     f"Permission error while extracting Michigan data for {year}: {e}"
                 )
                 # this is likely harmless, failure to set mtime on mounts
+                continue
+            except py7zr.Bad7zFile as e:
+                print(f"Invalid 7z archive for Michigan data from {year}: {e}")
                 continue
 
         print(f"Michigan data download completed. Files saved to {output_directory}")
