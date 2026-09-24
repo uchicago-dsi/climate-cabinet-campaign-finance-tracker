@@ -115,6 +115,11 @@ def run_clean(args: argparse.Namespace) -> int:
 
 def run_link(args: argparse.Namespace) -> int:
     """Command entry point for performing record linkage on cleaned data"""
+    if args.model_path is None:
+        raise ValueError(
+            "--model-path is required for link: it is where a trained model is "
+            "saved (with --train) and loaded from for inference."
+        )
     # check if the database exists and is not empty
     database_exists = args.database_path.exists()
     if database_exists:
@@ -122,7 +127,7 @@ def run_link(args: argparse.Namespace) -> int:
         database_empty = (
             con.execute("SELECT COUNT(*) FROM information_schema.tables")
             .fetch_df()
-            .iloc[0][0]
+            .iloc[0, 0]
             == 0
         )
     else:
@@ -136,11 +141,20 @@ def run_link(args: argparse.Namespace) -> int:
     if not table_exists(con, args.table_name):
         create_transactor_detailed_view(con)
     if args.train:
-        train_splink(con, args.table_name, args.model_path)
+        model_path = Path(args.model_path)
+        checkpoint_path = model_path.with_name(
+            f"{model_path.stem}_checkpoint{model_path.suffix or '.json'}"
+        )
+        train_splink(
+            con,
+            args.table_name,
+            args.model_path,
+            checkpoint_path=checkpoint_path,
+            resume_from_checkpoint=args.resume_from_checkpoint,
+        )
     run_linkage_pipeline(
         duckdb_path=args.database_path,
         model_path=args.model_path,
-        parquet_dir=args.input_directory / args.state,
         threshold=args.threshold,
         table_name=args.table_name,
     )

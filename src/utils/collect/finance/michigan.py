@@ -15,6 +15,13 @@ Previously data was available here:
 https://miboecfr.nictusa.com/cfr/dumpall/cfrdetail/
 
 This is no longer available without a login.
+
+Data notes:
+- In legacy downloads split into multiple files, only the first file of each year
+  has a header row. The header includes a RUNTIME field giving the export time.
+- Since 2014, committees spending or receiving $5,000 or more in a calendar year
+  must file electronically.
+- Data includes federal and local races as well as state races.
 """
 
 import argparse

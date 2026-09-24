@@ -1,4 +1,22 @@
-"""This modules provides functions to scrape Pennsylvannia campaign finance data"""
+"""This modules provides functions to scrape Pennsylvannia campaign finance data
+
+Data is retrieved from the Pennsylvania Department of State Full Campaign Finance
+Export. Each year has contrib, debt, expense, filer, and receipt files. Column
+definitions are in the technical specifications:
+https://www.pa.gov/agencies/dos/resources/voting-and-elections-resources/campaign-finance-resources/technical-specifications-for-electronic-filing-of-campaign-expen.html
+
+Data notes:
+- 2002 files use a legacy layout with no header row. All other years use the
+  current layout (adding CampaignFinanceID and SubmittedDate) with a header row.
+- Filers whose contributions, expenditures, and liabilities each stay under $250
+  in a reporting period can file a statement instead of a full report.
+- Contributions of $50 or less per contributor need not be itemized, so itemized
+  totals can understate what a filer received.
+- Forgiven debts count as contributions.
+- For cross-checking, aggregated data is available from Transparency USA and from
+  the PA campaign finance search:
+  https://www.campaignfinanceonline.pa.gov/Pages/CFReportSearch.aspx
+"""
 
 import datetime
 import zipfile

@@ -618,9 +618,17 @@ advanced_search_committees:
     transactor_type_specific:
       - transactor_type
 
+mdb:
+  inherits: base
+  read_csv_params:
+    sep: ","
+    encoding: latin1
+    on_bad_lines: skip
+    header: 0
+  meta: true
 
 mdb_transactions:
-  inherits: base
+  inherits: mdb
   table_name: Transaction
   path_pattern: "^AccessDatabase/Transactions\\.csv$"
   column_details:
@@ -683,7 +691,7 @@ mdb_transactions:
 
 
 mdb_committees:
-  inherits: base
+  inherits: mdb 
   table_name: Transactor
   path_pattern: "^AccessDatabase/Committees\\.csv$"
 
@@ -958,7 +966,7 @@ mdb_committees:
       "3230": 30
 
 mdb_names:
-  inherits: base
+  inherits: mdb
   table_name: Transactor
   path_pattern: "^AccessDatabase/Names\\.csv$"
 
