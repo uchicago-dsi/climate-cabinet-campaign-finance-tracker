@@ -182,6 +182,12 @@ def standardize_results(results: pd.DataFrame, election: Election) -> pd.DataFra
     so both are marked as winners. Aggregate write-in rows are dropped since
     they are not a candidate.
 
+    Ids are built from Secretary of State codes so re-collecting an election
+    produces the same ids: "id" is <YYYYMMDD>-<office id>-<candidate order code>,
+    identifying one candidate in one race, and "election--id" is
+    <YYYYMMDD>-<office id>. In partisan primaries every party's race for an
+    office shares one office id, so "election--id" covers all of them.
+
     Args:
         results: Output of parse_result_file.
         election: Election the results are from.
@@ -203,8 +209,11 @@ def standardize_results(results: pd.DataFrame, election: Election) -> pd.DataFra
     results["win"] = vote_rank <= seats
 
     full_names = results["candidate_name"] + " " + results["suffix"]
+    election_ids = election.date + "-" + results["office_id"]
     return pd.DataFrame(
         {
+            "id": election_ids + "-" + results["candidate_order_code"],
+            "election--id": election_ids,
             "election--year": election.year,
             "election--date": pd.to_datetime(election.date, format="%Y%m%d"),
             "election--election_type": election.election_type,

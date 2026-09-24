@@ -64,6 +64,16 @@ def test_standardize_general_picks_one_winner_per_race(write_result_file):
         "Grant Hauschild",
     ]
     assert (standardized["election--year"] == 2022).all()
+    assert standardized["id"].to_list() == [
+        "20221108-0121-0301",
+        "20221108-0123-0301",
+        "20221108-0123-0401",
+    ]
+    assert standardized["election--id"].to_list() == [
+        "20221108-0121",
+        "20221108-0123",
+        "20221108-0123",
+    ]
     assert standardized.loc[0, "vote_share"] == pytest.approx(0.9705)
 
 
@@ -72,6 +82,8 @@ def test_standardize_primary_picks_winner_per_party(write_result_file):
     standardized = standardize_results(results, Election("20220809", "primary"))
     winners = standardized[standardized["win"]]
     assert winners["candidate--full_name"].to_list() == ["Mark Johnson", "Jane Doe Jr."]
+    assert standardized["id"].is_unique
+    assert (standardized["election--id"] == "20220809-0121").all()
     assert (standardized["election--election_type"] == "primary").all()
 
 

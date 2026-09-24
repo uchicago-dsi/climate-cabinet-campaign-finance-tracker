@@ -131,6 +131,7 @@ contribution data and READMEs in a Google Drive for the duration of this project
 
 ### Standardization
 - Aggregate write-in rows (party `WI`) are dropped.
+- `id` identifies one candidate in one race as `<YYYYMMDD>-<office id>-<candidate order code>` (e.g. `20221108-0255-0401`), built from Secretary of State codes so re-collecting an election gives the same ids. `election--id` is `<YYYYMMDD>-<office id>`; in partisan primaries all parties' races for an office share it, and `candidate--party` separates them.
 - `win` is true for the top vote getter in each race. In partisan primaries each party has its own race for the same office, so there is one winner per party. Judicial primaries are nonpartisan (party `NP`) and the top two advance, so both are marked as winners.
 - `office_sought` is mapped from the office name: State Auditor maps to `Auditor General`, Supreme Court seats to `Supreme Court Justice`, and Court of Appeals seats to `Judge`. Judicial seats have no district; the seat is in `election--office_name` (e.g. "Judge - Court of Appeals 5").
 - Governor candidates are listed as the ticket, e.g. "Tim Walz and Peggy Flanagan".
