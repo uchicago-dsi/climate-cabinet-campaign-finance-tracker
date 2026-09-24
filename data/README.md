@@ -118,6 +118,22 @@ contribution data and READMEs in a Google Drive for the duration of this project
     3. Contributors whose total contributions exceed $200 are individually itemized in separate rows. Contributions from donors who each give $200 or less are reported as aggregate totals and are not included in this dataset by definition.
     4. The dataset has 467 missing rows, of which belong to "Registration fee for Netroots event" and have no recipient, donor, or total donation amount.
 
+## Minnesota Election Results
+
+### Summary
+- Official results come from the Minnesota Secretary of State's results media files at `https://electionresultsfiles.sos.mn.gov/<YYYYMMDD>/<file>.txt`. Run `python src/utils/collect/election/minnesota.py` to download them to `DATA_DIR/raw/mn/elections/<YYYYMMDD>/` and write a combined `ElectionResults.csv`.
+- The interactive results site (electionresults.sos.mn.gov) is behind a captcha, so election dates are listed in `ELECTIONS` in the collector rather than discovered. Files for 2014 and earlier are not hosted on the media file server.
+- Covers statewide primaries and generals from 2016 through 2024 for State Senate (`stsenate.txt`), State House (`LegislativeByDistrict.txt`), and Governor (`Governor.txt`). A 404 means the office was not on the ballot that election (e.g. no State Senate primary in 2018).
+
+### Format
+- Semicolon-delimited, no header, latin-1 encoded. Columns: state, county id, precinct name, office id, office name, district, candidate order code, candidate name, suffix, incumbent code, party, precincts reporting, total precincts, votes, vote percentage, total votes for office. Rows are statewide totals per candidate per office, so county and precinct are empty.
+- The incumbent code column is empty in every file checked.
+
+### Standardization
+- Aggregate write-in rows (party `WI`) are dropped.
+- `win` is true for the top vote getter in each race; in primaries each party has its own race for the same office, so there is one winner per party.
+- Special elections held on other dates are not included, except for specials that share a general election date.
+
 
 ## Pennsylvania Campaign Finance Data
 ### Summary
