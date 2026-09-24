@@ -193,6 +193,7 @@ ElectionResult:
     - candidate_id
     - election_id
   attributes:
+    - id
     - votes_received
     - win
     - candidate_id
