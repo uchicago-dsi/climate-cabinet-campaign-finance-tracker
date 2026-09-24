@@ -13,6 +13,9 @@ cft = "utils.cli.core:main"
 [tool.setuptools.packages.find]
 where = ["src"]  # the package is in src/toto/ now
 
+[tool.setuptools.package-data]
+utils = ["*.yaml", "**/*.yaml"]
+
 [tool.ruff.lint]
 extend-select = [
   # by default, ruff enables all F and a subset of E rules

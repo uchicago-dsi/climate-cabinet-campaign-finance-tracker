@@ -3,11 +3,9 @@
 import pandas as pd
 from yaml import safe_load
 
-from utils.constants import BASE_FILEPATH
+from utils.constants import PACKAGE_DIR
 
-classify_config = safe_load(
-    BASE_FILEPATH / "src" / "utils" / "config" / "classify" / "companies.yaml"
-)
+classify_config = safe_load(PACKAGE_DIR / "config" / "classify" / "companies.yaml")
 fossil_fuel_organizations = classify_config["fossil_fuel_organizations"]
 clean_energy_organizations = classify_config["clean_energy_organizations"]
 
