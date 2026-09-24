@@ -298,6 +298,7 @@ advanced_search_transactions:
     - raw_name: "CommitteeID"
       type: Int64
       standard_name: recipient_id
+      id_source: az_sos_committee
 
     - raw_name: "CommitteeName"
       type: str
@@ -452,6 +453,7 @@ advanced_search_committees:
     - raw_name: "CommitteeID"
       type: Int64
       standard_name: id
+      id_source: az_sos_committee
 
   enum_mapper:
 
@@ -648,6 +650,7 @@ mdb_transactions:
     - raw_name: "CommitteeID"
       type: Int64
       standard_name: recipient_id
+      id_source: az_sos_committee
       description: "ID of the committee receiving the transaction"
 
     - raw_name: "TransactionDate"
@@ -665,6 +668,7 @@ mdb_transactions:
     - raw_name: "NameID"
       type: Int64
       standard_name: donor_id
+      id_source: az_sos_name
       description: "ID of the non-filing party"
 
     - raw_name: "IsForBenefit"
@@ -699,6 +703,7 @@ mdb_committees:
     - raw_name: "CommitteeID"
       type: Int64
       standard_name: id
+      id_source: az_sos_committee
 
     - raw_name: "NameID"
       type: Int64
@@ -706,26 +711,31 @@ mdb_committees:
     - raw_name: "ChairpersonNameID"
       type: Int64
       standard_name: chairman--member_id
+      id_source: az_sos_name
       description: "ID reference to the chairperson's name record"
 
     - raw_name: "TreasurerNameID"
       type: Int64
       standard_name: treasurer--member_id
+      id_source: az_sos_name
       description: "ID reference to the treasurer's name record"
 
     - raw_name: "CandidateNameID"
       type: Int64
       standard_name: candidate--member_id
+      id_source: az_sos_name
       description: "ID reference to the candidate's name record"
 
     - raw_name: "DesigneeNameID"
       type: Int64
       standard_name: designee--member_id
+      id_source: az_sos_name
       description: "ID reference to the designee's name record"
 
     - raw_name: "SponsorNameID"
       type: Int64
       standard_name: sponsor--member_id
+      id_source: az_sos_name
       description: "ID reference to the sponsor's name record"
 
     - raw_name: "BallotMeasureID"
@@ -978,6 +988,7 @@ mdb_names:
     - raw_name: "NameID"
       type: Int64
       standard_name: id
+      id_source: az_sos_name
       description: "Unique identifier for the name record"
 
     - raw_name: "NameGroupID"

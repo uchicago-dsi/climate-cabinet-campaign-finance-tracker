@@ -75,6 +75,7 @@ legacy_download_contributions_or_receipts:
     - raw_name: "cfr_com_id"
       type: str
       standard_name: recipient_id
+      id_source: mi_sos_committee
       description: "Committee ID"
     - raw_name: "com_type"
       type: str

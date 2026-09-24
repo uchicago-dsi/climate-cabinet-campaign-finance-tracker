@@ -75,7 +75,6 @@ Organization:
     - naics
     - sic
     - stock_symbol
-    - ein
   # forward_relations:
   #   parent_org: Organization
   relations:
@@ -193,6 +192,7 @@ ElectionResult:
     - candidate_id
     - election_id
   attributes:
+    - id
     - votes_received
     - win
     - candidate_id
@@ -273,3 +273,22 @@ Membership:
       - Designee
       - Sponsor
       - Other
+
+SourceIdentifier:
+# Ids provided by sources (registration numbers, filer ids, ...) and the entity
+# each identifies. (source, source_id, entity_table) maps to exactly one
+# entity_id; one entity may have many source ids. Valid sources are listed in
+# sources.yaml. Written during normalization and updated during linking.
+  required_attributes:
+    - entity_id
+    - entity_table
+    - source
+    - source_id
+  attributes:
+    - entity_id # uuid of the row this identifier points to
+    - entity_table # Transactor, Election, ElectionResult, ...
+    - source # id system that issued source_id, from sources.yaml
+    - source_id # the identifier as the source provides it
+    - reported_state
+    - earliest_known_date
+    - latest_known_date

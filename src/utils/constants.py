@@ -19,3 +19,6 @@ source_metadata_directory = BASE_FILEPATH / "src" / "utils" / "static"
 SPLIT = "--"
 ID_SUFFIX = "_id"
 DEFAULT_SCHEMA_PATH = BASE_FILEPATH / "src" / "utils" / "table.yaml"
+DEFAULT_SOURCES_PATH = BASE_FILEPATH / "src" / "utils" / "sources.yaml"
+# suffix of the column that records which source an id column's values come from
+ID_SOURCE_SUFFIX = "_source"

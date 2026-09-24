@@ -68,6 +68,7 @@ contributions:
     - raw_name: filerIdent
       type: str
       standard_name: recipient_id
+      id_source: tx_ethics_filer
 
     - raw_name: filerTypeCd
       type: str
@@ -163,7 +164,10 @@ contributions:
 
     - raw_name: contributorPacFein
       type: str
-      standard_name: donor--ein
+      # FEC committee id of an out-of-state PAC contributor (despite the name,
+      # not an EIN)
+      standard_name: donor_id
+      id_source: fec_committee
 
     - raw_name: contributorOosPacFlag
       type: str
@@ -266,6 +270,11 @@ expenditures:
       MCEC: Organization
 
   column_details:
+    # inherited from contributions; not in expenditure files, and donor_id
+    # comes from filerIdent here
+    - raw_name: contributorPacFein
+      type: str
+
     - raw_name: expendInfoId
       type: str
 
@@ -301,6 +310,7 @@ expenditures:
     - raw_name: filerIdent
       type: str
       standard_name: donor_id
+      id_source: tx_ethics_filer
 
     - raw_name: filerTypeCd
       type: str
@@ -511,6 +521,7 @@ filers:
     - raw_name: filerIdent
       type: str
       standard_name: id
+      id_source: tx_ethics_filer
 
     - raw_name: filerTypeCd
       type: str
