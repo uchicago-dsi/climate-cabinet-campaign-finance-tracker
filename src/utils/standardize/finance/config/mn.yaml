@@ -5,6 +5,9 @@ base:
     sep: ","
     on_bad_lines: warn
     header: 0
+  # read columns by header name: the Board has dropped columns from its exports
+  # before (vendor addresses were removed in 2026), which breaks positional names
+  include_column_order: false
   state_code_columns:
     - reported_state
 
@@ -412,9 +415,13 @@ independent_expenditures:
     - raw_name: Affected committee reg num
       type: Int32
 
-    - raw_name: "Spender name"
+    - raw_name: "Spender"
       type: str
       standard_name: donor--full_name
+
+    - raw_name: "Vendor State"
+      type: str
+      standard_name: recipient--address--state
 
     - raw_name: "Spender Reg Num"
       type: Int32
