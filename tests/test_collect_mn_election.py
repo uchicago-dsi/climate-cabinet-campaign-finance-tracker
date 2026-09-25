@@ -115,9 +115,14 @@ def test_standardized_results_normalize(write_result_file):
     assert election_results["id"].str.match(UUID4_REGEX).all()
     assert len(elections) == len(raw_election_ids)
     assert election_results["election_id"].isin(elections["id"]).all()
-    mapped_raw_ids = {key[0] for key in normalizer.id_mapping}
-    assert raw_ids <= mapped_raw_ids
-    assert raw_election_ids <= mapped_raw_ids
+    candidacy_ids = {
+        key[1] for key in normalizer.id_mapping if key[0] == "mn_sos_candidacy"
+    }
+    contest_ids = {
+        key[1] for key in normalizer.id_mapping if key[0] == "mn_sos_contest"
+    }
+    assert raw_ids == candidacy_ids
+    assert raw_election_ids == contest_ids
 
 
 @pytest.mark.parametrize(

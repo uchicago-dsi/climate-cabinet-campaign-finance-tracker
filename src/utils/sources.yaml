@@ -51,6 +51,15 @@ mn_sos_candidacy:
   url: https://electionresults.sos.mn.gov/
   pattern: '^\d{8}-\d{4}-\d{4}$'
 
+mn_sos_contest:
+  state: mn
+  agency: Minnesota Secretary of State
+  description: >-
+    One contest on one election date, as <YYYYMMDD>-<office id>. In partisan
+    primaries every party's race for an office shares one contest id.
+  url: https://electionresults.sos.mn.gov/
+  pattern: '^\d{8}-\d{4}$'
+
 az_sos_committee:
   state: az
   agency: Arizona Secretary of State

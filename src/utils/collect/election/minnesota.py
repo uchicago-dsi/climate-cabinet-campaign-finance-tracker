@@ -214,6 +214,8 @@ def standardize_results(results: pd.DataFrame, election: Election) -> pd.DataFra
         {
             "id": election_ids + "-" + results["candidate_order_code"],
             "election_id": election_ids,
+            "id_source": "mn_sos_candidacy",
+            "election_id_source": "mn_sos_contest",
             "election--year": election.year,
             "election--date": pd.to_datetime(election.date, format="%Y%m%d"),
             "election--election_type": election.election_type,
