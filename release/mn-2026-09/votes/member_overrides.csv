@@ -1,0 +1,28 @@
+session_key,member,person_name,district,evidence
+243,Carlson,Lyndon Carlson Sr.,45A,Open States roles overlap Andrew Carlson (50B from 2017); SOS 2016 shows Andrew first won 50B in 2016
+243,Erickson,Sondra Erickson,15A,Only Erickson label in session; won 15A in SOS 2016
+245,Erickson,Sondra Erickson,15A,Only Erickson label in session; won 15A in SOS 2016
+243,Rarick,Jason Rarick,11B,Marion Rarick is listed as O'Neill in 2015-16; Jason won 11B in SOS 2016
+245,Rarick,Jason Rarick,11B,Marion Rarick is listed as O'Neill in 2015-16; Jason won 11B in SOS 2016
+243,Ward,JoAnn Ward,53A,Only Ward label in session; won 53A in SOS 2016
+245,Ward,JoAnn Ward,53A,Only Ward label in session; won 53A in SOS 2016
+245,Carlson,Lyndon Carlson Sr.,45A,Open States roles overlap Andrew Carlson (50B from 2017)
+243,Winkler,Ryan Winkler,46A,Open States lacks his 2013-2015 role; votes end May 2015 when he left 46A
+243,Flanagan,Peggy Flanagan,46A,Open States role has no start date; votes begin March 2016 in 46A; won 46A in SOS 2016
+243,Persell,John Persell,5A,Open States lacks his 2013-2018 role; won 5A in SOS 2016
+245,Persell,John Persell,5A,Open States lacks his 2013-2018 role; won 5A in SOS 2016
+243,Norton,Kim Norton,25B,Open States has no House role for her; district from reference knowledge (not verified against a data source)
+245,Norton,Kim Norton,25B,Open States has no House role for her; district from reference knowledge (not verified against a data source)
+245,Winkler,Ryan Winkler,46A,Open States lacks his 2013-2015 role; 2015 special session was June 2015 (verify)
+300,"Anderson, P. E.",Patti Anderson,33A,Open States 2023-2024 vote records map this label to Patti Anderson (807 votes)
+300,"Anderson, P. H.",Paul Anderson,12A,Open States 2023-2024 vote records map this label to Paul Anderson (821 votes)
+300,Garofalo,Pat Garofalo,58B,Open States 2023-2024 vote records map this label to Pat Garofalo; his people-data role wrongly ends 2024-01-01
+300,"Lee, K.",Liz Lee,67A,Open States 2023-2024 vote records map this label to Liz Lee (894 votes)
+248,Rarick,Jason Rarick,11B,Marion Rarick is listed as O'Neill until her name change; Jason held 11B in 2017
+302,"Anderson, P. E.",Patti Anderson,33A,Same label and member as 2023-2024 (Open States vote records)
+302,"Anderson, P. H.",Paul Anderson,12A,Same label and member as 2023-2024 (Open States vote records)
+302,"Lee, K.",Liz Lee,67A,Same label and member as 2023-2024 (Open States vote records)
+304,"Anderson, P. E.",Patti Anderson,33A,Same label and member as 2023-2024 (Open States vote records)
+304,"Anderson, P. H.",Paul Anderson,12A,Same label and member as 2023-2024 (Open States vote records)
+304,"Lee, K.",Liz Lee,67A,Same label and member as 2023-2024 (Open States vote records)
+246,Rarick,Jason Rarick,11B,Marion Rarick is listed as O'Neill until her name change; Jason held 11B in 2017-2018
