@@ -178,7 +178,7 @@ def train_splink(
         linker = Linker(table_name, settings, db_api=db_api)
 
         deterministic_rules = [
-            block_on("first_name", "last_name", "address_city"),
+            block_on("first_name", "last_name", "address_zipcode"),
             "jaro_winkler_similarity(l.first_name, r.first_name) >= 0.94 and l.last_name = r.last_name and l.address_street_name = r.address_street_name",
         ]
 
@@ -198,9 +198,7 @@ def train_splink(
 
     # Use more restrictive blocking rule (includes first_name) to prevent
     # generating billions of pairs from common addresses
-    training_blocking_rule_address = block_on(
-        "first_name", "address_city", "address_street_name"
-    )
+    training_blocking_rule_address = block_on("first_name", "address_zipcode")
     linker.training.estimate_parameters_using_expectation_maximisation(
         training_blocking_rule_address
     )
