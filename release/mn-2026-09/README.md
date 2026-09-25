@@ -65,6 +65,10 @@ python votes/build_house_votes.py $DATA_DIR/release/mn $DATA_DIR/release/mn
 - Copy `$DATA_DIR/release/mn/*.parquet` to Box, then write the data README.
 - Use `shutil.copyfile`, not `copy`: the Box mount doesn't allow setting permissions.
 
+## Tests
+
+Before the ZIP training commit (`827e449`), the test suite passes. That commit makes 3 tests in `tests/test_link_train.py` fail, because their fixtures have no `address_zipcode` column. This is expected for a release-only change; the pipeline fix should choose blocking rules from the columns a state actually has (#153 B4, B5).
+
 ## Known issues in the release
 
 Documented in the data README on Box and in #153:
